@@ -9,6 +9,7 @@
 - 控制用户访问和权限
 - 处理数据存储和磁盘管理
 - 监控资源利用率和健康状态
+- 管理云盒终端设备和边缘接入
 
 ---
 
@@ -41,6 +42,7 @@
 | 管理用户 (Manage Users) | 用户和权限管理 | 用户认证、授权、访问控制 |
 | 管理共享资源 (Manage Shared Resources) | 共享资源分配和监控 | 资源池管理、配额分配、使用监控 |
 | 管理数据盘 (Manage Data Disks) | 存储资源管理 | 数据盘生命周期、快照、备份 |
+| 管理云盒 (Manage Cloud Boxes) | 云盒终端设备管理 | 设备注册、状态监控、固件升级、用户分配 |
 
 **特性**:
 - 单点控制，高可用配置建议（主备模式）
@@ -144,6 +146,93 @@
 - 支持快速容量检查，无需聚合查询
 - 独占模式下，整台机器资源视为已分配
 - 共享模式下，按虚拟机实例分配的资源累计计算
+
+---
+
+### 1.4 云盒 (Cloud Box)
+
+**定义**: 云盒是一个操作终端设备,可以连接键盘、鼠标和显示器,通过网线连接到边缘机房,作为用户访问云电脑的本地终端。
+
+**主要属性**:
+- `box_id`: 云盒唯一标识 (UUID)
+- `name`: 云盒名称
+- `serial_number`: 设备序列号 (唯一标识)
+- `network_id`: 所属网络ID (外键 → networks.network_id)
+- `status`: 运行状态
+  - `online`: 在线运行中
+  - `offline`: 离线
+  - `initializing`: 初始化中
+  - `maintenance`: 维护中
+  - `error`: 错误状态
+- `ip_address`: IP地址
+- `mac_address`: MAC地址
+- `firmware_version`: 固件版本号
+- `last_boot_time`: 最近开机时间 (TIMESTAMP)
+- `is_disabled`: 是否禁用 (BOOLEAN)
+- `computer_room_id`: 所属机房ID (外键 → computer_rooms.room_id)
+- `created_at`: 创建时间
+- `updated_at`: 更新时间
+- `last_heartbeat`: 最后心跳时间 (用于监控在线状态)
+
+**扩展属性**:
+- `model`: 设备型号
+- `manufacturer`: 制造商
+- `hardware_config`: 硬件配置信息 (JSON)
+  - CPU型号
+  - 内存大小
+  - 存储容量
+  - 支持的分辨率
+- `location`: 物理位置描述
+- `assigned_user_id`: 分配的用户ID (可选,外键 → users.user_id)
+- `tags`: 标签和元数据 (JSON)
+
+**网络配置**:
+- `network_mode`: 网络模式
+  - `dhcp`: 自动获取IP
+  - `static`: 静态IP配置
+- `gateway`: 网关地址
+- `dns_servers`: DNS服务器列表 (JSON数组)
+- `subnet_mask`: 子网掩码
+
+**监控指标**:
+- `cpu_usage_percent`: CPU使用率
+- `memory_usage_percent`: 内存使用率
+- `disk_usage_percent`: 磁盘使用率
+- `temperature`: 设备温度
+- `uptime_seconds`: 运行时长(秒)
+
+**生命周期状态**:
+```
+初始化中 (initializing)
+  ↓
+在线 (online) ←→ 维护中 (maintenance)
+  ↓
+离线 (offline)
+  ↓
+禁用 (disabled)
+  ↓
+报废 (decommissioned)
+```
+
+**功能特性**:
+- **即插即用**: 云盒连接网络后自动注册到管理系统
+- **远程管理**: 支持远程配置、升级固件、重启等操作
+- **状态监控**: 实时监控设备健康状态和性能指标
+- **用户绑定**: 可将云盒分配给特定用户使用
+- **访问控制**: 支持基于云盒的访问权限管理
+- **批量管理**: 支持批量配置、升级、重启等操作
+
+**与其他模块的关系**:
+- 属于特定的**机房** (Computer Room)
+- 连接到特定的**网络** (Network)
+- 可分配给特定的**用户** (User)
+- 作为访问**实例** (Instance)的客户端终端
+
+**典型用途**:
+- **企业办公**: 员工通过云盒访问云桌面进行日常办公
+- **教育培训**: 学校机房部署云盒供学生使用
+- **图形工作站**: 设计师通过云盒访问高性能云端图形工作站
+- **远程办公**: 远程员工通过云盒安全访问公司资源
 
 ---
 
