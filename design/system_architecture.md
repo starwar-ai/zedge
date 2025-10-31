@@ -15,7 +15,7 @@
 - **监控告警**：资源监控、健康检查、告警通知
 
 ### 1.3 技术栈
-- **前端**：React 18+、TypeScript、Ant Design、React Query
+- **前端**：React 18+、TypeScript、Arco Design、React Query
 - **后端**：Node.js 18+、Express/Koa、TypeScript
 - **数据库**：PostgreSQL 14+
 - **缓存**：Redis 7+
@@ -125,7 +125,7 @@
 ### 3.1 技术栈
 - **框架**：React 18+ (函数式组件 + Hooks)
 - **语言**：TypeScript 5+
-- **UI组件库**：Ant Design 5+
+- **UI组件库**：Arco Design 2.x
 - **状态管理**：
   - React Query (服务端状态管理)
   - Zustand / Redux Toolkit (客户端状态管理)
@@ -678,7 +678,7 @@ zedge/
 |------|------|------|---------|
 | React | 18+ | UI框架 | 成熟稳定，生态丰富 |
 | TypeScript | 5+ | 类型系统 | 类型安全，提升开发效率 |
-| Ant Design | 5+ | UI组件库 | 企业级组件，开箱即用 |
+| Arco Design | 2.x | UI组件库 | 字节跳动企业级组件库，性能优异，定制性强 |
 | React Query | 4+ | 数据获取 | 简化服务端状态管理 |
 | Vite | 5+ | 构建工具 | 快速构建，开发体验好 |
 
