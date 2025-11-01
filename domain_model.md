@@ -13,13 +13,13 @@
 
 ---
 
-## 1. 机房管理 (Computer Room Management)
+## 1. 边缘机房管理 (Edge Data Center Management)
 
-### 1.1 机房 (Computer Room)
-**说明**: 数据中心级别的物理机房，包含所有硬件资源
+### 1.1 边缘机房 (Edge Data Center)
+**说明**: 数据中心级别的物理边缘机房，包含所有硬件资源
 
 **主要属性**:
-- `name`: 机房名称 (e.g., 北京数据中心)
+- `name`: 边缘机房名称 (e.g., 北京数据中心)
 - `location`: 物理位置
 - `total_cpu_cores`: 总CPU核心数
 - `total_memory_gb`: 总内存容量
@@ -30,7 +30,7 @@
 
 ### 1.2 服务器 (Servers)
 
-机房内的专用服务器集群，按功能划分为三类：
+边缘机房内的专用服务器集群，按功能划分为三类：
 
 #### 1.2.1 管理服务器 (Management Server)
 
@@ -41,7 +41,7 @@
 | 管理实例 (Manage Instances) | 实例生命周期管理 | 创建、启动、停止、删除实例 |
 | 管理用户 (Manage Users) | 用户和权限管理 | 用户认证、授权、访问控制 |
 | 管理共享资源 (Manage Shared Resources) | 共享资源分配和监控 | 资源池管理、配额分配、使用监控 |
-| 管理数据盘 (Manage Data Disks) | 存储资源管理 | 数据盘生命周期、快照、备份 |
+| 管理私有数据盘 (Manage Private Data Disks) | 存储资源管理 | 私有数据盘生命周期、快照、备份 |
 | 管理云盒 (Manage Cloud Boxes) | 云盒终端设备管理 | 设备注册、状态监控、固件升级、用户分配 |
 
 **特性**:
@@ -51,9 +51,9 @@
 
 ---
 
-#### 1.2.2 数据盘服务器 (Data Disk Server)
+#### 1.2.2 私有数据盘服务器 (Private Data Disk Server)
 
-**功能**: 专门管理和存储实例的持久化数据磁盘
+**功能**: 专门管理和存储实例的持久化私有数据磁盘
 
 **主要特征**:
 - 独立的存储池
@@ -169,7 +169,7 @@
 - `firmware_version`: 固件版本号
 - `last_boot_time`: 最近开机时间 (TIMESTAMP)
 - `is_disabled`: 是否禁用 (BOOLEAN)
-- `computer_room_id`: 所属机房ID (外键 → computer_rooms.room_id)
+- `edge_data_center_id`: 所属边缘机房ID (外键 → edge_data_centers.room_id)
 - `created_at`: 创建时间
 - `updated_at`: 更新时间
 - `last_heartbeat`: 最后心跳时间 (用于监控在线状态)
@@ -223,14 +223,14 @@
 - **批量管理**: 支持批量配置、升级、重启等操作
 
 **与其他模块的关系**:
-- 属于特定的**机房** (Computer Room)
+- 属于特定的**边缘机房** (Edge Data Center)
 - 连接到特定的**网络** (Network)
 - 可分配给特定的**用户** (User)
 - 作为访问**实例** (Instance)的客户端终端
 
 **典型用途**:
 - **企业办公**: 员工通过云盒访问云桌面进行日常办公
-- **教育培训**: 学校机房部署云盒供学生使用
+- **教育培训**: 学校边缘机房部署云盒供学生使用
 - **图形工作站**: 设计师通过云盒访问高性能云端图形工作站
 - **远程办公**: 远程员工通过云盒安全访问公司资源
 
@@ -354,17 +354,17 @@
 - 实时监控和性能指标
 - 快速访问入口
 
-#### 挂载数据盘 (Attach Data Disk)
-- 为实例组内所有实例挂载相同数据盘
+#### 挂载私有数据盘 (Attach Private Data Disk)
+- 为实例组内所有实例挂载相同私有数据盘
 - 批量挂载操作
 - 权限和兼容性检查
-- 共享数据盘强制只读模式
+- 共享私有数据盘强制只读模式
 
 #### 实例资源挂载规则 (Instance Resource Attachment Rules)
 - **说明**: 定义实例能挂载的资源约束规则
 - **应用范围**:
   - 按机器类型定制规则
-  - 例如: CPU服务器最多可挂10个数据盘，PC农场最多5个
+  - 例如: CPU服务器最多可挂10个私有数据盘，PC农场最多5个
   - 例如: GPU资源只能附加到GPU服务器
 - **约束类型**:
   - `max_attachable`: 最大可挂载数量
@@ -385,11 +385,11 @@
 
 **子功能**:
 
-#### 挂载数据盘 (Attach Data Disk)
-- 将数据盘挂载到单个实例
+#### 挂载私有数据盘 (Attach Private Data Disk)
+- 将私有数据盘挂载到单个实例
 - 指定挂载路径
 - 权限验证
-- 共享数据盘强制只读模式
+- 共享私有数据盘强制只读模式
 
 #### 实例资源挂载规则 (Instance Resource Attachment Rules)
 - 验证资源挂载的合法性
@@ -434,40 +434,40 @@
 
 ---
 
-#### 3.0.2 数据盘 (Data Disk)
+#### 3.0.2 私有数据盘 (Private Data Disk)
 
-**定义**: 独立的持久化存储资源，由专用数据盘服务器提供
+**定义**: 独立的持久化存储资源，由专用私有数据盘服务器提供
 
 **特性**:
-- **存储位置**: 数据盘服务器（`data_disk_servers`）
-- **生命周期**: 独立于实例，实例删除后数据盘保留
-- **容量来源**: 从数据盘服务器的存储池分配
-- **配额计算**: 计入用户的 `max_data_disk_gb` 配额（独立于系统盘配额）
+- **存储位置**: 私有数据盘服务器（`private_data_disk_servers`）
+- **生命周期**: 独立于实例，实例删除后私有数据盘保留
+- **容量来源**: 从私有数据盘服务器的存储池分配
+- **配额计算**: 计入用户的 `max_private_data_disk_gb` 配额（独立于系统盘配额）
 - **性能**: 支持多种存储类型（standard, ssd, nvme）
 - **备份**: 支持快照和克隆
 
-**数据盘容量**:
-- 由数据盘的 `size_gb` 属性定义
+**私有数据盘容量**:
+- 由私有数据盘的 `size_gb` 属性定义
 - 创建后支持在线扩容
 - 不支持缩容（防止数据丢失）
 
 **存储分配流程**:
 ```
-1. 用户创建数据盘，指定 size_gb 和 disk_type
+1. 用户创建私有数据盘，指定 size_gb 和 disk_type
 2. 从指定类型的存储池分配容量
-3. 数据盘状态为 available
-4. 用户将数据盘挂载到实例（通过 instance_data_disk_attachments 表）
-5. 数据盘可卸载并挂载到其他实例
-6. 用户删除数据盘时释放存储池容量
+3. 私有数据盘状态为 available
+4. 用户将私有数据盘挂载到实例（通过 instance_private_data_disk_attachments 表）
+5. 私有数据盘可卸载并挂载到其他实例
+6. 用户删除私有数据盘时释放存储池容量
 ```
 
 ---
 
 #### 3.0.3 存储架构对比
 
-| 特性 | 系统盘 (System Disk) | 数据盘 (Data Disk) |
+| 特性 | 系统盘 (System Disk) | 私有数据盘 (Private Data Disk) |
 |------|---------------------|-------------------|
-| **存储位置** | 算力机本地存储 | 数据盘服务器独立存储池 |
+| **存储位置** | 算力机本地存储 | 私有数据盘服务器独立存储池 |
 | **生命周期** | 与实例绑定 | 独立于实例 |
 | **实例删除后** | 自动删除 | 保留 |
 | **挂载数量** | 1个（固定） | 多个（受挂载规则限制） |
@@ -476,7 +476,7 @@
 | **缩容** | 不支持 | 不支持 |
 | **快照** | 通过镜像 | 独立快照功能 |
 | **克隆** | 不支持 | 支持 |
-| **配额字段** | `max_storage_gb` | `max_data_disk_gb` |
+| **配额字段** | `max_storage_gb` | `max_private_data_disk_gb` |
 | **性能** | 高（本地存储） | 可配置（standard/ssd/nvme） |
 | **用途** | OS、应用程序 | 用户数据、数据库、日志 |
 
@@ -491,16 +491,16 @@
    - 仅统计非deleted状态的实例
    - stopped状态的实例仍占用系统盘配额
 
-2. **数据盘配额** (`max_data_disk_gb`):
-   - 计算公式: Σ(所有数据盘的 size_gb)
-   - 包括所有非deleted状态的数据盘
-   - 无论数据盘是否挂载到实例都占用配额
+2. **私有数据盘配额** (`max_private_data_disk_gb`):
+   - 计算公式: Σ(所有私有数据盘的 size_gb)
+   - 包括所有非deleted状态的私有数据盘
+   - 无论私有数据盘是否挂载到实例都占用配额
 
 **示例**:
 ```
 用户A的配额:
   - max_storage_gb: 500GB (系统盘总配额)
-  - max_data_disk_gb: 2000GB (数据盘总配额)
+  - max_private_data_disk_gb: 2000GB (私有数据盘总配额)
 
 用户A的资源使用:
   实例1: allocated_storage_gb = 100GB (running)
@@ -510,25 +510,25 @@
   系统盘使用: 100 + 200 = 300GB / 500GB (60%)
   系统盘剩余: 200GB
 
-  数据盘1: size_gb = 500GB (attached to 实例1)
-  数据盘2: size_gb = 1000GB (available, 未挂载)
-  数据盘3: size_gb = 300GB (attached to 实例2)
+  私有数据盘1: size_gb = 500GB (attached to 实例1)
+  私有数据盘2: size_gb = 1000GB (available, 未挂载)
+  私有数据盘3: size_gb = 300GB (attached to 实例2)
 
-  数据盘使用: 500 + 1000 + 300 = 1800GB / 2000GB (90%)
-  数据盘剩余: 200GB
+  私有数据盘使用: 500 + 1000 + 300 = 1800GB / 2000GB (90%)
+  私有数据盘剩余: 200GB
 ```
 
 ---
 
-### 3.1 数据盘 (Data Disk)
+### 3.1 私有数据盘 (Private Data Disk)
 
 **功能**: 独立的持久化存储资源
 
-**数据盘属性**:
-- `disk_id`: 数据盘唯一标识 (UUID)
+**私有数据盘属性**:
+- `disk_id`: 私有数据盘唯一标识 (UUID)
 - `user_id`: 所有者用户ID
-- `data_disk_server_id`: 所属数据盘服务器ID
-- `name`: 数据盘名称
+- `private_data_disk_server_id`: 所属私有数据盘服务器ID
+- `name`: 私有数据盘名称
 - `size_gb`: 容量大小
 - `disk_type`: 存储类型 (standard, ssd, nvme)
 - `status`: 状态 (available, attached, creating, deleting, error)
@@ -539,15 +539,15 @@
 
 ---
 
-**数据盘与实例的挂载关系** (多对多关系表):
+**私有数据盘与实例的挂载关系** (多对多关系表):
 
-通过关联表 `instance_data_disk_attachments` 管理数据盘与实例的挂载关系：
+通过关联表 `instance_private_data_disk_attachments` 管理私有数据盘与实例的挂载关系：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `attachment_id` | UUID | 挂载记录唯一标识 |
 | `instance_id` | UUID | 实例ID（外键 → instances.instance_id） |
-| `disk_id` | UUID | 数据盘ID（外键 → data_disks.disk_id） |
+| `disk_id` | UUID | 私有数据盘ID（外键 → private_data_disks.disk_id） |
 | `mount_path` | VARCHAR(255) | 实例内挂载路径 (e.g., /mnt/data1, D:\) |
 | `mount_mode` | ENUM | 挂载模式 (rw-读写, ro-只读) |
 | `attached_at` | TIMESTAMP | 挂载时间 |
@@ -556,38 +556,106 @@
 
 **约束条件**:
 - **唯一性约束**: (instance_id, disk_id) 组合唯一，防止重复挂载
-- **独占模式**: share_mode=exclusive 时，一个数据盘最多挂载到1个实例
-- **共享模式**: share_mode=shared 时，一个数据盘可挂载到多个实例，但不超过 max_attachments
-- **挂载限制**: 同一实例不能重复挂载同一数据盘
-- **共享限制**: 共享模式数据盘只能以只读模式（ro）挂载，不支持读写模式（rw）
+- **独占模式**: share_mode=exclusive 时，一个私有数据盘最多挂载到1个实例
+- **共享模式**: share_mode=shared 时，一个私有数据盘可挂载到多个实例，但不超过 max_attachments
+- **挂载限制**: 同一实例不能重复挂载同一私有数据盘
+- **共享限制**: 共享模式私有数据盘只能以只读模式（ro）挂载，不支持读写模式（rw）
 - **共享安全**: 多实例共享时强制只读，防止数据冲突和并发写入问题
 
 **特性**:
 - 支持热挂载：可附加到运行中的实例
 - 灵活共享：支持独占和共享两种模式
-- 独立生命周期：数据盘生命周期独立于实例（实例删除时数据盘保留）
+- 独立生命周期：私有数据盘生命周期独立于实例（实例删除时私有数据盘保留）
 - 独立备份：支持独立的备份和快照
-- 挂载前置检查：数据盘删除前必须先卸载所有挂载
+- 挂载前置检查：私有数据盘删除前必须先卸载所有挂载
 
 ---
 
-### 3.2 数据盘管理 (Data Disk Management)
+### 3.2 私有数据盘管理 (Private Data Disk Management)
 
 | 操作 | 说明 | 约束条件 |
 |-----|------|---------|
-| 创建数据盘 | 新建存储资源 | 用户配额、存储池容量 |
-| 挂载数据盘 | 绑定到实例 | 实例运行中、类型兼容、规则约束、共享模式只读 |
-| 卸载数据盘 | 解除绑定 | 实例允许卸载 |
+| 创建私有数据盘 | 新建存储资源 | 用户配额、存储池容量 |
+| 挂载私有数据盘 | 绑定到实例 | 实例运行中、类型兼容、规则约束、共享模式只读 |
+| 卸载私有数据盘 | 解除绑定 | 实例允许卸载 |
 | 快照 | 创建点备份 | 当前状态快照 |
-| 克隆 | 复制整个数据盘 | 足够存储空间 |
+| 克隆 | 复制整个私有数据盘 | 足够存储空间 |
 | 扩容 | 增加容量 | 宿主机容量充足 |
-| 删除数据盘 | 彻底删除 | 未挂载状态 |
+| 删除私有数据盘 | 彻底删除 | 未挂载状态 |
 
 ---
 
-## 4. 用户管理 (User Management)
+## 4. 租户管理 (Tenant Management)
 
-### 4.1 用户组管理 (User Group Management)
+### 4.1 租户 (Tenant)
+
+**定义**: 租户是系统中最顶层的组织单元，用于实现多租户隔离和管理。每个租户拥有独立的资源配额、网络隔离和管理员。
+
+**租户属性**:
+- `tenant_id`: 租户唯一标识 (UUID)
+- `name`: 租户名称（唯一）
+- `description`: 租户描述
+- `status`: 租户状态
+  - `active`: 活跃状态，正常使用
+  - `inactive`: 非活跃状态，暂停使用
+  - `suspended`: 暂停状态，资源被冻结
+- `admin_user_id`: 租户管理员用户ID（外键 → users.user_id）
+- `vlan_id`: 租户默认VLAN ID（用于网络隔离）
+- `quota_config`: 租户配额配置（JSON）
+  - `max_instances`: 最大实例数
+  - `max_cpu_cores`: 最大CPU总核心数
+  - `max_memory_gb`: 最大内存总量
+  - `max_storage_gb`: 最大存储总容量
+  - `max_private_data_disk_gb`: 最大私有数据盘容量
+  - `max_ip_addresses`: 最大IP地址数
+  - `max_bandwidth_gbps`: 最大网络带宽（Gbps）
+- `created_at`: 创建时间
+- `updated_at`: 更新时间
+- `created_by`: 创建者用户ID（外键 → users.user_id，超级管理员）
+
+**租户与用户的关系** (一对多):
+- 一个租户包含多个用户
+- 每个用户必须属于一个租户
+- 用户通过 `tenant_id` 字段关联到租户
+
+**租户与用户组的关系** (一对多):
+- 一个租户包含多个用户组
+- 每个用户组必须属于一个租户
+- 用户组通过 `tenant_id` 字段关联到租户
+- 一个用户可以在多个用户组（跨组场景）
+
+**租户与VPC的关系** (一对多):
+- 一个租户可以创建多个VPC
+- 租户内的VPC自动继承租户的VLAN配置
+- 通过VLAN实现租户间的网络隔离
+
+**网络隔离机制**:
+- 租户创建时分配唯一的VLAN ID
+- 租户内创建的VPC自动继承租户的VLAN ID
+- 不同租户的VPC使用不同的VLAN ID，实现二层网络隔离
+- 即使IP地址在同一网段，不同租户的实例也无法直接通信
+
+**租户管理员**:
+- 每个租户有一个管理员（`admin_user_id`）
+- 租户管理员拥有 `tenant_admin` 角色
+- 租户管理员只能管理自己租户内的资源
+- 租户管理员可以：
+  - 管理租户内的用户和用户组
+  - 管理租户内的实例和资源
+  - 查看租户内的配额使用情况
+  - 无法跨租户操作
+
+**特性**:
+- **资源隔离**: 租户间资源完全隔离
+- **网络隔离**: 通过VLAN实现租户间网络隔离
+- **配额管理**: 租户级别的配额限制
+- **独立管理**: 每个租户有独立的管理员
+
+---
+
+## 5. 用户管理 (User Management)
+
+### 5.1 用户组管理 (User Group Management)
 
 **功能**: 组织用户并进行集合管理
 
@@ -597,27 +665,74 @@
 - 组级别的资源配额
 - 批量操作支持
 
+**用户组属性**:
+- `group_id`: 用户组唯一标识 (UUID)
+- `name`: 用户组名称
+- `description`: 用户组描述
+- `tenant_id`: 所属租户ID（外键 → tenants.tenant_id）
+- `parent_group_id`: 父用户组ID（可选，支持层级结构）
+- `quota_config`: 用户组配额配置（JSON）
+- `created_at`, `updated_at`: 时间戳
+
+**用户组与租户的关系**:
+- 每个用户组必须属于一个租户
+- 用户组通过 `tenant_id` 字段关联到租户
+- 租户内的用户组可以跨组共享资源（如共享配额）
+
+**用户组与用户的关系** (多对多):
+- 一个用户可以在多个用户组
+- 一个用户组包含多个用户
+- 通过关联表 `user_group_members` 管理关系
+
 ---
 
-### 4.2 用户管理 (User Management)
+### 5.2 用户管理 (User Management)
 
 **用户属性**:
+- `user_id`: 用户唯一标识 (UUID)
 - `username`: 用户名
 - `email`: 邮箱
 - `password_hash`: 密码（加密存储）
-- `role`: 角色 (admin, operator, user)
+- `role`: 角色 (admin, tenant_admin, operator, user)
 - `status`: 账户状态 (active, inactive, locked)
-- `groups`: 所属用户组
+- `tenant_id`: 所属租户ID（外键 → tenants.tenant_id）
+- `groups`: 所属用户组（多对多关系）
 
 **权限体系**:
 - 基于角色的访问控制 (RBAC)
-- admin: 系统管理员，完全权限
-- operator: 运维人员，资源管理权限
-- user: 普通用户，仅操作自有资源
+- `admin`: 系统管理员（超级管理员），完全权限，可以创建和管理所有租户
+- `tenant_admin`: 租户管理员，只能管理自己租户内的资源
+- `operator`: 运维人员，资源管理权限
+- `user`: 普通用户，仅操作自有资源
+
+**角色权限说明**:
+- **admin (系统管理员/超级管理员)**:
+  - 可以创建、删除、管理所有租户
+  - 可以管理所有用户和用户组
+  - 可以管理所有资源（实例、存储、网络等）
+  - 可以查看和修改所有配额
+  - 可以管理边缘机房、服务器等基础设施
+
+- **tenant_admin (租户管理员)**:
+  - 只能管理自己租户内的用户和用户组
+  - 只能管理自己租户内的实例和资源
+  - 可以查看自己租户的配额使用情况
+  - 不能跨租户操作
+  - 不能创建或删除租户
+
+- **operator (运维人员)**:
+  - 资源管理权限
+  - 可以管理实例、存储等资源
+  - 通常用于系统运维和监控
+
+- **user (普通用户)**:
+  - 仅操作自有资源
+  - 可以创建和管理自己的实例
+  - 可以管理自己的私有数据盘
 
 ---
 
-## 5. 共享资源管理 (Shared Resource Management)
+## 6. 共享资源管理 (Shared Resource Management)
 
 **说明**: 共享资源是指在多个用户、实例或应用之间共享使用的计算、存储和网络资源。这些资源通过资源池进行统一管理和分配，确保资源的高效利用和公平分配。
 
@@ -638,7 +753,7 @@
 - `pool_name`: 资源池名称
 - `pool_type`: 资源池类型 (compute, storage, ip_address)
 - `description`: 资源池描述
-- `compute_room_id`: 所属机房ID（可选，支持跨机房）
+- `edge_data_center_id`: 所属边缘机房ID（可选，支持跨边缘机房）
 - `scheduling_policy`: 调度策略
   - `load_balance`: 负载均衡（默认）
   - `priority`: 优先级调度
@@ -688,14 +803,14 @@
 **特性**:
 - 多个用户的实例可部署在同一算力池中
 - 用于实例部署的候选集合
-- 支持跨多个物理机房，实现地理分布式资源共享
+- 支持跨多个物理边缘机房，实现地理分布式资源共享
 - 资源统计实时更新（通过聚合算力机资源）
 
 ---
 
 #### 5.1.2 存储池 (Storage Pool)
 
-**功能**: 聚合数据盘存储资源形成共享存储资源池
+**功能**: 聚合私有数据盘存储资源形成共享存储资源池
 
 **存储池特有属性**:
 - `total_capacity_gb`: 池内总存储容量
@@ -704,21 +819,21 @@
 - `storage_type`: 存储类型 (standard, ssd, nvme)
 - `redundancy_level`: 冗余级别 (none, raid1, raid5, raid10)
 
-**存储池与数据盘服务器的关系** (多对多):
+**存储池与私有数据盘服务器的关系** (多对多):
 
-通过关联表 `storage_pool_servers` 管理存储池与数据盘服务器的关系：
+通过关联表 `storage_pool_servers` 管理存储池与私有数据盘服务器的关系：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `pool_server_id` | UUID | 关系唯一标识 |
 | `pool_id` | UUID | 存储池ID（外键 → resource_pools.pool_id） |
-| `server_id` | UUID | 数据盘服务器ID（外键 → data_disk_servers.server_id） |
+| `server_id` | UUID | 私有数据盘服务器ID（外键 → private_data_disk_servers.server_id） |
 | `capacity_gb` | INTEGER | 该服务器在池中的容量贡献 |
 | `priority` | INTEGER | 优先级 |
 | `joined_at` | TIMESTAMP | 加入时间 |
 
 **特性**:
-- 多个用户可从同一存储池申请数据盘
+- 多个用户可从同一存储池申请私有数据盘
 - 支持按存储类型分类（SSD、HDD等）
 - 实现存储资源的统一管理和按需分配
 
@@ -1067,51 +1182,7 @@ v2.0.0 → 升级到 Ubuntu 24.04（重大更新）
 
 ---
 
-#### 5.4.4 镜像版本查询
-
-**查询接口**:
-
-1. **按版本号查询**:
-   ```sql
-   SELECT * FROM image_versions
-   WHERE image_id = 'img-001'
-   AND version_number = 'v1.2.0';
-   ```
-
-2. **按标签查询**:
-   ```sql
-   SELECT iv.* FROM image_versions iv
-   JOIN image_tags it ON iv.version_id = it.version_id
-   WHERE it.image_id = 'img-001'
-   AND it.tag_name = 'latest';
-   ```
-
-3. **查询所有版本**:
-   ```sql
-   SELECT version_number, version_name, status, created_at
-   FROM image_versions
-   WHERE image_id = 'img-001'
-   ORDER BY created_at DESC;
-   ```
-
-4. **版本依赖追溯**:
-   ```sql
-   -- 递归查询版本的父版本链
-   WITH RECURSIVE version_tree AS (
-     SELECT version_id, parent_version_id, version_number, 0 as level
-     FROM image_versions
-     WHERE version_id = 'ver-xxx'
-     UNION ALL
-     SELECT iv.version_id, iv.parent_version_id, iv.version_number, vt.level + 1
-     FROM image_versions iv
-     JOIN version_tree vt ON iv.version_id = vt.parent_version_id
-   )
-   SELECT * FROM version_tree;
-   ```
-
----
-
-#### 5.4.5 实例与镜像版本的关系
+#### 5.4.4 实例与镜像版本的关系
 
 **实例镜像引用** (更新 instances 表):
 - `image_id`: 镜像ID
@@ -1136,7 +1207,7 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-#### 5.4.6 镜像资源要求
+#### 5.4.5 镜像资源要求
 
 关联表 `image_requirements` 定义了每个镜像的最低和推荐资源:
 
@@ -1178,7 +1249,7 @@ ORDER BY iv.created_at DESC;
 
 **主要属性**:
 - `pool_id`: 资源池唯一标识 (UUID，作为资源池类型 ip_address 的特例)
-- `pool_name`: IP池名称 (e.g., "机房1-业务网段")
+- `pool_name`: IP池名称 (e.g., "边缘机房1-业务网段")
 - `network_segment`: 网络段 (e.g., 192.168.1.0/24)
 - `gateway`: 网关地址
 - `subnet_mask`: 子网掩码
@@ -1187,7 +1258,7 @@ ORDER BY iv.created_at DESC;
 - `total_addresses`: 总地址数
 - `available_addresses`: 可用地址数
 - `reserved_addresses`: 保留地址（网关、广播等）
-- `compute_room_id`: 所属机房
+- `edge_data_center_id`: 所属边缘机房
 - `status`: 状态 (active, full, maintenance)
 
 **IP地址分类**:
@@ -1241,7 +1312,7 @@ ORDER BY iv.created_at DESC;
   ↓
 设置保留地址 (Set Reserved Addresses)
   ↓
-关联机房/资源池 (Associate with Room/Pool)
+关联边缘机房/资源池 (Associate with Room/Pool)
   ↓
 激活IP池 (Activate IP Pool)
 ```
@@ -1277,7 +1348,7 @@ ORDER BY iv.created_at DESC;
 **约束条件**:
 - IP池必须有可用地址
 - 用户指定的IP必须未被占用
-- 实例所在机房与IP池机房匹配
+- 实例所在边缘机房与IP池边缘机房匹配
 - 满足网络隔离要求（VLAN等）
 
 ---
@@ -1358,20 +1429,29 @@ ORDER BY iv.created_at DESC;
 - `vpc_id`: VPC唯一标识 (UUID)
 - `name`: VPC名称
 - `description`: VPC描述
-- `user_id`: 所有者用户ID
+- `user_id`: 所有者用户ID（外键 → users.user_id）
+- `tenant_id`: 所属租户ID（外键 → tenants.tenant_id）
 - `cidr_block`: VPC网络段 (e.g., 10.0.0.0/16)
-- `compute_room_id`: 关联机房ID
+- `edge_data_center_id`: 关联边缘机房ID
+- `vlan_id`: VLAN ID（用于网络隔离，子网继承此VLAN配置）
 - `enable_dns`: 是否启用DNS解析
 - `dns_servers`: DNS服务器列表
 - `status`: 状态 (active, disabled, deleted)
 - `created_at`, `updated_at`: 时间戳
 - `created_by`, `updated_by`: 审计字段
 
+**VPC与租户的关系**:
+- 每个VPC必须属于一个租户
+- VPC通过 `tenant_id` 字段关联到租户
+- VPC的VLAN ID自动继承租户的VLAN ID（如果未指定）
+- 租户内的多个VPC共享相同的VLAN ID，实现租户内网络隔离
+
 **特性**:
 - 完全隔离的网络空间
 - 自定义IP地址范围
 - 支持多个子网划分
 - 内置DNS和DHCP服务
+- 租户级别的网络隔离
 
 ---
 
@@ -1384,7 +1464,7 @@ ORDER BY iv.created_at DESC;
 - `vpc_id`: 所属VPC ID（外键）
 - `name`: 子网名称
 - `cidr_block`: 子网网络段 (e.g., 10.0.1.0/24)
-- `availability_zone`: 可用区（可选，用于跨机房场景）
+- `availability_zone`: 可用区（可选，用于跨边缘机房场景）
 - `gateway`: 子网网关地址
 - `vlan_id`: VLAN ID（用于二层隔离）
 - `is_public`: 是否为公网子网
@@ -1496,7 +1576,217 @@ ORDER BY iv.created_at DESC;
 - 子网继承VPC的VLAN配置
 - 实现网络层面的多租户隔离
 
+**VLAN实际应用用例**:
+
+**用例1: 多租户企业隔离场景**
+
+**场景描述**:
+同一边缘机房中部署多个企业的云桌面服务，需要确保不同企业的网络完全隔离。
+
+**配置方案**:
+```
+企业A (租户A)
+  ├─ VPC-A (vpc_id: vpc-001)
+  │   ├─ VLAN ID: 100
+  │   ├─ 子网A1 (10.1.0.0/24, VLAN: 100)
+  │   │   └─ IP地址池A1 (vlan_id: 100)
+  │   │       └─ 实例A1, 实例A2
+  │   └─ 子网A2 (10.1.1.0/24, VLAN: 100)
+  │       └─ IP地址池A2 (vlan_id: 100)
+  │           └─ 实例A3, 实例A4
+
+企业B (租户B)
+  ├─ VPC-B (vpc_id: vpc-002)
+  │   ├─ VLAN ID: 200
+  │   ├─ 子网B1 (10.2.0.0/24, VLAN: 200)
+  │   │   └─ IP地址池B1 (vlan_id: 200)
+  │   │       └─ 实例B1, 实例B2
+  │   └─ 子网B2 (10.2.1.0/24, VLAN: 200)
+  │       └─ IP地址池B2 (vlan_id: 200)
+  │           └─ 实例B3, 实例B4
+```
+
+**网络隔离效果**:
+- 企业A的实例（VLAN 100）无法直接访问企业B的实例（VLAN 200）
+- 即使IP地址在同一网段（如10.1.0.10和10.2.0.10），也无法通信
+- 需要三层路由才能实现跨VLAN通信，且必须通过安全组和ACL控制
+
+**技术实现**:
+1. 创建VPC时指定VLAN ID
+2. 子网自动继承VPC的VLAN ID
+3. IP地址池继承子网的VLAN ID
+4. 实例创建时从IP地址池分配IP，自动关联VLAN配置
+5. 交换机根据VLAN ID进行二层转发隔离
+
+---
+
+**用例2: 企业内部门隔离场景**
+
+**场景描述**:
+企业内部不同部门需要网络隔离，但部分资源需要共享访问。
+
+**配置方案**:
+```
+企业C (租户C)
+  ├─ VPC-C (vpc_id: vpc-003)
+  │   ├─ VLAN ID: 300
+  │   ├─ 子网-研发部 (10.3.1.0/24, VLAN: 301)
+  │   │   └─ IP地址池-研发部 (vlan_id: 301)
+  │   │       └─ 实例: 研发实例1-10
+  │   ├─ 子网-财务部 (10.3.2.0/24, VLAN: 302)
+  │   │   └─ IP地址池-财务部 (vlan_id: 302)
+  │   │       └─ 实例: 财务实例1-5
+  │   └─ 子网-共享资源 (10.3.10.0/24, VLAN: 310)
+  │       └─ IP地址池-共享资源 (vlan_id: 310)
+  │           └─ 实例: 共享数据库服务器
+```
+
+**隔离策略**:
+- 研发部和财务部使用不同VLAN（301和302），完全隔离
+- 共享资源使用独立VLAN（310）
+- 通过安全组规则控制：允许研发部和财务部访问共享资源，但相互隔离
+
+**安全组配置示例**:
+```json
+共享资源安全组规则:
+{
+  "inbound": [
+    {
+      "protocol": "tcp",
+      "port_range": "3306",
+      "remote_group_id": "sg-研发部",
+      "action": "allow",
+      "description": "允许研发部访问数据库"
+    },
+    {
+      "protocol": "tcp",
+      "port_range": "3306",
+      "remote_group_id": "sg-财务部",
+      "action": "allow",
+      "description": "允许财务部访问数据库"
+    }
+  ]
+}
+```
+
+---
+
+**用例3: 测试/生产环境隔离场景**
+
+**场景描述**:
+同一用户需要同时运行测试和生产环境，需要严格隔离。
+
+**配置方案**:
+```
+用户D
+  ├─ VPC-生产环境 (vpc_id: vpc-prod)
+  │   ├─ VLAN ID: 400
+  │   ├─ 子网-生产前端 (10.4.1.0/24, VLAN: 400)
+  │   ├─ 子网-生产后端 (10.4.2.0/24, VLAN: 400)
+  │   └─ 子网-生产数据库 (10.4.3.0/24, VLAN: 400)
+  │
+  └─ VPC-测试环境 (vpc_id: vpc-test)
+      ├─ VLAN ID: 500
+      ├─ 子网-测试前端 (10.5.1.0/24, VLAN: 500)
+      ├─ 子网-测试后端 (10.5.2.0/24, VLAN: 500)
+      └─ 子网-测试数据库 (10.5.3.0/24, VLAN: 500)
+```
+
+**隔离效果**:
+- 生产环境（VLAN 400）和测试环境（VLAN 500）完全隔离
+- 防止测试环境误操作影响生产环境
+- 测试环境可以安全地进行网络实验和配置变更
+
+---
+
+**用例4: 跨边缘机房VLAN隔离场景**
+
+**场景描述**:
+企业业务分布在多个边缘机房，需要跨机房网络隔离。
+
+**配置方案**:
+```
+边缘机房A
+  ├─ 企业E-VPC (vpc_id: vpc-e)
+  │   ├─ VLAN ID: 600
+  │   └─ 子网A (10.6.1.0/24, VLAN: 600)
+  │       └─ 实例: 前端服务器A1-A3
+
+边缘机房B
+  ├─ 企业E-VPC (vpc_id: vpc-e, 跨机房)
+  │   ├─ VLAN ID: 600 (相同VLAN ID)
+  │   └─ 子网B (10.6.2.0/24, VLAN: 600)
+  │       └─ 实例: 前端服务器B1-B3
+```
+
+**VLAN隧道实现**:
+- 使用VXLAN或GRE隧道在边缘机房间传输VLAN流量
+- 相同VLAN ID（600）的实例可以通过三层路由通信
+- 保持网络隔离性，同时实现跨机房网络连通
+
+---
+
+**用例5: 云盒与实例VLAN隔离场景**
+
+**场景描述**:
+云盒设备需要连接到特定VLAN，确保只能访问对应租户的实例。
+
+**配置方案**:
+```
+边缘机房物理网络
+  ├─ VLAN 100 (企业A)
+  │   ├─ 云盒A1-A10 (vlan_id: 100)
+  │   └─ 实例A1-A50 (VLAN: 100)
+  │
+  └─ VLAN 200 (企业B)
+      ├─ 云盒B1-B10 (vlan_id: 200)
+      └─ 实例B1-B50 (VLAN: 200)
+```
+
+**访问控制**:
+- 云盒A1-A10配置为VLAN 100，只能访问VLAN 100的实例
+- 云盒B1-B10配置为VLAN 200，只能访问VLAN 200的实例
+- 即使云盒和实例在同一物理交换机上，不同VLAN也无法通信
+
+---
+
+**VLAN配置最佳实践**:
+
+1. **VLAN ID分配策略**:
+   - 为每个租户/VPC分配唯一的VLAN ID范围
+   - 预留VLAN ID段用于系统管理（如VLAN 1-99）
+   - 用户VLAN从VLAN 100开始分配
+
+2. **VLAN与子网对应关系**:
+   - 一个VLAN可以包含多个子网（同一VPC内）
+   - 不同VPC使用不同VLAN ID
+   - 子网创建时自动继承VPC的VLAN配置
+
+3. **网络隔离层次**:
+   ```
+   第一层：VLAN隔离（二层隔离）
+     ↓
+   第二层：子网隔离（IP地址段隔离）
+     ↓
+   第三层：安全组隔离（实例级别隔离）
+     ↓
+   第四层：ACL隔离（子网级别隔离）
+   ```
+
+4. **VLAN监控与管理**:
+   - 监控每个VLAN的实例数量和网络流量
+   - 检测VLAN配置冲突
+   - 记录VLAN变更历史
+   - 支持VLAN级别的网络故障排查
+
+5. **VLAN扩展性**:
+   - 支持最多4094个VLAN（标准VLAN ID范围：1-4094）
+   - 支持VLAN Trunking（跨交换机VLAN传输）
+   - 支持QinQ（双层VLAN标签，用于更复杂的网络场景）
+
+---
 #### 6.7.2 访问控制列表 (ACL)
+
 - 基于IP的访问控制列表
 - 入站/出站规则管理
 - 与安全组协同工作
@@ -1559,6 +1849,7 @@ ORDER BY iv.created_at DESC;
 
 ---
 
+
 ## 7. 系统架构关系 (System Architecture Relationships)
 
 ### 7.1 实例创建流程（含IP和带宽分配）
@@ -1605,12 +1896,12 @@ ORDER BY iv.created_at DESC;
 实例运行 (Instance Running)
 ```
 
-### 7.2 数据盘挂载流程
+### 7.2 私有数据盘挂载流程
 
 ```
 用户请求挂载 (User Request Attach)
   ↓
-验证数据盘可用 (Verify Disk Available)
+验证私有数据盘可用 (Verify Disk Available)
   ↓
 检查挂载规则 (Check Attachment Rules)
   ↓
@@ -1618,7 +1909,7 @@ ORDER BY iv.created_at DESC;
   ↓
 挂载操作 (Mount Disk)
   ↓
-更新数据盘状态 (Update Disk Status)
+更新私有数据盘状态 (Update Disk Status)
   ↓
 操作日志记录 (Log Operation)
 ```
@@ -1626,10 +1917,10 @@ ORDER BY iv.created_at DESC;
 ### 7.3 资源层次关系
 
 ```
-机房 (Computer Room)
+边缘机房 (Edge Data Center)
   ├─ 算力机 (Compute Machines)
   │    └─ 实例 (Instances)
-  │         ├─ 数据盘附件 (Attached Disks)
+  │         ├─ 私有数据盘附件 (Attached Disks)
   │         └─ IP地址 (IP Address)
   ├─ 资源池 (Resource Pools)
   │    ├─ 算力池机器 (Compute Pool Machines)
@@ -1641,30 +1932,39 @@ ORDER BY iv.created_at DESC;
   │    │         └─ 镜像要求 (Image Requirements)
   │    └─ 模板库 (Template Repository)
   │         └─ 模板 (Templates)
-  └─ 数据盘存储 (Data Disk Storage)
-       └─ 数据盘 (Data Disks)
+  └─ 私有数据盘存储 (Private Data Disk Storage)
+       └─ 私有数据盘 (Private Data Disks)
             └─ 快照 (Snapshots)
 
 用户系统 (User System)
-  ├─ 用户 (Users)
-  │    ├─ 配额 (Quotas)
-  │    │    ├─ 实例配额
-  │    │    ├─ 存储配额
-  │    │    ├─ IP配额
-  │    │    └─ 网络带宽配额
-  │    │    └─ 订阅 (Subscriptions)
-  │    └─ 实例 (Instances)
-  └─ 用户组 (User Groups)
-       └─ 成员 (Members)
-            └─ 组配额 (Group Quotas)
+  ├─ 租户 (Tenants)
+  │    ├─ 租户配额 (Tenant Quotas)
+  │    ├─ 租户管理员 (Tenant Admin)
+  │    ├─ 用户 (Users)
+  │    │    ├─ 配额 (Quotas)
+  │    │    │    ├─ 实例配额
+  │    │    │    ├─ 存储配额
+  │    │    │    ├─ IP配额
+  │    │    │    ├─ 网络带宽配额
+  │    │    │    └─ 订阅 (Subscriptions)
+  │    │    └─ 实例 (Instances)
+  │    └─ 用户组 (User Groups)
+  │         ├─ 成员 (Members)
+  │         └─ 组配额 (Group Quotas)
+  └─ 系统管理员 (System Admin)
 
 网络资源 (Network Resources)
-  └─ IP地址池 (IP Address Pools)
-       ├─ 网络段 (Network Segments)
-       └─ IP地址记录 (IP Address Records)
-            ├─ 可用 (Available)
-            ├─ 已分配 (Allocated)
-            └─ 保留 (Reserved)
+  ├─ 租户 (Tenants)
+  │    └─ VLAN隔离 (VLAN Isolation)
+  ├─ IP地址池 (IP Address Pools)
+  │    ├─ 网络段 (Network Segments)
+  │    └─ IP地址记录 (IP Address Records)
+  │         ├─ 可用 (Available)
+  │         ├─ 已分配 (Allocated)
+  │         └─ 保留 (Reserved)
+  └─ 虚拟私有云 (VPC)
+       ├─ 子网 (Subnets)
+       └─ IP地址池 (IP Address Pools)
 ```
 
 ---
@@ -1724,20 +2024,42 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-## 9. 配额系统 (Quota System)
+## 10. 配额系统 (Quota System)
 
-### 9.1 用户配额 (User Quotas)
+### 10.1 租户配额 (Tenant Quotas)
+
+**定义**: 租户级别的资源配额限制，限制租户内所有用户和用户组的总资源使用。
+
+**租户配额属性**:
+- `tenant_id`: 租户ID（外键 → tenants.tenant_id）
+- `max_instances`: 最大实例数（租户内所有用户的总和）
+- `max_cpu_cores`: 最大CPU总核心数（租户内所有用户的总和）
+- `max_memory_gb`: 最大内存总量（租户内所有用户的总和）
+- `max_storage_gb`: 最大存储总容量（租户内所有用户的总和）
+- `max_private_data_disk_gb`: 最大私有数据盘容量（租户内所有用户的总和）
+- `max_ip_addresses`: 最大IP地址数（租户内所有用户的总和）
+- `max_bandwidth_gbps`: 最大网络带宽（Gbps，租户内所有用户的总和）
+
+**租户配额特点**:
+- 租户配额是租户内所有用户和用户组共享的上限
+- 租户内所有用户的资源使用总和不能超过租户配额
+- 租户管理员可以查看租户配额使用情况
+- 只有超级管理员可以修改租户配额
+
+---
+
+### 10.2 用户配额 (User Quotas)
 
 每个用户具有以下硬限制:
 - `max_instances`: 最大实例数
 - `max_cpu_cores`: 最大CPU总核心数
 - `max_memory_gb`: 最大内存总量
 - `max_storage_gb`: 最大存储总容量
-- `max_data_disk_gb`: 最大数据盘容量
+- `max_private_data_disk_gb`: 最大私有数据盘容量
 - `max_ip_addresses`: 最大IP地址数
 - `max_bandwidth_gbps`: 最大网络带宽（Gbps）
 
-### 9.2 用户组配额 (User Group Quotas)
+### 10.3 用户组配额 (User Group Quotas)
 
 - 对整个组的资源限制
 - 成员共享组配额
@@ -1745,9 +2067,9 @@ ORDER BY iv.created_at DESC;
 - 包括IP地址配额限制
 - 包括网络带宽配额限制
 
-### 9.3 配额计算逻辑 (Quota Calculation Logic)
+### 10.4 配额计算逻辑 (Quota Calculation Logic)
 
-#### 9.3.1 配额占用规则
+#### 10.4.1 配额占用规则
 
 **实例状态与配额占用关系**:
 
@@ -1762,12 +2084,12 @@ ORDER BY iv.created_at DESC;
 | terminating | ❌ 不占用 | ❌ 不占用 | ✅ 占用 | ❌ 不占用 | ❌ 不占用 | 删除中释放计算资源 |
 | deleted | ❌ 不占用 | ❌ 不占用 | ❌ 不占用 | ❌ 不占用 | ❌ 不占用 | 释放所有资源 |
 
-**数据盘配额占用**:
-- 数据盘配额独立于实例存储配额
+**私有数据盘配额占用**:
+- 私有数据盘配额独立于实例存储配额
 - `max_storage_gb`: 仅计算实例系统盘容量总和
-- `max_data_disk_gb`: 计算用户所有数据盘容量总和
-- 数据盘无论是否挂载到实例，都占用配额
-- 数据盘删除后立即释放配额
+- `max_private_data_disk_gb`: 计算用户所有私有数据盘容量总和
+- 私有数据盘无论是否挂载到实例，都占用配额
+- 私有数据盘删除后立即释放配额
 
 **IP地址配额占用**:
 - 实例分配IP后即占用配额
@@ -1777,10 +2099,12 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-#### 9.3.2 组配额与用户配额的关系
+#### 10.4.2 组配额与用户配额的关系
 
 **配额层级**:
 ```
+租户配额 (Tenant Quotas)
+    ↓ (租户内所有用户和用户组共享)
 用户组配额 (User Group Quotas)
     ↓ (组内所有用户共享)
 用户配额 (User Quotas)
@@ -1791,9 +2115,10 @@ ORDER BY iv.created_at DESC;
 ```
 
 **验证逻辑**:
-1. **用户级别**: 用户所有资源总和 ≤ 用户配额
+1. **租户级别**: 租户内所有用户和用户组资源总和 ≤ 租户配额
 2. **用户组级别**: 用户组内所有成员资源总和 ≤ 用户组配额
-3. **实例组级别** (如果设置): 实例组内所有实例资源总和 ≤ 实例组配额
+3. **用户级别**: 用户所有资源总和 ≤ 用户配额
+4. **实例组级别** (如果设置): 实例组内所有实例资源总和 ≤ 实例组配额
 
 **配额计算模式**:
 
@@ -1813,9 +2138,14 @@ ORDER BY iv.created_at DESC;
 - 优先使用用户配额，不足时从组配额借用
 - 灵活性最高，适用于弹性资源需求
 
+**租户配额验证**:
+- 租户内所有用户和用户组的资源使用总和不能超过租户配额
+- 租户配额是最顶层的限制
+- 即使用户配额和用户组配额允许，如果租户配额不足，操作也会被拒绝
+
 ---
 
-#### 9.3.3 配额验证流程
+#### 10.4.3 配额验证流程
 
 **实例创建时的配额验证**:
 ```
@@ -1830,7 +2160,21 @@ ORDER BY iv.created_at DESC;
    - 带宽: allocated_bandwidth_gbps
    - IP: 1个
 
-3. 验证用户配额
+3. 验证租户配额（最高优先级）
+   - 获取租户内所有用户的资源使用总和
+   - tenant_total_cpu + new_cpu ≤ tenant_max_cpu_cores ✓
+   - tenant_total_memory + new_memory ≤ tenant_max_memory_gb ✓
+   - tenant_total_storage + new_storage ≤ tenant_max_storage_gb ✓
+   - tenant_total_bandwidth + new_bandwidth ≤ tenant_max_bandwidth_gbps ✓
+   - tenant_total_ip_count + 1 ≤ tenant_max_ip_addresses ✓
+   - tenant_total_instance_count + 1 ≤ tenant_max_instances ✓
+
+4. 验证用户组配额（如果启用共享配额）
+   - group_total_cpu + new_cpu ≤ group_max_cpu_cores ✓
+   - group_total_memory + new_memory ≤ group_max_memory_gb ✓
+   - ... (所有资源类型)
+
+5. 验证用户配额
    - current_cpu + new_cpu ≤ max_cpu_cores ✓
    - current_memory + new_memory ≤ max_memory_gb ✓
    - current_storage + new_storage ≤ max_storage_gb ✓
@@ -1838,30 +2182,25 @@ ORDER BY iv.created_at DESC;
    - current_ip_count + 1 ≤ max_ip_addresses ✓
    - current_instance_count + 1 ≤ max_instances ✓
 
-4. 验证用户组配额（如果启用共享配额）
-   - group_total_cpu + new_cpu ≤ group_max_cpu_cores ✓
-   - group_total_memory + new_memory ≤ group_max_memory_gb ✓
-   - ... (所有资源类型)
-
-5. 验证实例组配额（如果实例加入实例组）
+6. 验证实例组配额（如果实例加入实例组）
    - instance_group_total_cpu + new_cpu ≤ instance_group_max_cpu ✓
    - ... (所有资源类型)
 
-6. 所有验证通过 → 允许创建
+7. 所有验证通过 → 允许创建
    任一验证失败 → 拒绝创建，返回详细错误信息
 ```
 
 **配额调整时的验证**:
 - 实例扩容（增加CPU/内存/存储/带宽）
-  - 验证增量资源是否超过剩余配额
+  - 验证增量资源是否超过剩余配额（包括租户配额）
 - 实例缩容（减少资源）
   - 直接允许，释放配额供其他实例使用
-- 数据盘扩容
-  - 验证增量存储是否超过 max_data_disk_gb 剩余配额
+- 私有数据盘扩容
+  - 验证增量存储是否超过 max_private_data_disk_gb 剩余配额（包括租户配额）
 
 ---
 
-### 9.4 配额验证和执行 (Quota Validation & Enforcement)
+### 10.5 配额验证和执行 (Quota Validation & Enforcement)
 
 **验证时机**:
 - 实例创建时验证所有配额
@@ -2026,7 +2365,7 @@ ORDER BY iv.created_at DESC;
 
 **存储资源计量**:
 - **实例存储**: GB × 存储时长
-- **数据盘存储**: GB × 存储时长
+- **私有数据盘存储**: GB × 存储时长
 - **快照存储**: GB × 存储时长
 - 计量单位: GB·天 或 GB·月
 
@@ -2061,7 +2400,7 @@ ORDER BY iv.created_at DESC;
     },
     "storage": {
       "instance_storage_gb": 500,
-      "data_disk_storage_gb": 1000,
+      "private_data_disk_storage_gb": 1000,
       "snapshot_storage_gb": 200
     },
     "network": {
@@ -2218,7 +2557,7 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
     },
     "storage": {
       "instance_storage": 0,
-      "data_disk_storage": 100.00,
+      "private_data_disk_storage": 100.00,
       "snapshot_storage": 20.00,
       "subtotal": 120.00
     },
@@ -2467,112 +2806,292 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 
 ```
 云电脑业务管理系统
-├── 机房 (Computer Room)
+├── 租户管理 (Tenant Management)
+│   ├── 租户 (Tenants)
+│   │   ├── 租户配额 (Tenant Quotas)
+│   │   ├── 租户管理员 (Tenant Admin)
+│   │   ├── VLAN隔离配置
+│   │   └── 网络隔离策略
+│   └── 配额系统 (Quota System)
+│       ├── 租户配额 (Tenant Quotas)
+│       ├── 用户组配额 (User Group Quotas)
+│       ├── 用户配额 (User Quotas)
+│       ├── 实例组配额 (Instance Group Quotas)
+│       └── 配额验证与执行
+├── 用户管理 (User Management)
+│   ├── 用户组管理 (User Group Management)
+│   │   ├── 创建/删除用户组
+│   │   ├── 成员管理 (多对多关系)
+│   │   ├── 层级结构支持
+│   │   └── 组级配额管理
+│   └── 用户管理 (User Management)
+│       ├── 用户创建/禁用/锁定
+│       ├── 角色权限管理 (RBAC)
+│       │   ├── admin (系统管理员)
+│       │   ├── tenant_admin (租户管理员)
+│       │   ├── operator (运维人员)
+│       │   └── user (普通用户)
+│       └── 用户级配额管理
+├── 边缘机房 (Edge Data Center)
 │   ├── 服务器 (Servers)
 │   │   ├── 管理服务器 (Management Server)
 │   │   │   ├── 管理实例 (Manage Instances)
 │   │   │   ├── 管理用户 (Manage Users)
 │   │   │   ├── 管理共享资源 (Manage Shared Resources)
-│   │   │   └── 管理数据盘 (Manage Data Disks)
-│   │   ├── 数据盘服务器 (Data Disk Server)
-│   │   │   └── 存储池管理
+│   │   │   ├── 管理私有数据盘 (Manage Private Data Disks)
+│   │   │   └── 管理云盒 (Manage Cloud Boxes)
+│   │   ├── 私有数据盘服务器 (Private Data Disk Server)
+│   │   │   ├── 存储类型管理 (standard/ssd/nvme)
+│   │   │   ├── 存储池管理
+│   │   │   └── 快照和备份
 │   │   └── 文件服务器 (File Server)
 │   │       ├── 镜像库 (Image Repository)
+│   │       │   ├── OS基础镜像
+│   │       │   ├── 应用层镜像
+│   │       │   ├── 自定义镜像
+│   │       │   ├── 镜像版本管理
+│   │       │   ├── 镜像标签系统
 │   │       │   └── 最低资源要求描述
 │   │       └── 模板库 (Template Repository)
-│   └── 算力机 (Compute Machines)
-│       ├── CPU服务器
-│       ├── PCFarm (PC农场)
-│       └── GPU服务器
-├── 实例 (Instances)
+│   │           ├── 实例模板
+│   │           ├── 实例组模板
+│   │           └── 模板版本管理
+│   ├── 算力机 (Compute Machines)
+│   │   ├── 机器类型
+│   │   │   ├── CPU服务器 (cpu_server)
+│   │   │   ├── PC农场 (pc_farm)
+│   │   │   └── GPU服务器 (gpu_server)
+│   │   ├── 租赁方式
+│   │   │   ├── 独占方式 (exclusive)
+│   │   │   └── 共享方式 (shared)
+│   │   ├── 资源跟踪
+│   │   │   ├── allocated_cpu_cores
+│   │   │   ├── allocated_memory_gb
+│   │   │   └── allocated_storage_gb
+│   │   └── 健康状态监控
+│   └── 云盒 (Cloud Box)
+│       ├── 设备注册与管理
+│       ├── 状态监控
+│       ├── 固件升级
+│       ├── 用户分配
+│       └── 网络配置
+├── 实例管理 (Instance Management)
+│   ├── 实例 (Instances)
+│   │   ├── 生命周期管理
+│   │   │   ├── 创建中 (creating)
+│   │   │   ├── 初始化中 (initializing)
+│   │   │   ├── 运行中 (running)
+│   │   │   ├── 暂停 (suspended)
+│   │   │   ├── 停止中 (stopping)
+│   │   │   ├── 已停止 (stopped)
+│   │   │   ├── 删除中 (terminating)
+│   │   │   └── 已删除 (deleted)
+│   │   ├── 资源分配
+│   │   │   ├── CPU核心数
+│   │   │   ├── 内存容量
+│   │   │   ├── 存储容量 (系统盘)
+│   │   │   ├── GPU数量
+│   │   │   └── 网络带宽
+│   │   ├── 镜像关联
+│   │   │   ├── image_id
+│   │   │   ├── image_version_id
+│   │   │   └── image_tag_used
+│   │   └── 健康状态监控
 │   ├── 实例组管理 (Instance Group Management)
+│   │   ├── 实例组 (Instance Groups)
+│   │   │   ├── 组类型 (project/department/application/custom)
+│   │   │   ├── 成员管理 (多对多关系)
+│   │   │   ├── 组配额配置
+│   │   │   └── 批量操作
 │   │   ├── 管理实例 (Manage Instances)
 │   │   ├── 工作实例 (Work Instances)
-│   │   ├── 挂载数据盘 (Attach Data Disk)
+│   │   ├── 挂载私有数据盘 (Attach Private Data Disk)
 │   │   └── 实例资源挂载规则
 │   └── 实例管理 (Instance Management)
-│       ├── 挂载数据盘 (Attach Data Disk)
+│       ├── 启动/停止/重启
+│       ├── 配置修改
+│       ├── 挂载私有数据盘 (Attach Private Data Disk)
 │       └── 实例资源挂载规则
-├── 数据 (Data)
-│   └── 数据盘管理 (Data Disk Management)
-│       ├── 创建/删除数据盘
+├── 数据管理 (Data Management)
+│   ├── 存储架构
+│   │   ├── 系统盘 (System Disk)
+│   │   │   ├── 算力机本地存储
+│   │   │   ├── 与实例绑定生命周期
+│   │   │   └── 计入 max_storage_gb 配额
+│   │   └── 私有数据盘 (Private Data Disk)
+│   │       ├── 独立存储池
+│   │       ├── 独立生命周期
+│   │       ├── 支持共享模式
+│   │       └── 计入 max_private_data_disk_gb 配额
+│   └── 私有数据盘管理 (Private Data Disk Management)
+│       ├── 创建/删除私有数据盘
+│       ├── 挂载/卸载操作
+│       │   ├── 独占模式 (exclusive)
+│       │   └── 共享模式 (shared, 强制只读)
 │       ├── 快照管理
-│       └── 克隆操作
-├── 用户 (User)
-│   ├── 用户组管理 (User Group Management)
-│   │   ├── 创建/删除用户组
-│   │   ├── 管理成员
-│   │   └── 组级配额管理
-│   └── 用户管理 (User Management)
-│       ├── 创建/禁用用户
-│       ├── 权限管理
-│       └── 用户级配额管理
-├── 网络与IP管理 (Network & IP Management)
-│   ├── IP地址池管理 (IP Address Pool Management)
-│   │   ├── 创建/删除IP池
-│   │   ├── IP分配策略配置
-│   │   └── IP池容量监控
-│   ├── IP地址分配 (IP Address Allocation)
-│   │   ├── 自动分配
-│   │   ├── 指定分配
-│   │   └── 预留分配
-│   ├── IP冲突检测 (IP Conflict Detection)
+│       ├── 克隆操作
+│       └── 扩容操作
+├── 网络管理 (Network Management)
+│   ├── 虚拟私有云 (VPC)
+│   │   ├── VPC创建与管理
+│   │   ├── CIDR块管理
+│   │   ├── VLAN配置
+│   │   └── DNS配置
+│   ├── 子网 (Subnet)
+│   │   ├── 子网创建与管理
+│   │   ├── 可用区配置
+│   │   ├── 网关配置
+│   │   └── 自动IP分配
+│   ├── IP地址管理 (IP Address Management)
+│   │   ├── IP地址池 (IP Address Pool)
+│   │   │   ├── 网络段管理
+│   │   │   ├── 网关和DNS配置
+│   │   │   ├── 保留地址管理
+│   │   │   └── 容量监控
+│   │   ├── IP地址分配 (IP Address Allocation)
+│   │   │   ├── 自动分配
+│   │   │   ├── 指定分配
+│   │   │   ├── 预留分配
+│   │   │   └── DHCP模式
+│   │   ├── IP冲突检测
+│   │   └── IP回收机制
+│   ├── 安全组 (Security Group)
+│   │   ├── 安全组创建与管理
+│   │   ├── 入站规则 (Inbound Rules)
+│   │   ├── 出站规则 (Outbound Rules)
+│   │   ├── 规则优先级管理
+│   │   └── 实例绑定 (多对多)
 │   └── 网络隔离 (Network Isolation)
-│       ├── VLAN管理
-│       └── 安全组规则
+│       ├── VLAN隔离 (二层隔离)
+│       ├── 子网隔离 (IP段隔离)
+│       ├── 安全组隔离 (实例级隔离)
+│       └── ACL隔离 (子网级隔离)
+├── 共享资源管理 (Shared Resource Management)
+│   ├── 资源池 (Resource Pool)
+│   │   ├── 算力池 (Compute Pool)
+│   │   │   ├── 机器成员管理 (多对多)
+│   │   │   ├── 调度策略
+│   │   │   │   ├── 负载均衡 (load_balance)
+│   │   │   │   ├── 优先级调度 (priority)
+│   │   │   │   ├── 亲和性调度 (affinity)
+│   │   │   │   └── 轮询调度 (round_robin)
+│   │   │   └── 资源统计与监控
+│   │   ├── 存储池 (Storage Pool)
+│   │   │   ├── 服务器成员管理 (多对多)
+│   │   │   ├── 存储类型分类
+│   │   │   ├── 冗余级别配置
+│   │   │   └── 资源分配/回收机制
+│   │   └── IP地址池 (IP Address Pool)
+│   │       ├── 网络段管理
+│   │       ├── IP地址记录
+│   │       └── 分配/回收机制
+│   ├── 模板 (Template)
+│   │   ├── 实例模板 (Instance Template)
+│   │   │   ├── 用途分类 (use_case)
+│   │   │   ├── 基础镜像关联
+│   │   │   ├── 默认资源配置
+│   │   │   ├── 网络配置模板
+│   │   │   └── 参数化支持
+│   │   ├── 实例组模板 (Instance Group Template)
+│   │   │   ├── 实例数量配置
+│   │   │   ├── 命名模式
+│   │   │   ├── 负载均衡配置
+│   │   │   └── 共享存储配置
+│   │   └── 模板版本管理
+│   │       ├── 版本控制
+│   │       ├── 版本回滚
+│   │       └── 配置快照
+│   └── 镜像 (Image)
+│       ├── 镜像类型
+│       │   ├── OS基础镜像 (os_base)
+│       │   ├── 应用层镜像 (application_layer)
+│       │   └── 自定义镜像 (custom)
+│       ├── 镜像版本管理
+│       │   ├── 语义化版本号
+│       │   ├── 版本状态管理
+│       │   ├── 版本发布/回滚/废弃
+│       │   └── 版本归档
+│       ├── 镜像标签系统
+│       │   ├── 系统标签 (latest/stable/dev/lts)
+│       │   ├── 版本标签 (v1.0.0等)
+│       │   └── 自定义标签
+│       └── 镜像资源要求
+│           ├── 最低资源要求
+│           ├── 推荐资源配置
+│           └── 虚拟化兼容性
 ├── 计费与订阅管理 (Billing & Subscription Management)
 │   ├── 订阅计划 (Subscription Plans)
-│   │   ├── 基本版套餐
-│   │   ├── 专业版套餐
-│   │   ├── 企业版套餐
-│   │   └── 定制版套餐
+│   │   ├── 套餐类型
+│   │   │   ├── 基本版 (Basic)
+│   │   │   ├── 专业版 (Professional)
+│   │   │   ├── 企业版 (Enterprise)
+│   │   │   └── 定制版 (Custom)
+│   │   ├── 套餐配额配置
+│   │   ├── 超额计费率配置
+│   │   └── 订阅管理
+│   │       ├── 订阅/升级/降级
+│   │       ├── 自动续费
+│   │       └── 套餐变更
 │   ├── 使用计量 (Usage Metering)
 │   │   ├── 计算资源计量
+│   │   │   ├── CPU使用 (核心·小时)
+│   │   │   ├── 内存使用 (GB·小时)
+│   │   │   └── GPU使用 (GPU·小时)
 │   │   ├── 存储资源计量
+│   │   │   ├── 实例存储 (GB·月)
+│   │   │   ├── 私有数据盘 (GB·月)
+│   │   │   └── 快照存储 (GB·月)
 │   │   ├── 网络资源计量
+│   │   │   ├── 网络带宽 (Gbps·小时)
+│   │   │   ├── 流量使用 (GB)
+│   │   │   └── IP地址 (IP·月)
 │   │   └── 计量数据存储
+│   │       ├── 原始记录 (分钟级)
+│   │       ├── 小时聚合
+│   │       ├── 日聚合
+│   │       └── 月聚合
 │   ├── 计费模式 (Billing Models)
-│   │   ├── 包年包月
-│   │   ├── 按需付费
-│   │   └── 预付费资源包
+│   │   ├── 包年包月 (Subscription-based)
+│   │   ├── 按需付费 (Pay-as-you-go)
+│   │   └── 预付费资源包 (Prepaid Resource Package)
 │   ├── 账单管理 (Invoice Management)
 │   │   ├── 月度账单生成
 │   │   ├── 费用明细导出
 │   │   └── 实时费用预估
 │   ├── 支付与结算 (Payment & Settlement)
-│   │   ├── 在线支付
-│   │   ├── 余额支付
+│   │   ├── 支付方式
+│   │   │   ├── 在线支付
+│   │   │   ├── 余额支付
+│   │   │   └── 信用额度
 │   │   ├── 自动续费
 │   │   └── 欠费处理
 │   └── 成本优化 (Cost Optimization)
 │       ├── 成本分析
 │       ├── 预算管理
 │       └── 优化建议
-└── 共享资源 (Shared Resource)
-    ├── 资源池 (Resource Pool)
-    │   ├── 算力池 (Compute Pool)
-    │   │   └── 机器成员管理
-    │   ├── 存储池 (Storage Pool)
-    │   │   ├── 磁盘成员管理
-    │   │   └── 资源分配/回收机制
-    │   └── IP地址池 (IP Address Pool)
-    │       ├── 网络段管理
-    │       ├── IP地址记录
-    │       └── 分配/回收机制
-    ├── 模板 (Template)
-    │   ├── 实例组模板 (Instance Group Template)
-    │   └── 实例模板 (Instance Template)
-    ├── 算力机 (Compute Machine)
-    │   ├── CPU服务器 (CPU Servers)
-    │   │   └── 虚拟机 (Virtual Machines)
-    │   ├── PCFarm (PC Farms)
-    │   │   └── PC/虚拟机
-    │   └── GPU服务器 (GPU Servers)
-    │       └── 虚拟机 (Virtual Machines)
-    └── 镜像 (Image)
-        ├── OS基础镜像 (OS Base Images)
-        ├── 应用层镜像 (Application Images)
-        └── 镜像版本和标签管理
+└── 系统运维 (System Operations)
+    ├── 系统状态跟踪 (System State Tracking)
+    │   ├── 操作日志 (Operation Logs)
+    │   │   ├── 资源操作记录
+    │   │   ├── 权限变更记录
+    │   │   ├── 配额调整记录
+    │   │   └── IP分配/回收记录
+    │   ├── 实例事件 (Instance Events)
+    │   │   ├── 状态转换记录
+    │   │   ├── 健康状态变化
+    │   │   ├── 资源附件/分离事件
+    │   │   └── 性能告警事件
+    │   └── 监控指标 (Metrics)
+    │       ├── CPU使用率
+    │       ├── 内存使用率
+    │       ├── 磁盘I/O
+    │       ├── 网络流量和带宽
+    │       ├── IP使用率
+    │       └── 告警阈值配置
+    └── 数据一致性 (Data Consistency & Reliability)
+        ├── 软删除 (Soft Deletes)
+        ├── 审计跟踪 (Audit Trail)
+        └── 状态机 (State Machines)
 ```
 
 ---
@@ -2585,9 +3104,9 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 **v1.5 (2025-10-31)** - 数据盘共享策略明确化和文档一致性修复:
 
 **重要更新**:
-- ✅ 明确共享数据盘强制只读限制：共享模式数据盘只能以只读模式挂载，不支持读写模式
-- ✅ 更新数据盘挂载约束条件：补充共享安全机制说明
-- ✅ 完善实例组和单个实例挂载数据盘说明
+- ✅ 明确共享私有数据盘强制只读限制：共享模式私有数据盘只能以只读模式挂载，不支持读写模式
+- ✅ 更新私有数据盘挂载约束条件：补充共享安全机制说明
+- ✅ 完善实例组和单个实例挂载私有数据盘说明
 
 **文档一致性修复**:
 - ✅ 修复实例属性缺少镜像相关字段：补充 `image_id`、`image_version_id`、`image_tag_used` 字段（与5.4.5节保持一致）
@@ -2598,14 +3117,14 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 **v1.4 (2025-10-31)** - 严重问题修复与功能完善:
 
 **严重问题修复**:
-- ✅ 修复数据盘多实例挂载设计矛盾：引入 `instance_data_disk_attachments` 多对多关系表，支持独占/共享模式
+- ✅ 修复私有数据盘多实例挂载设计矛盾：引入 `instance_private_data_disk_attachments` 多对多关系表，支持独占/共享模式
 - ✅ 补充实例组完整实体定义：添加实例组属性、配额机制、`instance_group_members` 关系表
 - ✅ 明确资源池与算力机关系：定义资源池属性、调度策略、`compute_pool_machines` 和 `storage_pool_servers` 关系表
 
 **重要问题修复**:
 - ✅ 补充配额计算逻辑（9.3节）：详细定义配额占用规则、三种配额计算模式（独立/共享/混合）、完整验证流程
 - ✅ 添加网络管理模块（6.4-6.7节）：新增VPC、子网、安全组完整定义及关系表，完善网络隔离机制
-- ✅ 明确存储架构（3.0节）：区分系统盘（算力机本地）和数据盘（独立存储池），包含架构对比表和配额计算
+- ✅ 明确存储架构（3.0节）：区分系统盘（算力机本地）和私有数据盘（独立存储池），包含架构对比表和配额计算
 - ✅ 完善模板与镜像关系（5.2节）：明确多对一关系、参数化机制、模板版本管理系统
 
 **功能完善**:
