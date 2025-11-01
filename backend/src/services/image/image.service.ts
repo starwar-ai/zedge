@@ -17,6 +17,11 @@ export interface CreateImageDto {
   osVersion?: string;
   architecture?: string;
   sizeGb?: number;
+  minCpuCores?: number;
+  minMemoryGb?: number;
+  minStorageGb?: number;
+  recommendedCpuCores?: number;
+  recommendedMemoryGb?: number;
   visibility?: ImageVisibility;
   fileServerId?: string;
   filePath?: string;
@@ -35,6 +40,11 @@ export interface UpdateImageDto {
   osVersion?: string;
   architecture?: string;
   sizeGb?: number;
+  minCpuCores?: number;
+  minMemoryGb?: number;
+  minStorageGb?: number;
+  recommendedCpuCores?: number;
+  recommendedMemoryGb?: number;
   visibility?: ImageVisibility;
   status?: ImageStatus;
   fileServerId?: string;
@@ -161,6 +171,11 @@ export class ImageService {
         osVersion: data.osVersion,
         architecture: data.architecture,
         sizeGb: data.sizeGb ? data.sizeGb : null,
+        minCpuCores: data.minCpuCores !== undefined ? data.minCpuCores : null,
+        minMemoryGb: data.minMemoryGb !== undefined ? data.minMemoryGb : null,
+        minStorageGb: data.minStorageGb !== undefined ? data.minStorageGb : null,
+        recommendedCpuCores: data.recommendedCpuCores !== undefined ? data.recommendedCpuCores : null,
+        recommendedMemoryGb: data.recommendedMemoryGb !== undefined ? data.recommendedMemoryGb : null,
         visibility: data.visibility || ImageVisibility.PRIVATE,
         status: ImageStatus.ACTIVE,
         fileServerId: data.fileServerId,
@@ -338,6 +353,11 @@ export class ImageService {
         osVersion: data.osVersion,
         architecture: data.architecture,
         sizeGb: data.sizeGb !== undefined ? data.sizeGb : undefined,
+        minCpuCores: data.minCpuCores !== undefined ? data.minCpuCores : undefined,
+        minMemoryGb: data.minMemoryGb !== undefined ? data.minMemoryGb : undefined,
+        minStorageGb: data.minStorageGb !== undefined ? data.minStorageGb : undefined,
+        recommendedCpuCores: data.recommendedCpuCores !== undefined ? data.recommendedCpuCores : undefined,
+        recommendedMemoryGb: data.recommendedMemoryGb !== undefined ? data.recommendedMemoryGb : undefined,
         visibility: data.visibility,
         status: data.status,
         fileServerId: data.fileServerId,

@@ -933,6 +933,11 @@ model Image {
   osVersion       String?  @map("os_version") @db.VarChar(100)
   architecture    String?  @db.VarChar(50)
   sizeGb          Decimal? @map("size_gb") @db.Decimal(10, 2)
+  minCpuCores     Int?     @map("min_cpu_cores")
+  minMemoryGb     Int?     @map("min_memory_gb")
+  minStorageGb    Int?     @map("min_storage_gb")
+  recommendedCpuCores   Int?  @map("recommended_cpu_cores")
+  recommendedMemoryGb   Int?  @map("recommended_memory_gb")
   visibility      ImageVisibility @default(PRIVATE)
   status          ImageStatus @default(ACTIVE)
   fileServerId    String?  @map("file_server_id") @db.Uuid

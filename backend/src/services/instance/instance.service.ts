@@ -98,6 +98,82 @@ interface QuotaConfig {
  */
 export class InstanceService {
   /**
+   * 验证镜像资源要求
+   * 检查用户指定的资源是否满足镜像的最低资源要求
+   */
+  private static async validateImageRequirements(
+    imageId: string,
+    cpuCores: number,
+    memoryGb: number,
+    storageGb: number
+  ): Promise<void> {
+    // 获取镜像信息
+    const image = await prisma.image.findUnique({
+      where: { id: imageId },
+      select: {
+        id: true,
+        name: true,
+        minCpuCores: true,
+        minMemoryGb: true,
+        minStorageGb: true,
+        recommendedCpuCores: true,
+        recommendedMemoryGb: true,
+      },
+    });
+
+    if (!image) {
+      throw new Error(`Image not found: ${imageId}`);
+    }
+
+    // 验证最小CPU核心数
+    if (image.minCpuCores !== null && cpuCores < image.minCpuCores) {
+      throw new Error(
+        `Insufficient CPU cores: image "${image.name}" requires at least ${image.minCpuCores} cores, but provided ${cpuCores}`
+      );
+    }
+
+    // 验证最小内存
+    if (image.minMemoryGb !== null && memoryGb < image.minMemoryGb) {
+      throw new Error(
+        `Insufficient memory: image "${image.name}" requires at least ${image.minMemoryGb}GB, but provided ${memoryGb}GB`
+      );
+    }
+
+    // 验证最小存储
+    if (image.minStorageGb !== null && storageGb < image.minStorageGb) {
+      throw new Error(
+        `Insufficient storage: image "${image.name}" requires at least ${image.minStorageGb}GB, but provided ${storageGb}GB`
+      );
+    }
+  }
+
+  /**
+   * 获取镜像推荐配置
+   * 返回镜像推荐的CPU和内存配置
+   */
+  static async getImageRecommendedConfig(imageId: string): Promise<{
+    recommendedCpuCores: number | null;
+    recommendedMemoryGb: number | null;
+  }> {
+    const image = await prisma.image.findUnique({
+      where: { id: imageId },
+      select: {
+        recommendedCpuCores: true,
+        recommendedMemoryGb: true,
+      },
+    });
+
+    if (!image) {
+      throw new Error(`Image not found: ${imageId}`);
+    }
+
+    return {
+      recommendedCpuCores: image.recommendedCpuCores,
+      recommendedMemoryGb: image.recommendedMemoryGb,
+    };
+  }
+
+  /**
    * 验证用户配额
    */
   private static async validateQuota(
@@ -341,8 +417,51 @@ export class InstanceService {
       throw new Error('User does not belong to the specified tenant');
     }
 
-    // 验证配额
-    await this.validateQuota(userId, tenantId, data);
+    // 确定最终使用的镜像ID和资源配置
+    let finalImageId: string;
+    let finalCpuCores: number;
+    let finalMemoryGb: number;
+    let finalStorageGb: number;
+
+    // 如果从模板创建，需要合并模板配置
+    if (data.templateId) {
+      const template = await TemplateService.getTemplateById(data.templateId);
+      if (!template) {
+        throw new Error(`Template not found: ${data.templateId}`);
+      }
+
+      const templateConfig = template.config as TemplateConfig;
+      finalImageId = templateConfig.baseImageId || data.imageId!;
+      finalCpuCores = data.cpuCores || templateConfig.defaultCpuCores || 1;
+      finalMemoryGb = data.memoryGb || templateConfig.defaultMemoryGb || 1;
+      finalStorageGb = data.storageGb || templateConfig.defaultStorageGb || 20;
+    } else {
+      // 直接创建实例，必须有镜像ID
+      if (!data.imageId) {
+        throw new Error('Image ID is required when creating instance without template');
+      }
+      finalImageId = data.imageId;
+      finalCpuCores = data.cpuCores;
+      finalMemoryGb = data.memoryGb;
+      finalStorageGb = data.storageGb;
+    }
+
+    // 验证镜像资源要求
+    await this.validateImageRequirements(
+      finalImageId,
+      finalCpuCores,
+      finalMemoryGb,
+      finalStorageGb
+    );
+
+    // 验证配额（使用最终配置）
+    await this.validateQuota(userId, tenantId, {
+      ...data,
+      cpuCores: finalCpuCores,
+      memoryGb: finalMemoryGb,
+      storageGb: finalStorageGb,
+      imageId: finalImageId,
+    });
 
     // 创建实例（只创建记录，不分配资源）
     const instance = await prisma.instance.create({
@@ -354,11 +473,11 @@ export class InstanceService {
         status: InstanceStatus.STOPPED, // 初始状态为stopped，启动时才分配资源
         // 将配置信息存储在config字段中（JSON格式）
         config: {
-          imageId: data.imageId,
+          imageId: finalImageId,
           imageVersionId: data.imageVersionId,
-          cpuCores: data.cpuCores,
-          memoryGb: data.memoryGb,
-          storageGb: data.storageGb,
+          cpuCores: finalCpuCores,
+          memoryGb: finalMemoryGb,
+          storageGb: finalStorageGb,
           gpuCount: data.gpuCount || 0,
           bandwidthGbps: data.bandwidthGbps || 0,
           description: data.description,
