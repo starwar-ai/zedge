@@ -9,6 +9,7 @@ import { TemplateService, TemplateConfig } from '../template/template.service';
 import { VirtualMachineService } from '../virtual-machine/virtual-machine.service';
 import { ComputeMachineService } from '../compute-machine/compute-machine.service';
 import { ResourcePoolService } from '../resource-pool/resource-pool.service';
+import { PrivateDataDiskService } from '../private-data-disk/private-data-disk.service';
 
 /**
  * 实例状态枚举
@@ -1009,6 +1010,18 @@ export class InstanceService {
           status: InstanceStatus.RUNNING,
         },
       });
+
+      // 自动加载用户的私有数据盘
+      try {
+        await PrivateDataDiskService.autoAttachUserDisksToInstance(
+          instanceId,
+          instance.userId,
+          instance.userId // 使用实例所有者作为操作者
+        );
+      } catch (error) {
+        // 自动加载失败不影响实例启动，只记录日志
+        console.error(`Failed to auto-attach private data disks for instance ${instanceId}:`, error);
+      }
 
       return updatedInstance;
     } catch (error) {

@@ -35,6 +35,7 @@ model Tenant {
   places          Place[]
   templates       Template[]
   instanceSets    InstanceSet[]
+  images          Image[]
   creator         User?    @relation("TenantCreator", fields: [createdBy], references: [id])
 
   @@map("tenants")
@@ -86,6 +87,11 @@ model User {
   updatedInstanceSets InstanceSet[] @relation("InstanceSetUpdater")
   addedInstanceSetMembers InstanceSetMember[] @relation("InstanceSetMemberAdder")
   assignedCloudBoxes CloudBox[] @relation("CloudBoxAssignedUser")
+  ownedImages Image[] @relation("ImageOwner")
+  createdImageVersions ImageVersion[] @relation("ImageVersionCreator")
+  createdPrivateDataDisks PrivateDataDisk[] @relation("PrivateDataDiskCreator")
+  updatedPrivateDataDisks PrivateDataDisk[] @relation("PrivateDataDiskUpdater")
+  diskAttachments InstancePrivateDataDiskAttachment[] @relation("DiskAttachmentAttacher")
 
   @@map("users")
   @@index([tenantId])
@@ -235,9 +241,10 @@ model Instance {
   template        Template? @relation(fields: [templateId], references: [id])
   resourcePool    ResourcePool? @relation(fields: [resourcePoolId], references: [id])
   computeMachine  ComputeMachine? @relation(fields: [computeMachineId], references: [id])
-  virtualMachine  VirtualMachine? @relation(fields: [virtualMachineId], references: [id])
+  virtualMachine  VirtualMachine? @relation("InstanceVirtualMachine")
   instanceSetMembers InstanceSetMember[]
   temporaryCloudBoxes CloudBox[] @relation("CloudBoxTemporaryInstance")
+  privateDataDiskAttachments InstancePrivateDataDiskAttachment[]
 
   @@map("instances")
   @@index([tenantId])
@@ -250,27 +257,94 @@ model Instance {
 }
 
 // ============================================================================
-// 存储管理 (Storage Management) - 简化版用于演示
+// 存储管理 (Storage Management)
 // ============================================================================
 
 model PrivateDataDisk {
-  id              String   @id @default(uuid()) @map("disk_id") @db.Uuid
-  name            String   @db.VarChar(255)
-  tenantId        String   @map("tenant_id") @db.Uuid
-  userId          String   @map("user_id") @db.Uuid
-  sizeGb          Int      @map("size_gb")
-  status          String   @db.VarChar(50)
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id                  String                @id @default(uuid()) @map("disk_id") @db.Uuid
+  name                String                @db.VarChar(255)
+  tenantId            String                @map("tenant_id") @db.Uuid
+  userId              String                @map("user_id") @db.Uuid
+  sizeGb              Int                  @map("size_gb")
+  diskType            PrivateDataDiskType  @default(STANDARD) @map("disk_type")
+  status              PrivateDataDiskStatus @default(AVAILABLE)
+  shareMode           ShareMode            @default(EXCLUSIVE) @map("share_mode")
+  maxAttachments      Int                  @default(1) @map("max_attachments")
+  rbdImageName        String               @unique @map("rbd_image_name") @db.VarChar(255)
+  rbdPool             String               @default("private-data-disks") @map("rbd_pool") @db.VarChar(100)
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  createdBy           String?              @map("created_by") @db.Uuid
+  updatedBy           String?              @map("updated_by") @db.Uuid
 
   // Relations
-  tenant          Tenant   @relation(fields: [tenantId], references: [id])
-  user            User     @relation(fields: [userId], references: [id])
+  tenant              Tenant                @relation(fields: [tenantId], references: [id])
+  user                User                  @relation(fields: [userId], references: [id])
+  attachments         InstancePrivateDataDiskAttachment[]
+  creator             User?                 @relation("PrivateDataDiskCreator", fields: [createdBy], references: [id])
+  updater             User?                @relation("PrivateDataDiskUpdater", fields: [updatedBy], references: [id])
 
   @@map("private_data_disks")
   @@index([tenantId])
   @@index([userId])
   @@index([status])
+  @@index([diskType])
+  @@index([shareMode])
+  @@index([rbdImageName])
+}
+
+enum PrivateDataDiskStatus {
+  AVAILABLE   @map("available")
+  ATTACHED    @map("attached")
+  CREATING    @map("creating")
+  DELETING    @map("deleting")
+  ERROR       @map("error")
+}
+
+enum PrivateDataDiskType {
+  STANDARD    @map("standard")
+  SSD         @map("ssd")
+  NVME        @map("nvme")
+}
+
+enum ShareMode {
+  EXCLUSIVE   @map("exclusive")
+  SHARED      @map("shared")
+}
+
+model InstancePrivateDataDiskAttachment {
+  id                  String              @id @default(uuid()) @map("attachment_id") @db.Uuid
+  instanceId          String              @map("instance_id") @db.Uuid
+  diskId              String              @map("disk_id") @db.Uuid
+  mountPath           String              @map("mount_path") @db.VarChar(255)
+  mountMode           MountMode           @default(RW) @map("mount_mode")
+  attachedAt          DateTime            @default(now()) @map("attached_at")
+  attachedBy          String              @map("attached_by") @db.Uuid
+  status              AttachmentStatus    @default(ATTACHED)
+
+  // Relations
+  instance            Instance            @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  disk                PrivateDataDisk     @relation(fields: [diskId], references: [id], onDelete: Restrict)
+  attacher            User                @relation("DiskAttachmentAttacher", fields: [attachedBy], references: [id])
+
+  @@unique([instanceId, diskId])
+  @@map("instance_private_data_disk_attachments")
+  @@index([instanceId])
+  @@index([diskId])
+  @@index([status])
+  @@index([attachedAt])
+}
+
+enum MountMode {
+  RW          @map("rw")
+  RO          @map("ro")
+}
+
+enum AttachmentStatus {
+  ATTACHING   @map("attaching")
+  ATTACHED    @map("attached")
+  DETACHING   @map("detaching")
+  FAILED      @map("failed")
 }
 
 // ============================================================================
@@ -827,7 +901,7 @@ model VirtualMachine {
   
   // Relations
   computeMachine      ComputeMachine @relation(fields: [computeMachineId], references: [id], onDelete: Restrict)
-  instance            Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  instance            Instance @relation("InstanceVirtualMachine", fields: [instanceId], references: [id], onDelete: Cascade)
   
   @@map("virtual_machines")
   @@index([computeMachineId])
@@ -844,4 +918,117 @@ enum VirtualMachineStatus {
   RESTARTING @map("restarting")
   ERROR      @map("error")
   DELETED    @map("deleted")
+}
+
+// ============================================================================
+// 镜像管理 (Image Management)
+// ============================================================================
+
+model Image {
+  id              String   @id @default(uuid()) @map("image_id") @db.Uuid
+  name            String   @db.VarChar(255)
+  description     String?  @db.Text
+  imageType       ImageType @default(OS_BASE) @map("image_type")
+  baseOs          String?  @map("base_os") @db.VarChar(100)
+  osVersion       String?  @map("os_version") @db.VarChar(100)
+  architecture    String?  @db.VarChar(50)
+  sizeGb          Decimal? @map("size_gb") @db.Decimal(10, 2)
+  visibility      ImageVisibility @default(PRIVATE)
+  status          ImageStatus @default(ACTIVE)
+  fileServerId    String?  @map("file_server_id") @db.Uuid
+  filePath        String?  @map("file_path") @db.VarChar(500)
+  checksumMd5     String?  @map("checksum_md5") @db.VarChar(32)
+  ownerId         String   @map("owner_id") @db.Uuid
+  tenantId        String?  @map("tenant_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  owner           User     @relation("ImageOwner", fields: [ownerId], references: [id])
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  versions        ImageVersion[]
+  tags            ImageTag[]
+
+  @@unique([tenantId, name])
+  @@map("images")
+  @@index([ownerId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([visibility])
+  @@index([imageType])
+}
+
+enum ImageType {
+  OS_BASE            @map("os_base")
+  APPLICATION_LAYER  @map("application_layer")
+  CUSTOM             @map("custom")
+}
+
+enum ImageVisibility {
+  PUBLIC          @map("public")
+  PRIVATE         @map("private")
+  GROUP_SPECIFIC  @map("group_specific")
+}
+
+enum ImageStatus {
+  ACTIVE      @map("active")
+  DEPRECATED  @map("deprecated")
+  ARCHIVED    @map("archived")
+}
+
+model ImageVersion {
+  id                String   @id @default(uuid()) @map("version_id") @db.Uuid
+  imageId            String   @map("image_id") @db.Uuid
+  versionNumber      String   @map("version_number") @db.VarChar(20)
+  versionName        String?  @map("version_name") @db.VarChar(100)
+  isLatest           Boolean  @default(false) @map("is_latest")
+  isDefault          Boolean  @default(false) @map("is_default")
+  parentVersionId    String?  @map("parent_version_id") @db.Uuid
+  sizeGb             Decimal? @map("size_gb") @db.Decimal(10, 2)
+  filePath           String?  @map("file_path") @db.VarChar(500)
+  checksumMd5        String?  @map("checksum_md5") @db.VarChar(32)
+  releaseNotes       String?  @map("release_notes") @db.Text
+  status             ImageVersionStatus @default(ACTIVE)
+  createdAt          DateTime @default(now()) @map("created_at")
+  createdBy          String   @map("created_by") @db.Uuid
+
+  // Relations
+  image              Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  parentVersion      ImageVersion? @relation("ImageVersionParent", fields: [parentVersionId], references: [id])
+  childVersions      ImageVersion[] @relation("ImageVersionParent")
+  creator            User     @relation("ImageVersionCreator", fields: [createdBy], references: [id])
+  tags               ImageTag[]
+
+  @@unique([imageId, versionNumber])
+  @@map("image_versions")
+  @@index([imageId])
+  @@index([status])
+  @@index([isLatest])
+  @@index([isDefault])
+}
+
+enum ImageVersionStatus {
+  ACTIVE      @map("active")
+  DEPRECATED  @map("deprecated")
+  ARCHIVED    @map("archived")
+}
+
+model ImageTag {
+  id              String   @id @default(uuid()) @map("tag_id") @db.Uuid
+  imageId         String   @map("image_id") @db.Uuid
+  versionId       String   @map("version_id") @db.Uuid
+  tagName         String   @map("tag_name") @db.VarChar(50)
+  isImmutable     Boolean  @default(false) @map("is_immutable")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  image           Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  version         ImageVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([imageId, tagName])
+  @@map("image_tags")
+  @@index([imageId])
+  @@index([versionId])
+  @@index([tagName])
 }

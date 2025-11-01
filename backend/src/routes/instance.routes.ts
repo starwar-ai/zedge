@@ -75,5 +75,29 @@ router.post(
   instanceController.stopInstance
 );
 
+// 获取实例的私有数据盘挂载列表
+router.get(
+  '/:instance_id/private-data-disks',
+  authenticateToken,
+  requirePermission(ResourceType.INSTANCE, PermissionAction.READ),
+  instanceController.getInstancePrivateDataDisks
+);
+
+// 挂载私有数据盘到实例
+router.post(
+  '/:instance_id/private-data-disks/:disk_id/attach',
+  authenticateToken,
+  requirePermission(ResourceType.INSTANCE, PermissionAction.EXECUTE),
+  instanceController.attachPrivateDataDisk
+);
+
+// 卸载实例的私有数据盘
+router.post(
+  '/:instance_id/private-data-disks/:disk_id/detach',
+  authenticateToken,
+  requirePermission(ResourceType.INSTANCE, PermissionAction.EXECUTE),
+  instanceController.detachPrivateDataDisk
+);
+
 export default router;
 

@@ -5,6 +5,7 @@
 
 import { Request, Response } from 'express';
 import { InstanceService, CreateInstanceDto, UpdateInstanceDto, InstanceOverrideDto } from './instance.service';
+import { PrivateDataDiskService } from '../private-data-disk/private-data-disk.service';
 
 /**
  * 创建实例
@@ -521,6 +522,186 @@ export const createInstanceFromTemplate = async (
     res.status(statusCode).json({
       code: statusCode,
       message: error instanceof Error ? error.message : 'Failed to create instance from template',
+      data: null,
+    });
+  }
+};
+
+/**
+ * 获取实例的私有数据盘挂载列表
+ * GET /api/v1/instances/:instance_id/private-data-disks
+ */
+export const getInstancePrivateDataDisks = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { instance_id } = req.params;
+
+    // 权限检查
+    const instance = await InstanceService.getInstanceById(instance_id);
+    if (!instance) {
+      res.status(404).json({
+        code: 404,
+        message: 'Instance not found',
+        data: null,
+      });
+      return;
+    }
+
+    // 普通用户只能查看自己实例的私有数据盘
+    if (
+      req.user!.role === 'user' &&
+      instance.userId !== req.user!.user_id
+    ) {
+      res.status(403).json({
+        code: 403,
+        message: 'Access denied',
+        data: null,
+      });
+      return;
+    }
+
+    const attachments = await PrivateDataDiskService.getInstanceAttachments(instance_id);
+
+    res.status(200).json({
+      code: 200,
+      message: 'Success',
+      data: attachments,
+    });
+  } catch (error) {
+    console.error('Error getting instance private data disks:', error);
+    res.status(500).json({
+      code: 500,
+      message: 'Failed to get instance private data disks',
+      data: null,
+    });
+  }
+};
+
+/**
+ * 挂载私有数据盘到实例
+ * POST /api/v1/instances/:instance_id/private-data-disks/:disk_id/attach
+ */
+export const attachPrivateDataDisk = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { instance_id, disk_id } = req.params;
+    const { mount_path, mount_mode } = req.body;
+
+    // 权限检查
+    const instance = await InstanceService.getInstanceById(instance_id);
+    if (!instance) {
+      res.status(404).json({
+        code: 404,
+        message: 'Instance not found',
+        data: null,
+      });
+      return;
+    }
+
+    // 普通用户只能操作自己的实例
+    if (
+      req.user!.role === 'user' &&
+      instance.userId !== req.user!.user_id
+    ) {
+      res.status(403).json({
+        code: 403,
+        message: 'Access denied',
+        data: null,
+      });
+      return;
+    }
+
+    if (!mount_path) {
+      res.status(400).json({
+        code: 400,
+        message: 'Missing required field: mount_path',
+        data: null,
+      });
+      return;
+    }
+
+    await PrivateDataDiskService.attachToInstance(disk_id, {
+      instanceId: instance_id,
+      mountPath: mount_path,
+      mountMode: mount_mode,
+    }, req.user!.user_id);
+
+    res.status(200).json({
+      code: 200,
+      message: 'Private data disk attached successfully',
+      data: null,
+    });
+  } catch (error) {
+    console.error('Error attaching private data disk:', error);
+    const statusCode = error instanceof Error && 
+      (error.message.includes('not found') || error.message.includes('already attached') || error.message.includes('Cannot attach'))
+      ? (error.message.includes('not found') ? 404 : 400) : 500;
+    res.status(statusCode).json({
+      code: statusCode,
+      message: error instanceof Error ? error.message : 'Failed to attach private data disk',
+      data: null,
+    });
+  }
+};
+
+/**
+ * 卸载实例的私有数据盘
+ * POST /api/v1/instances/:instance_id/private-data-disks/:disk_id/detach
+ */
+export const detachPrivateDataDisk = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { instance_id, disk_id } = req.params;
+
+    // 权限检查
+    const instance = await InstanceService.getInstanceById(instance_id);
+    if (!instance) {
+      res.status(404).json({
+        code: 404,
+        message: 'Instance not found',
+        data: null,
+      });
+      return;
+    }
+
+    // 普通用户只能操作自己的实例
+    if (
+      req.user!.role === 'user' &&
+      instance.userId !== req.user!.user_id
+    ) {
+      res.status(403).json({
+        code: 403,
+        message: 'Access denied',
+        data: null,
+      });
+      return;
+    }
+
+    await PrivateDataDiskService.detachFromInstance(
+      disk_id,
+      instance_id,
+      req.user!.user_id
+    );
+
+    res.status(200).json({
+      code: 200,
+      message: 'Private data disk detached successfully',
+      data: null,
+    });
+  } catch (error) {
+    console.error('Error detaching private data disk:', error);
+    const statusCode = error instanceof Error && 
+      (error.message.includes('not found') || error.message.includes('Cannot detach'))
+      ? (error.message.includes('not found') ? 404 : 400) : 500;
+    res.status(statusCode).json({
+      code: statusCode,
+      message: error instanceof Error ? error.message : 'Failed to detach private data disk',
       data: null,
     });
   }

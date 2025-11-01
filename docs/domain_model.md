@@ -51,20 +51,33 @@
 
 ---
 
-#### 1.2.2 私有数据盘服务器 (Private Data Disk Server)
+#### 1.2.2 私有数据盘存储 (Private Data Disk Storage)
 
-**功能**: 专门管理和存储实例的持久化私有数据磁盘
+**功能**: 基于 Ceph RBD 提供虚拟化的持久化私有数据盘存储
+
+**实现方式**:
+- **存储后端**: Ceph RBD (RADOS Block Device)
+- **存储架构**: 分布式存储集群，无需专用物理服务器
+- **虚拟化**: 每个私有数据盘对应一个 Ceph RBD image
+- **存储池**: 支持多个存储池，可按存储类型（standard/ssd/nvme）分类
 
 **主要特征**:
-- 独立的存储池
-- 支持磁盘快照和备份
-- 提供高IOPS和容量
-- 可挂载到多个实例（支持共享存储场景）
+- **分布式存储**: 基于 Ceph 集群，提供高可用和高性能
+- **虚拟块设备**: 每个私有数据盘是独立的 RBD image
+- **支持快照和克隆**: 使用 Ceph RBD 原生功能
+- **在线扩容**: 支持在线扩容，无需停机
+- **多实例挂载**: 可挂载到多个实例（支持共享存储场景）
+- **自动挂载**: 实例启动时自动加载用户私有数据盘
 
 **存储类型支持**:
-- `standard`: 标准存储
-- `ssd`: SSD高速存储
-- `nvme`: NVMe超高速存储
+- `standard`: 标准存储（HDD/混合存储池）
+- `ssd`: SSD高速存储（SSD存储池）
+- `nvme`: NVMe超高速存储（NVMe存储池）
+
+**存储池配置**:
+- 默认存储池: `private-data-disks`
+- 可按 `disk_type` 配置不同的 Ceph 存储池
+- 支持多存储池，实现存储类型隔离
 
 ---
 
@@ -746,30 +759,46 @@ Instance的资源分配是动态的，与Instance状态相关：
 
 #### 3.0.2 私有数据盘 (Private Data Disk)
 
-**定义**: 独立的持久化存储资源，由专用私有数据盘服务器提供
+**定义**: 独立的持久化存储资源，基于 Ceph RBD (RADOS Block Device) 实现的虚拟数据盘
+
+**实现技术**:
+- **存储后端**: Ceph RBD (RADOS Block Device)
+- **存储位置**: Ceph 集群的存储池（`rbd_pool`，默认 `private-data-disks`）
+- **虚拟化**: 每个私有数据盘对应一个 Ceph RBD image
+- **命名规则**: `disk-{disk_id}` 格式，确保全局唯一
 
 **特性**:
-- **存储位置**: 私有数据盘服务器（`private_data_disk_servers`）
+- **存储位置**: Ceph 集群存储池（虚拟化存储，无需物理服务器）
 - **生命周期**: 独立于实例，实例删除后私有数据盘保留
-- **容量来源**: 从私有数据盘服务器的存储池分配
+- **容量来源**: 从 Ceph 存储池分配（通过 RBD image 管理）
 - **配额计算**: 计入用户的 `max_private_data_disk_gb` 配额（独立于系统盘配额）
-- **性能**: 支持多种存储类型（standard, ssd, nvme）
-- **备份**: 支持快照和克隆
+- **性能**: 支持多种存储类型（standard, ssd, nvme），通过不同 Ceph 存储池实现
+- **备份**: 支持 Ceph RBD 快照和克隆功能
+- **在线操作**: 支持在线扩容和热挂载
 
 **私有数据盘容量**:
 - 由私有数据盘的 `size_gb` 属性定义
-- 创建后支持在线扩容
+- 创建后支持在线扩容（通过 Ceph RBD resize）
 - 不支持缩容（防止数据丢失）
 
 **存储分配流程**:
 ```
 1. 用户创建私有数据盘，指定 size_gb 和 disk_type
-2. 从指定类型的存储池分配容量
-3. 私有数据盘状态为 available
-4. 用户将私有数据盘挂载到实例（通过 instance_private_data_disk_attachments 表）
-5. 私有数据盘可卸载并挂载到其他实例
-6. 用户删除私有数据盘时释放存储池容量
+2. 系统生成唯一的 disk_id 和 rbd_image_name (disk-{disk_id})
+3. 在 Ceph 存储池中创建对应的 RBD image
+4. 私有数据盘状态为 available
+5. 用户将私有数据盘挂载到实例（通过 instance_private_data_disk_attachments 表）
+6. 实例启动时自动加载用户的所有可用私有数据盘
+7. 私有数据盘可卸载并挂载到其他实例
+8. 用户删除私有数据盘时删除对应的 Ceph RBD image，释放存储池容量
 ```
+
+**Ceph RBD 集成**:
+- **RBD Image**: 每个私有数据盘对应一个 Ceph RBD image
+- **存储池**: 可配置不同的存储池（通过 `rbd_pool` 字段）
+- **快照**: 使用 Ceph RBD snapshot 功能
+- **克隆**: 使用 Ceph RBD clone 功能从快照创建
+- **扩容**: 使用 Ceph RBD resize 命令在线扩容
 
 ---
 
@@ -777,18 +806,20 @@ Instance的资源分配是动态的，与Instance状态相关：
 
 | 特性 | 系统盘 (System Disk) | 私有数据盘 (Private Data Disk) |
 |------|---------------------|-------------------|
-| **存储位置** | 算力机本地存储 | 私有数据盘服务器独立存储池 |
+| **存储位置** | 算力机本地存储 | Ceph RBD 集群存储池 |
+| **存储技术** | 本地磁盘/SSD | Ceph RBD (虚拟块设备) |
 | **生命周期** | 与实例绑定 | 独立于实例 |
 | **实例删除后** | 自动删除 | 保留 |
 | **挂载数量** | 1个（固定） | 多个（受挂载规则限制） |
 | **共享** | 不支持 | 支持（共享模式） |
 | **扩容** | 支持（停机） | 支持（在线） |
 | **缩容** | 不支持 | 不支持 |
-| **快照** | 通过镜像 | 独立快照功能 |
-| **克隆** | 不支持 | 支持 |
+| **快照** | 通过镜像 | Ceph RBD 快照 |
+| **克隆** | 不支持 | 支持（从快照克隆） |
 | **配额字段** | `max_storage_gb` | `max_private_data_disk_gb` |
 | **性能** | 高（本地存储） | 可配置（standard/ssd/nvme） |
 | **用途** | OS、应用程序 | 用户数据、数据库、日志 |
+| **自动加载** | 不支持 | 支持（实例启动时自动挂载） |
 
 ---
 
@@ -837,15 +868,17 @@ Instance的资源分配是动态的，与Instance状态相关：
 **私有数据盘属性**:
 - `disk_id`: 私有数据盘唯一标识 (UUID)
 - `user_id`: 所有者用户ID
-- `private_data_disk_server_id`: 所属私有数据盘服务器ID
+- `tenant_id`: 所属租户ID
 - `name`: 私有数据盘名称
-- `size_gb`: 容量大小
+- `size_gb`: 容量大小（GB）
 - `disk_type`: 存储类型 (standard, ssd, nvme)
 - `status`: 状态 (available, attached, creating, deleting, error)
 - `share_mode`: 共享模式 (exclusive-独占, shared-共享)
 - `max_attachments`: 最大挂载实例数（exclusive=1, shared=N，默认1）
+- `rbd_image_name`: Ceph RBD image 名称（格式：`disk-{disk_id}`，全局唯一）
+- `rbd_pool`: Ceph 存储池名称（默认：`private-data-disks`）
 - `created_at`, `updated_at`: 时间戳
-- `created_by`, `updated_by`: 审计字段
+- `created_by`, `updated_by`: 审计字段（操作者用户ID）
 
 ---
 
@@ -883,15 +916,33 @@ Instance的资源分配是动态的，与Instance状态相关：
 
 ### 3.2 私有数据盘管理 (Private Data Disk Management)
 
-| 操作 | 说明 | 约束条件 |
-|-----|------|---------|
-| 创建私有数据盘 | 新建存储资源 | 用户配额、存储池容量 |
-| 挂载私有数据盘 | 绑定到实例 | 实例运行中、类型兼容、规则约束、共享模式只读 |
-| 卸载私有数据盘 | 解除绑定 | 实例允许卸载 |
-| 快照 | 创建点备份 | 当前状态快照 |
-| 克隆 | 复制整个私有数据盘 | 足够存储空间 |
-| 扩容 | 增加容量 | 宿主机容量充足 |
-| 删除私有数据盘 | 彻底删除 | 未挂载状态 |
+| 操作 | 说明 | 约束条件 | 实现方式 |
+|-----|------|---------|---------|
+| 创建私有数据盘 | 新建存储资源 | 用户配额、Ceph存储池容量 | 在Ceph存储池中创建RBD image |
+| 挂载私有数据盘 | 绑定到实例 | 实例运行中、类型兼容、规则约束、共享模式只读 | 通过虚拟化管理接口挂载RBD设备 |
+| 卸载私有数据盘 | 解除绑定 | 实例允许卸载 | 从虚拟机卸载RBD设备 |
+| 快照 | 创建点备份 | 当前状态快照 | 使用Ceph RBD snapshot |
+| 克隆 | 从快照复制整个私有数据盘 | 足够存储空间、需要先创建快照 | 使用Ceph RBD clone功能 |
+| 扩容 | 增加容量（在线扩容） | Ceph存储池容量充足 | 使用Ceph RBD resize命令 |
+| 删除私有数据盘 | 彻底删除 | 未挂载状态 | 删除Ceph RBD image和数据库记录 |
+| 自动挂载 | 实例启动时自动挂载用户私有数据盘 | 实例启动成功 | 实例状态变为running后自动触发 |
+
+**API 端点**:
+
+- `POST /api/v1/private-data-disks` - 创建私有数据盘
+- `GET /api/v1/private-data-disks` - 获取私有数据盘列表
+- `GET /api/v1/private-data-disks/:disk_id` - 获取私有数据盘详情
+- `PATCH /api/v1/private-data-disks/:disk_id` - 更新私有数据盘
+- `DELETE /api/v1/private-data-disks/:disk_id` - 删除私有数据盘
+- `POST /api/v1/private-data-disks/:disk_id/resize` - 扩容私有数据盘
+- `POST /api/v1/private-data-disks/:disk_id/snapshots` - 创建快照
+- `POST /api/v1/private-data-disks/:disk_id/clone` - 克隆私有数据盘
+- `POST /api/v1/private-data-disks/:disk_id/attach` - 挂载到实例
+- `POST /api/v1/private-data-disks/:disk_id/detach` - 从实例卸载
+- `GET /api/v1/private-data-disks/:disk_id/attachments` - 获取挂载关系列表
+- `GET /api/v1/instances/:instance_id/private-data-disks` - 获取实例的私有数据盘列表
+- `POST /api/v1/instances/:instance_id/private-data-disks/:disk_id/attach` - 挂载到实例
+- `POST /api/v1/instances/:instance_id/private-data-disks/:disk_id/detach` - 从实例卸载
 
 ---
 
@@ -1115,32 +1166,32 @@ Instance的资源分配是动态的，与Instance状态相关：
 
 #### 6.1.2 存储池 (Storage Pool)
 
-**功能**: 聚合私有数据盘存储资源形成共享存储资源池
+**功能**: 管理 Ceph 集群的存储资源，为私有数据盘提供存储空间
 
-**存储池特有属性**:
-- `total_capacity_gb`: 池内总存储容量
-- `allocated_capacity_gb`: 已分配存储容量
-- `available_capacity_gb`: 可用存储容量
-- `storage_type`: 存储类型 (standard, ssd, nvme)
-- `redundancy_level`: 冗余级别 (none, raid1, raid5, raid10)
+**存储池实现**:
+- **存储后端**: Ceph RBD (RADOS Block Device)
+- **存储池类型**: Ceph 存储池（pool），支持多个存储池
+- **存储位置**: Ceph 集群的 OSD (Object Storage Daemon) 节点
+- **虚拟化**: 每个私有数据盘对应一个 RBD image
 
-**存储池与私有数据盘服务器的关系** (多对多):
+**存储池配置**:
+- **默认存储池**: `private-data-disks`（可在创建私有数据盘时指定）
+- **按类型分类**: 可根据 `disk_type` 配置不同的 Ceph 存储池
+  - `standard`: 标准存储池（HDD/混合）
+  - `ssd`: SSD存储池
+  - `nvme`: NVMe存储池
 
-通过关联表 `storage_pool_servers` 管理存储池与私有数据盘服务器的关系：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `pool_server_id` | UUID | 关系唯一标识 |
-| `pool_id` | UUID | 存储池ID（外键 → resource_pools.pool_id） |
-| `server_id` | UUID | 私有数据盘服务器ID（外键 → private_data_disk_servers.server_id） |
-| `capacity_gb` | INTEGER | 该服务器在池中的容量贡献 |
-| `priority` | INTEGER | 优先级 |
-| `joined_at` | TIMESTAMP | 加入时间 |
+**Ceph 存储池管理**:
+- **容量管理**: 通过 Ceph 集群的 OSD 节点提供存储容量
+- **配额管理**: 在应用层通过用户配额（`max_private_data_disk_gb`）控制
+- **冗余**: 通过 Ceph 的副本机制（replication）或纠删码（erasure coding）实现
+- **性能**: 可通过 Ceph 存储池的配置优化 IOPS 和吞吐量
 
 **特性**:
-- 多个用户可从同一存储池申请私有数据盘
-- 支持按存储类型分类（SSD、HDD等）
+- 多个用户可从同一 Ceph 存储池创建私有数据盘
+- 支持按存储类型分类（通过不同的 Ceph 存储池）
 - 实现存储资源的统一管理和按需分配
+- 提供高可用和高性能的分布式存储
 
 ---
 
@@ -2485,21 +2536,63 @@ ORDER BY iv.created_at DESC;
 
 ### 8.2 私有数据盘挂载流程
 
+#### 8.2.1 手动挂载流程
+
 ```
 用户请求挂载 (User Request Attach)
   ↓
 验证私有数据盘可用 (Verify Disk Available)
   ↓
 检查挂载规则 (Check Attachment Rules)
+  - 独占模式：检查是否已挂载到其他实例
+  - 共享模式：检查挂载数量是否超过 max_attachments
+  - 共享模式：强制只读挂载
   ↓
 验证权限 (Verify Permission)
   ↓
-挂载操作 (Mount Disk)
+创建挂载记录 (Create Attachment Record)
+  ↓
+挂载操作 (Mount Disk to VM)
+  - 调用虚拟化管理接口挂载 RBD image
+  - 在实例内创建挂载点并格式化（如需要）
   ↓
 更新私有数据盘状态 (Update Disk Status)
+  - 状态从 available 变为 attached（如果是首次挂载）
   ↓
 操作日志记录 (Log Operation)
 ```
+
+#### 8.2.2 自动挂载流程（实例启动时）
+
+```
+实例启动请求 (Instance Start Request)
+  ↓
+分配算力资源 (Allocate Compute Resources)
+  ↓
+创建/启动虚拟机 (Create/Start Virtual Machine)
+  ↓
+实例状态更新为 running
+  ↓
+自动挂载用户私有数据盘 (Auto Attach User Disks)
+  - 查询用户的所有可用私有数据盘（status = available 或 attached）
+  - 按创建时间顺序遍历每个私有数据盘
+  - 对每个私有数据盘执行挂载流程：
+    * 独占模式：检查是否已挂载到其他实例，如已挂载则跳过
+    * 共享模式：检查挂载数量，如未超过限制则挂载
+    * 生成默认挂载路径（/mnt/data1, /mnt/data2, ...）
+    * 共享模式强制只读挂载
+  - 记录挂载结果（成功/失败统计）
+  ↓
+实例启动完成 (Instance Started)
+```
+
+**自动挂载特性**:
+- **触发时机**: 实例状态从 stopped/creating 变为 running 时
+- **挂载范围**: 仅挂载实例所有者的私有数据盘
+- **挂载顺序**: 按私有数据盘创建时间顺序
+- **错误处理**: 单个私有数据盘挂载失败不影响其他盘和实例启动
+- **默认路径**: 自动生成 `/mnt/data{index}` 格式的挂载路径
+- **日志记录**: 记录自动挂载的详细结果和错误信息
 
 ### 8.3 资源层次关系
 
@@ -2515,8 +2608,12 @@ ORDER BY iv.created_at DESC;
   │    └─ 算力机3 (Compute Machine 3) [独占模式]
   │         └─ Instance E (独占模式，直接关联)
   ├─ 存储池 (Resource Pools - Storage Pool)
-  │    ├─ 存储池磁盘 (Storage Pool Disks)
-  │    └─ 私有数据盘服务器 (Private Data Disk Servers)
+  │    ├─ Ceph 集群 (Ceph Cluster)
+  │    │    ├─ RBD 存储池 (RBD Pools)
+  │    │    │    ├─ private-data-disks (默认私有数据盘存储池)
+  │    │    │    └─ {其他存储池} (按 disk_type 分类)
+  │    │    └─ RBD Images (虚拟数据盘)
+  │    └─ 存储池磁盘 (Storage Pool Disks)
   ├─ IP地址池 (Resource Pools - IP Address Pool)
   │    └─ IP地址记录 (IP Address Records)
   ├─ 文件服务器 (File Servers)
@@ -3442,10 +3539,11 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 │   │   │   ├── 管理共享资源 (Manage Shared Resources)
 │   │   │   ├── 管理私有数据盘 (Manage Private Data Disks)
 │   │   │   └── 管理云盒 (Manage Cloud Boxes)
-│   │   ├── 私有数据盘服务器 (Private Data Disk Server)
+│   │   ├── Ceph 存储集群 (Ceph Storage Cluster)
+│   │   │   ├── RBD 存储池管理 (private-data-disks)
 │   │   │   ├── 存储类型管理 (standard/ssd/nvme)
-│   │   │   ├── 存储池管理
-│   │   │   └── 快照和备份
+│   │   │   ├── RBD Image 管理（虚拟数据盘）
+│   │   │   └── 快照和克隆
 │   │   └── 文件服务器 (File Server)
 │   │       ├── 镜像库 (Image Repository)
 │   │       │   ├── OS基础镜像
