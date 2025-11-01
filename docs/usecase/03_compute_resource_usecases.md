@@ -74,12 +74,12 @@
 5. 系统统计实例数量
 6. 系统返回详细信息
 
-**API端点**: `GET /api/v1/edge-data-centers/:roomId`
+**API端点**: `GET /api/v1/edge-data-centers/:centerId`
 
 **响应示例**:
 ```json
 {
-  "roomId": "room-uuid",
+  "centerId": "center-uuid",
   "name": "北京数据中心1号",
   "location": "北京市海淀区中关村科技园",
   "status": "active",
@@ -115,7 +115,7 @@
 3. 系统更新机房记录
 4. 系统返回更新后的信息
 
-**API端点**: `PATCH /api/v1/edge-data-centers/:roomId`
+**API端点**: `PATCH /api/v1/edge-data-centers/:centerId`
 
 ---
 
@@ -136,7 +136,7 @@
 - 机房状态为maintenance
 - 不接受新的实例分配
 
-**API端点**: `POST /api/v1/edge-data-centers/:roomId/maintenance`
+**API端点**: `POST /api/v1/edge-data-centers/:centerId/maintenance`
 
 ---
 
@@ -165,7 +165,7 @@
 ```json
 {
   "name": "高性能GPU池",
-  "edgeDataCenterId": "room-uuid",
+  "edgeDataCenterId": "center-uuid",
   "poolType": "gpu",
   "description": "用于AI训练和图形渲染",
   "priority": 1
@@ -177,7 +177,7 @@
 {
   "poolId": "pool-uuid",
   "name": "高性能GPU池",
-  "edgeDataCenterId": "room-uuid",
+  "edgeDataCenterId": "center-uuid",
   "poolType": "gpu",
   "status": "active",
   "stats": {
@@ -232,7 +232,7 @@
 {
   "poolId": "pool-uuid",
   "name": "高性能GPU池",
-  "edgeDataCenterId": "room-uuid",
+  "edgeDataCenterId": "center-uuid",
   "poolType": "gpu",
   "status": "active",
   "machines": [
@@ -316,7 +316,7 @@
 {
   "hostname": "gpu-server-01",
   "resourcePoolId": "pool-uuid",
-  "edgeDataCenterId": "room-uuid",
+  "edgeDataCenterId": "center-uuid",
   "machineType": "gpu_server",
   "cpuCores": 64,
   "memoryGb": 256,
