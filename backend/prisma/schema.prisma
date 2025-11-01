@@ -1,0 +1,261 @@
+// Prisma schema for RBAC System
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// 租户管理 (Tenant Management)
+// ============================================================================
+
+model Tenant {
+  id              String   @id @default(uuid()) @map("tenant_id") @db.Uuid
+  name            String   @unique @db.VarChar(255)
+  description     String?  @db.Text
+  status          TenantStatus @default(ACTIVE)
+  adminUserId     String?  @map("admin_user_id") @db.Uuid
+  vlanId          Int?     @unique @map("vlan_id")
+  quotaConfig     Json?    @map("quota_config") @db.JsonB
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdBy       String?  @map("created_by") @db.Uuid
+
+  // Relations
+  users           User[]
+  userGroups      UserGroup[]
+  instances       Instance[]
+  privateDataDisks PrivateDataDisk[]
+  creator         User?    @relation("TenantCreator", fields: [createdBy], references: [id])
+
+  @@map("tenants")
+  @@index([status])
+  @@index([createdBy])
+}
+
+enum TenantStatus {
+  ACTIVE      @map("active")
+  INACTIVE    @map("inactive")
+  SUSPENDED   @map("suspended")
+}
+
+// ============================================================================
+// 用户管理 (User Management)
+// ============================================================================
+
+model User {
+  id              String   @id @default(uuid()) @map("user_id") @db.Uuid
+  username        String   @unique @db.VarChar(255)
+  email           String   @unique @db.VarChar(255)
+  passwordHash    String   @map("password_hash") @db.VarChar(255)
+  role            UserRole @default(USER)
+  status          UserStatus @default(ACTIVE)
+  tenantId        String?  @map("tenant_id") @db.Uuid
+  quotaConfig     Json?    @map("quota_config") @db.JsonB
+  lastLoginAt     DateTime? @map("last_login_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id])
+  groupMemberships UserGroupMember[]
+  instances       Instance[]
+  privateDataDisks PrivateDataDisk[]
+  createdTenants  Tenant[] @relation("TenantCreator")
+  auditLogs       AuditLog[]
+
+  @@map("users")
+  @@index([tenantId])
+  @@index([role])
+  @@index([status])
+  @@index([email])
+}
+
+enum UserRole {
+  ADMIN         @map("admin")             // 系统管理员
+  TENANT_ADMIN  @map("tenant_admin")      // 租户管理员
+  OPERATOR      @map("operator")          // 运维人员
+  USER          @map("user")              // 普通用户
+}
+
+enum UserStatus {
+  ACTIVE    @map("active")
+  INACTIVE  @map("inactive")
+  LOCKED    @map("locked")
+}
+
+// ============================================================================
+// 用户组管理 (User Group Management)
+// ============================================================================
+
+model UserGroup {
+  id              String   @id @default(uuid()) @map("group_id") @db.Uuid
+  name            String   @db.VarChar(255)
+  description     String?  @db.Text
+  tenantId        String   @map("tenant_id") @db.Uuid
+  parentGroupId   String?  @map("parent_group_id") @db.Uuid
+  quotaConfig     Json?    @map("quota_config") @db.JsonB
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parentGroup     UserGroup? @relation("GroupHierarchy", fields: [parentGroupId], references: [id])
+  childGroups     UserGroup[] @relation("GroupHierarchy")
+  members         UserGroupMember[]
+
+  @@unique([tenantId, name])
+  @@map("user_groups")
+  @@index([tenantId])
+  @@index([parentGroupId])
+}
+
+model UserGroupMember {
+  id              String   @id @default(uuid()) @map("membership_id") @db.Uuid
+  groupId         String   @map("group_id") @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  joinedAt        DateTime @default(now()) @map("joined_at")
+  addedBy         String?  @map("added_by") @db.Uuid
+
+  // Relations
+  group           UserGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@map("user_group_members")
+  @@index([groupId])
+  @@index([userId])
+}
+
+// ============================================================================
+// 权限管理 (Permission Management)
+// ============================================================================
+
+model Permission {
+  id              String   @id @default(uuid()) @map("permission_id") @db.Uuid
+  resourceType    ResourceType @map("resource_type")
+  action          PermissionAction
+  permissionName  String   @unique @map("permission_name") @db.VarChar(255)
+  description     String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+  @@index([resourceType])
+  @@index([action])
+}
+
+enum ResourceType {
+  TENANT        @map("tenant")
+  USER          @map("user")
+  USER_GROUP    @map("user_group")
+  INSTANCE      @map("instance")
+  STORAGE       @map("storage")
+  NETWORK       @map("network")
+  IMAGE         @map("image")
+  SERVER        @map("server")
+  EDGE_DC       @map("edge_dc")
+}
+
+enum PermissionAction {
+  CREATE    @map("create")
+  READ      @map("read")
+  UPDATE    @map("update")
+  DELETE    @map("delete")
+  MANAGE    @map("manage")
+  EXECUTE   @map("execute")
+}
+
+model RolePermission {
+  id              String   @id @default(uuid()) @map("role_permission_id") @db.Uuid
+  role            UserRole
+  permissionId    String   @map("permission_id") @db.Uuid
+
+  // Relations
+  permission      Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId])
+  @@map("role_permissions")
+  @@index([role])
+  @@index([permissionId])
+}
+
+// ============================================================================
+// 实例管理 (Instance Management) - 简化版用于演示
+// ============================================================================
+
+model Instance {
+  id              String   @id @default(uuid()) @map("instance_id") @db.Uuid
+  name            String   @db.VarChar(255)
+  tenantId        String   @map("tenant_id") @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  status          String   @db.VarChar(50)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  user            User     @relation(fields: [userId], references: [id])
+
+  @@map("instances")
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+}
+
+// ============================================================================
+// 存储管理 (Storage Management) - 简化版用于演示
+// ============================================================================
+
+model PrivateDataDisk {
+  id              String   @id @default(uuid()) @map("disk_id") @db.Uuid
+  name            String   @db.VarChar(255)
+  tenantId        String   @map("tenant_id") @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  sizeGb          Int      @map("size_gb")
+  status          String   @db.VarChar(50)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  user            User     @relation(fields: [userId], references: [id])
+
+  @@map("private_data_disks")
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+}
+
+// ============================================================================
+// 审计日志 (Audit Logs)
+// ============================================================================
+
+model AuditLog {
+  id              String   @id @default(uuid()) @map("log_id") @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  action          String   @db.VarChar(100)
+  resourceType    String   @map("resource_type") @db.VarChar(100)
+  resourceId      String?  @map("resource_id") @db.Uuid
+  details         Json?    @db.JsonB
+  ipAddress       String?  @map("ip_address") @db.VarChar(45)
+  userAgent       String?  @map("user_agent") @db.Text
+  status          String   @db.VarChar(50)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user            User     @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+  @@index([userId])
+  @@index([action])
+  @@index([resourceType])
+  @@index([createdAt])
+}
