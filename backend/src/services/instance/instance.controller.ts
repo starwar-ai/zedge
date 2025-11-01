@@ -187,15 +187,33 @@ export const getInstanceList = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { page, limit, tenant_id, user_id, status, search } = req.query;
+    const { page, limit, tenant_id, user_id, status, search, instance_set_id } = req.query;
 
-    // 权限过滤：普通用户只能查看自己的实例
-    let queryUserId = user_id as string | undefined;
+    // 如果是普通用户，使用权限过滤的方法
     if (req.user!.role === 'user') {
-      queryUserId = req.user!.user_id;
+      const result = await InstanceService.getUserAccessibleInstances(
+        req.user!.user_id,
+        req.user!.role,
+        req.user!.tenant_id || '',
+        {
+          page: page ? parseInt(page as string) : undefined,
+          limit: limit ? parseInt(limit as string) : undefined,
+          status: status as string,
+          search: search as string,
+          instanceSetId: instance_set_id as string,
+        }
+      );
+
+      res.status(200).json({
+        code: 200,
+        message: 'Success',
+        data: result,
+      });
+      return;
     }
 
-    // 租户管理员只能查看自己租户的实例
+    // 管理员和租户管理员使用原有逻辑
+    // 权限过滤：租户管理员只能查看自己租户的实例
     let queryTenantId = tenant_id as string | undefined;
     if (req.user!.role === 'tenant_admin') {
       queryTenantId = req.user!.tenant_id!;
@@ -205,9 +223,10 @@ export const getInstanceList = async (
       page: page ? parseInt(page as string) : undefined,
       limit: limit ? parseInt(limit as string) : undefined,
       tenantId: queryTenantId,
-      userId: queryUserId,
+      userId: user_id as string | undefined,
       status: status as string,
       search: search as string,
+      instanceSetId: instance_set_id as string,
     });
 
     res.status(200).json({

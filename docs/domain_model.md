@@ -86,10 +86,10 @@
   - 镜像权限控制（公开/私有/组织）
 
 ##### 模板库 (Template Repository)
-- **说明**: 存储预配置的实例和实例组模板
+- **说明**: 存储预配置的实例和实例集模板
 - **类型**:
   - 实例模板：单个虚拟桌面配置
-  - 实例组模板：多个实例的集合配置
+  - 实例集模板：多个实例的集合配置
 - **功能**:
   - 快速部署标准配置
   - 模板版本控制
@@ -297,71 +297,66 @@
 
 ---
 
-### 2.2 实例组 (Instance Group)
+### 2.2 实例集 (Instance Set)
 
 **定义**: 相关实例的逻辑集合，用于批量管理和组织具有相同目的或属性的实例
 
-**实例组属性**:
-- `group_id`: 实例组唯一标识 (UUID)
-- `name`: 实例组名称
-- `description`: 实例组描述
-- `owner_id`: 所有者用户ID
-- `user_group_id`: 所属用户组ID（可选）
-- `template_id`: 创建源模板ID（如果从模板创建）
-- `group_type`: 组类型
-  - `project`: 项目组（用于项目相关实例）
-  - `department`: 部门组（用于部门资源隔离）
-  - `application`: 应用组（同一应用的多个实例）
-  - `custom`: 自定义组
+**实例集属性**:
+- `set_id`: 实例集唯一标识 (UUID)
+- `name`: 实例集名称
+- `description`: 实例集描述
+- `owner_id`: 所有者用户ID（通常为老师）
+- `tenant_id`: 所属租户ID
+- `user_group_id`: 关联的用户组ID（可选，用于权限控制）
+- `set_type`: 集合类型
+  - `project`: 项目集（用于项目相关实例）
+  - `department`: 部门集（用于部门资源隔离）
+  - `application`: 应用集（同一应用的多个实例）
+  - `training`: 实训集（用于实训课程）
+  - `custom`: 自定义集
 - `status`: 状态 (active, archived, deleted)
 - `tags`: 标签和元数据 (JSON)
 - `created_at`, `updated_at`: 时间戳
 - `created_by`, `updated_by`: 审计字段
 
-**实例组配额** (可选，限制组内资源总量):
-- `max_instances`: 组内最大实例数
-- `max_cpu_cores`: 组内CPU总量限制
-- `max_memory_gb`: 组内内存总量限制
-- `max_storage_gb`: 组内存储总量限制
-- `max_bandwidth_gbps`: 组内网络带宽总量限制
+**实例集与实例的关系** (多对多):
 
-**实例组与实例的关系** (多对多):
-
-通过关联表 `instance_group_members` 管理实例组成员关系：
+通过关联表 `instance_set_members` 管理实例集成员关系：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `membership_id` | UUID | 成员关系唯一标识 |
-| `group_id` | UUID | 实例组ID（外键 → instance_groups.group_id） |
+| `set_id` | UUID | 实例集ID（外键 → instance_sets.set_id） |
 | `instance_id` | UUID | 实例ID（外键 → instances.instance_id） |
-| `role` | VARCHAR(50) | 实例在组中的角色 (master, worker, standby) |
+| `role` | VARCHAR(50) | 实例在集中的角色 (teacher, student, master, worker) |
 | `joined_at` | TIMESTAMP | 加入时间 |
 | `added_by` | UUID | 操作者用户ID |
 
 **约束条件**:
-- 一个实例可以属于多个实例组
-- 一个实例组可以包含多个实例
-- (group_id, instance_id) 组合唯一，防止重复加入
-- 删除实例组不会删除组内实例（仅解除关联）
+- 一个实例可以属于多个实例集
+- 一个实例集可以包含多个实例
+- (set_id, instance_id) 组合唯一，防止重复加入
+- 删除实例集不会删除集内实例（仅解除关联）
+- 实例集不与场所直接绑定，权限通过用户组控制
 
 **典型用途**:
-- **批量操作**: 统一启动/停止/重启组内所有实例
+- **批量操作**: 统一启动/停止/重启集内所有实例
 - **资源隔离**: 不同项目或部门的资源分组管理
-- **配额管理**: 对整个实例组设置资源配额限制
-- **监控告警**: 按组监控资源使用情况
-- **权限管理**: 基于组的访问控制
+- **实训课程**: 老师创建实训实例集，包含老师实例和学生实例
+- **监控告警**: 按集监控资源使用情况
+- **权限管理**: 基于用户组的访问控制
 
 ---
 
-### 2.3 实例组管理 (Instance Group Management)
+### 2.3 实例集管理 (Instance Set Management)
 
 **功能**: 管理相关实例的集合
 
 **子模块**:
 
 #### 管理实例 (Manage Instances)
-- 为实例组添加/移除成员实例
-- 查看实例组内的所有实例
+- 为实例集添加/移除成员实例
+- 查看实例集内的所有实例
 - 批量操作（启动、停止、删除）
 
 #### 工作实例 (Work Instances)
@@ -370,7 +365,7 @@
 - 快速访问入口
 
 #### 挂载私有数据盘 (Attach Private Data Disk)
-- 为实例组内所有实例挂载相同私有数据盘
+- 为实例集内所有实例挂载相同私有数据盘
 - 批量挂载操作
 - 权限和兼容性检查
 - 共享私有数据盘强制只读模式
@@ -907,7 +902,7 @@
   - `database`: 数据库 - 适用于数据库服务器
   - `development`: 开发环境 - 适用于开发、测试环境
   - `general`: 通用 - 通用用途，无特定场景要求
-- `template_type`: 模板类型 (instance, instance_group)
+- `template_type`: 模板类型 (instance, instance_set)
 - `base_image_id`: 基础镜像ID（外键 → images.image_id，可选）
 - `default_cpu_cores`: 默认CPU核心数
 - `default_memory_gb`: 默认内存大小
@@ -1005,11 +1000,11 @@
 
 ---
 
-#### 6.2.2 实例组模板 (Instance Group Template)
+#### 6.2.2 实例集模板 (Instance Set Template)
 
-**定义**: 预定义的多实例配置模板，用于批量创建具有统一配置的实例组
+**定义**: 预定义的多实例配置模板，用于批量创建具有统一配置的实例集
 
-**实例组模板属性**:
+**实例集模板属性**:
 - 继承 `实例模板` 的所有属性
 - `instance_count`: 默认实例数量
 - `instance_name_pattern`: 实例命名模式 (e.g., "web-server-{i}")
@@ -1022,7 +1017,7 @@
 - 可被多个用户组共享使用
 - 包括网络拓扑、共享存储配置
 - 支持参数化定义，灵活适配不同场景
-- 批量创建时自动关联到实例组
+- 批量创建时自动关联到实例集
 
 ---
 
@@ -1055,7 +1050,7 @@
 | `name` | VARCHAR(255) | 模板名称（与tenant_id组合唯一） |
 | `description` | TEXT | 模板描述 |
 | `use_case` | ENUM | 模板用途（ai_application, graphics_rendering, gaming_high_performance, lightweight_office, web_server, database, development, general） |
-| `template_type` | ENUM | 模板类型（instance, instance_group），默认 instance |
+| `template_type` | ENUM | 模板类型（instance, instance_set），默认 instance |
 | `base_image_id` | UUID | 基础镜像ID（外键 → images.image_id，可选） |
 | `default_cpu_cores` | INT | 默认CPU核心数 |
 | `default_memory_gb` | INT | 默认内存大小（GB） |
@@ -2373,8 +2368,8 @@ ORDER BY iv.created_at DESC;
     ↓ (组内所有用户共享)
 用户配额 (User Quotas)
     ↓ (用户所有资源总和)
-实例组配额 (Instance Group Quotas, 可选)
-    ↓ (组内所有实例总和)
+实例集配额 (Instance Set Quotas, 可选)
+    ↓ (集内所有实例总和)
 单个实例资源
 ```
 
@@ -2382,7 +2377,7 @@ ORDER BY iv.created_at DESC;
 1. **租户级别**: 租户内所有用户和用户组资源总和 ≤ 租户配额
 2. **用户组级别**: 用户组内所有成员资源总和 ≤ 用户组配额
 3. **用户级别**: 用户所有资源总和 ≤ 用户配额
-4. **实例组级别** (如果设置): 实例组内所有实例资源总和 ≤ 实例组配额
+4. **实例集级别** (如果设置): 实例集内所有实例资源总和 ≤ 实例集配额
 
 **配额计算模式**:
 
@@ -2446,8 +2441,8 @@ ORDER BY iv.created_at DESC;
    - current_ip_count + 1 ≤ max_ip_addresses ✓
    - current_instance_count + 1 ≤ max_instances ✓
 
-6. 验证实例组配额（如果实例加入实例组）
-   - instance_group_total_cpu + new_cpu ≤ instance_group_max_cpu ✓
+6. 验证实例集配额（如果实例加入实例集）
+   - instance_set_total_cpu + new_cpu ≤ instance_set_max_cpu ✓
    - ... (所有资源类型)
 
 7. 所有验证通过 → 允许创建
@@ -3080,7 +3075,7 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 │       ├── 租户配额 (Tenant Quotas)
 │       ├── 用户组配额 (User Group Quotas)
 │       ├── 用户配额 (User Quotas)
-│       ├── 实例组配额 (Instance Group Quotas)
+│       ├── 实例集配额 (Instance Set Quotas)
 │       └── 配额验证与执行
 ├── 用户管理 (User Management)
 │   ├── 用户组管理 (User Group Management)
@@ -3161,11 +3156,11 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 │   │   │   ├── image_version_id
 │   │   │   └── image_tag_used
 │   │   └── 健康状态监控
-│   ├── 实例组管理 (Instance Group Management)
-│   │   ├── 实例组 (Instance Groups)
-│   │   │   ├── 组类型 (project/department/application/custom)
+│   ├── 实例集管理 (Instance Set Management)
+│   │   ├── 实例集 (Instance Sets)
+│   │   │   ├── 集合类型 (project/department/application/training/custom)
 │   │   │   ├── 成员管理 (多对多关系)
-│   │   │   ├── 组配额配置
+│   │   │   ├── 权限控制（基于用户组）
 │   │   │   └── 批量操作
 │   │   ├── 管理实例 (Manage Instances)
 │   │   ├── 工作实例 (Work Instances)
@@ -3256,7 +3251,7 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 │   │   │   ├── 默认资源配置
 │   │   │   ├── 网络配置模板
 │   │   │   └── 参数化支持
-│   │   ├── 实例组模板 (Instance Group Template)
+│   │   ├── 实例集模板 (Instance Set Template)
 │   │   │   ├── 实例数量配置
 │   │   │   ├── 命名模式
 │   │   │   ├── 负载均衡配置
@@ -3392,19 +3387,19 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 **重要更新**:
 - ✅ 明确共享私有数据盘强制只读限制：共享模式私有数据盘只能以只读模式挂载，不支持读写模式
 - ✅ 更新私有数据盘挂载约束条件：补充共享安全机制说明
-- ✅ 完善实例组和单个实例挂载私有数据盘说明
+- ✅ 完善实例集和单个实例挂载私有数据盘说明
 
 **文档一致性修复**:
 - ✅ 修复实例属性缺少镜像相关字段：补充 `image_id`、`image_version_id`、`image_tag_used` 字段（与6.4.5节保持一致）
 - ✅ 修复算力机属性缺少存储跟踪字段：补充 `allocated_storage_gb` 字段（与3.0.1节保持一致）
-- ✅ 修复实例组配额缺少带宽配额：补充 `max_bandwidth_gbps` 字段（与用户配额保持一致）
+- ✅ 修复实例集配额缺少带宽配额：补充 `max_bandwidth_gbps` 字段（与用户配额保持一致）
 - ✅ 修复IP地址池缺少资源池标识：补充 `pool_id` 字段（与6.1.3节资源池定义保持一致）
 
 **v1.4 (2025-10-31)** - 严重问题修复与功能完善:
 
 **严重问题修复**:
 - ✅ 修复私有数据盘多实例挂载设计矛盾：引入 `instance_private_data_disk_attachments` 多对多关系表，支持独占/共享模式
-- ✅ 补充实例组完整实体定义：添加实例组属性、配额机制、`instance_group_members` 关系表
+- ✅ 补充实例集完整实体定义：添加实例集属性、权限控制机制、`instance_set_members` 关系表
 - ✅ 明确资源池与算力机关系：定义资源池属性、调度策略、`compute_pool_machines` 和 `storage_pool_servers` 关系表
 
 **重要问题修复**:

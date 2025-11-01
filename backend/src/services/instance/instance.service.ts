@@ -73,6 +73,7 @@ export interface InstanceListQuery {
   userId?: string;
   status?: string;
   search?: string;
+  instanceSetId?: string;
 }
 
 /**
@@ -421,6 +422,15 @@ export class InstanceService {
       where.status = query.status;
     }
 
+    // 按实例集过滤
+    if (query.instanceSetId) {
+      where.instanceSetMembers = {
+        some: {
+          setId: query.instanceSetId,
+        },
+      };
+    }
+
     if (query.search) {
       where.OR = [
         { name: { contains: query.search, mode: 'insensitive' } },
@@ -451,6 +461,226 @@ export class InstanceService {
               id: true,
               username: true,
               email: true,
+            },
+          },
+          instanceSetMembers: {
+            select: {
+              setId: true,
+              role: true,
+              instanceSet: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      prisma.instance.count({ where }),
+    ]);
+
+    return {
+      instances,
+      total,
+      page,
+      limit,
+    };
+  }
+
+  /**
+   * 获取用户可访问的实例列表（包括实例集中的实例）
+   */
+  static async getUserAccessibleInstances(
+    userId: string,
+    userRole: string,
+    tenantId: string,
+    query?: InstanceListQuery
+  ): Promise<{
+    instances: Instance[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const page = query?.page || 1;
+    const limit = query?.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.InstanceWhereInput = {
+      tenantId,
+    };
+
+    // 排除已删除的实例
+    where.status = {
+      not: InstanceStatus.DELETED,
+    };
+
+    // 如果是管理员，可以查看租户内所有实例
+    if (userRole === 'admin' || userRole === 'tenant_admin') {
+      // 应用其他查询条件
+      if (query?.status) {
+        where.status = query.status as any;
+      }
+      if (query?.search) {
+        where.OR = [
+          { name: { contains: query.search, mode: 'insensitive' } },
+        ];
+      }
+      if (query?.instanceSetId) {
+        where.instanceSetMembers = {
+          some: {
+            setId: query.instanceSetId,
+          },
+        };
+      }
+
+      const [instances, total] = await Promise.all([
+        prisma.instance.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            tenant: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            user: {
+              select: {
+                id: true,
+                username: true,
+                email: true,
+              },
+            },
+            instanceSetMembers: {
+              select: {
+                setId: true,
+                role: true,
+                instanceSet: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        }),
+        prisma.instance.count({ where }),
+      ]);
+
+      return {
+        instances,
+        total,
+        page,
+        limit,
+      };
+    }
+
+    // 普通用户只能看到：
+    // 1. 自己创建的实例
+    // 2. 自己所属用户组关联的实例集中的实例
+    const userGroups = await prisma.userGroupMember.findMany({
+      where: { userId },
+      select: { groupId: true },
+    });
+
+    const userGroupIds = userGroups.map((ug) => ug.groupId);
+
+    // 查询用户有权限访问的实例集
+    const accessibleInstanceSets = await prisma.instanceSet.findMany({
+      where: {
+        tenantId,
+        OR: [
+          { ownerId: userId },
+          ...(userGroupIds.length > 0 ? [{ userGroupId: { in: userGroupIds } }] : []),
+        ],
+      },
+      select: { id: true },
+    });
+
+    const accessibleInstanceSetIds = accessibleInstanceSets.map((set) => set.id);
+
+    // 构建查询条件
+    where.OR = [
+      { userId }, // 用户自己创建的实例
+      ...(accessibleInstanceSetIds.length > 0
+        ? [
+            {
+              instanceSetMembers: {
+                some: {
+                  setId: { in: accessibleInstanceSetIds },
+                },
+              },
+            },
+          ]
+        : []),
+    ];
+
+    // 应用其他查询条件
+    if (query?.status) {
+      where.status = query.status as any;
+    }
+    if (query?.search) {
+      where.AND = [
+        where.OR || {},
+        {
+          OR: [{ name: { contains: query.search, mode: 'insensitive' } }],
+        },
+      ];
+      delete where.OR;
+    }
+    if (query?.instanceSetId) {
+      // 确保用户有权限访问该实例集
+      if (accessibleInstanceSetIds.includes(query.instanceSetId)) {
+        where.instanceSetMembers = {
+          some: {
+            setId: query.instanceSetId,
+          },
+        };
+      } else {
+        // 如果没有权限，返回空结果
+        return {
+          instances: [],
+          total: 0,
+          page,
+          limit,
+        };
+      }
+    }
+
+    const [instances, total] = await Promise.all([
+      prisma.instance.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              username: true,
+              email: true,
+            },
+          },
+          instanceSetMembers: {
+            select: {
+              setId: true,
+              role: true,
+              instanceSet: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
             },
           },
         },

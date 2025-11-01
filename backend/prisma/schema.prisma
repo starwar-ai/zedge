@@ -34,6 +34,7 @@ model Tenant {
   vpcs            Vpc[]
   places          Place[]
   templates       Template[]
+  instanceSets    InstanceSet[]
   creator         User?    @relation("TenantCreator", fields: [createdBy], references: [id])
 
   @@map("tenants")
@@ -80,6 +81,10 @@ model User {
   auditLogs       AuditLog[]
   createdTemplates Template[] @relation("TemplateOwner")
   createdTemplateVersions TemplateVersion[] @relation("TemplateVersionCreator")
+  ownedInstanceSets InstanceSet[] @relation("InstanceSetOwner")
+  createdInstanceSets InstanceSet[] @relation("InstanceSetCreator")
+  updatedInstanceSets InstanceSet[] @relation("InstanceSetUpdater")
+  addedInstanceSetMembers InstanceSetMember[] @relation("InstanceSetMemberAdder")
 
   @@map("users")
   @@index([tenantId])
@@ -120,6 +125,7 @@ model UserGroup {
   parentGroup     UserGroup? @relation("GroupHierarchy", fields: [parentGroupId], references: [id])
   childGroups     UserGroup[] @relation("GroupHierarchy")
   members         UserGroupMember[]
+  instanceSets    InstanceSet[]
 
   @@unique([tenantId, name])
   @@map("user_groups")
@@ -169,6 +175,7 @@ enum ResourceType {
   USER          @map("user")
   USER_GROUP    @map("user_group")
   INSTANCE      @map("instance")
+  INSTANCE_SET  @map("instance_set")
   STORAGE       @map("storage")
   NETWORK       @map("network")
   IMAGE         @map("image")
@@ -220,6 +227,7 @@ model Instance {
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
   user            User     @relation(fields: [userId], references: [id])
   template        Template? @relation(fields: [templateId], references: [id])
+  instanceSetMembers InstanceSetMember[]
 
   @@map("instances")
   @@index([tenantId])
@@ -439,7 +447,7 @@ enum TemplateUseCase {
 
 enum TemplateType {
   INSTANCE       @map("instance")
-  INSTANCE_GROUP @map("instance_group")
+  INSTANCE_SET   @map("instance_set")
 }
 
 enum TemplateVisibility {
@@ -472,4 +480,74 @@ model TemplateVersion {
   @@map("template_versions")
   @@index([templateId])
   @@index([isLatest])
+}
+
+// ============================================================================
+// 实例集管理 (Instance Set Management)
+// ============================================================================
+
+model InstanceSet {
+  id              String   @id @default(uuid()) @map("set_id") @db.Uuid
+  name            String   @db.VarChar(255)
+  description     String?  @db.Text
+  ownerId         String   @map("owner_id") @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  userGroupId     String?  @map("user_group_id") @db.Uuid
+  setType         InstanceSetType @default(CUSTOM) @map("set_type")
+  status          InstanceSetStatus @default(ACTIVE)
+  tags            Json?    @db.JsonB
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdBy       String?  @map("created_by") @db.Uuid
+  updatedBy       String?  @map("updated_by") @db.Uuid
+
+  // Relations
+  owner           User     @relation("InstanceSetOwner", fields: [ownerId], references: [id])
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userGroup       UserGroup? @relation(fields: [userGroupId], references: [id], onDelete: SetNull)
+  members         InstanceSetMember[]
+  creator         User?    @relation("InstanceSetCreator", fields: [createdBy], references: [id])
+  updater         User?    @relation("InstanceSetUpdater", fields: [updatedBy], references: [id])
+
+  @@unique([tenantId, name])
+  @@map("instance_sets")
+  @@index([tenantId])
+  @@index([ownerId])
+  @@index([userGroupId])
+  @@index([setType])
+  @@index([status])
+}
+
+enum InstanceSetType {
+  PROJECT      @map("project")
+  DEPARTMENT   @map("department")
+  APPLICATION  @map("application")
+  TRAINING     @map("training")
+  CUSTOM       @map("custom")
+}
+
+enum InstanceSetStatus {
+  ACTIVE     @map("active")
+  ARCHIVED   @map("archived")
+  DELETED    @map("deleted")
+}
+
+model InstanceSetMember {
+  id              String   @id @default(uuid()) @map("membership_id") @db.Uuid
+  setId           String   @map("set_id") @db.Uuid
+  instanceId      String   @map("instance_id") @db.Uuid
+  role            String   @db.VarChar(50)
+  joinedAt        DateTime @default(now()) @map("joined_at")
+  addedBy         String?  @map("added_by") @db.Uuid
+
+  // Relations
+  instanceSet     InstanceSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  instance        Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  adder           User?    @relation("InstanceSetMemberAdder", fields: [addedBy], references: [id])
+
+  @@unique([setId, instanceId])
+  @@map("instance_set_members")
+  @@index([setId])
+  @@index([instanceId])
+  @@index([role])
 }
