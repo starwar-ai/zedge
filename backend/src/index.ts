@@ -21,6 +21,7 @@ import placeRoutes from './routes/place.routes';
 import vpcRoutes from './routes/vpc.routes';
 import subnetRoutes from './routes/subnet.routes';
 import templateRoutes from './routes/template.routes';
+import cloudBoxRoutes from './routes/cloud-box.routes';
 
 // 创建 Express 应用
 const app = express();
@@ -50,6 +51,8 @@ app.use('/api/v1/places', placeRoutes);
 app.use('/api/v1/vpcs', vpcRoutes);
 app.use('/api/v1/subnets', subnetRoutes);
 app.use('/api/v1/templates', templateRoutes);
+app.use('/api/v1/cloud-boxes', cloudBoxRoutes);
+app.use('/api/v1/cloud-box', cloudBoxRoutes); // 别名路由，用于云盒获取用户实例
 
 // 404 处理
 app.use((req, res) => {

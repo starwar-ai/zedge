@@ -85,6 +85,7 @@ model User {
   createdInstanceSets InstanceSet[] @relation("InstanceSetCreator")
   updatedInstanceSets InstanceSet[] @relation("InstanceSetUpdater")
   addedInstanceSetMembers InstanceSetMember[] @relation("InstanceSetMemberAdder")
+  assignedCloudBoxes CloudBox[] @relation("CloudBoxAssignedUser")
 
   @@map("users")
   @@index([tenantId])
@@ -228,6 +229,7 @@ model Instance {
   user            User     @relation(fields: [userId], references: [id])
   template        Template? @relation(fields: [templateId], references: [id])
   instanceSetMembers InstanceSetMember[]
+  temporaryCloudBoxes CloudBox[] @relation("CloudBoxTemporaryInstance")
 
   @@map("instances")
   @@index([tenantId])
@@ -550,4 +552,70 @@ model InstanceSetMember {
   @@index([setId])
   @@index([instanceId])
   @@index([role])
+}
+
+// ============================================================================
+// 云盒管理 (Cloud Box Management)
+// ============================================================================
+
+model CloudBox {
+  id                      String   @id @default(uuid()) @map("box_id") @db.Uuid
+  name                    String   @db.VarChar(255)
+  serialNumber            String   @unique @map("serial_number") @db.VarChar(255)
+  networkId               String?  @map("network_id") @db.Uuid
+  status                  CloudBoxStatus @default(OFFLINE)
+  ipAddress               String?  @map("ip_address") @db.VarChar(50)
+  macAddress              String?  @map("mac_address") @db.VarChar(50)
+  firmwareVersion         String?  @map("firmware_version") @db.VarChar(50)
+  lastBootTime            DateTime? @map("last_boot_time")
+  isDisabled              Boolean  @default(false) @map("is_disabled")
+  edgeDataCenterId        String?  @map("edge_data_center_id") @db.Uuid
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+  lastHeartbeat           DateTime? @map("last_heartbeat")
+  
+  // 临时绑定相关字段
+  temporaryInstanceId     String?  @map("temporary_instance_id") @db.Uuid
+  temporaryBindExpiresAt  DateTime? @map("temporary_bind_expires_at")
+  
+  // 扩展属性 (JSON)
+  model                   String?  @db.VarChar(255)
+  manufacturer            String?  @db.VarChar(255)
+  hardwareConfig          Json?    @map("hardware_config") @db.JsonB
+  location                String?  @db.VarChar(255)
+  assignedUserId          String?  @map("assigned_user_id") @db.Uuid
+  tags                    Json?    @db.JsonB
+  
+  // 网络配置 (JSON)
+  networkMode             String?  @map("network_mode") @db.VarChar(50)
+  gateway                 String?  @db.VarChar(50)
+  dnsServers              Json?    @map("dns_servers") @db.JsonB
+  subnetMask              String?  @map("subnet_mask") @db.VarChar(50)
+  
+  // 监控指标 (JSON)
+  cpuUsagePercent         Float?   @map("cpu_usage_percent")
+  memoryUsagePercent      Float?   @map("memory_usage_percent")
+  diskUsagePercent        Float?   @map("disk_usage_percent")
+  temperature             Float?
+  uptimeSeconds           Int?     @map("uptime_seconds")
+  
+  // Relations
+  temporaryInstance       Instance? @relation("CloudBoxTemporaryInstance", fields: [temporaryInstanceId], references: [id], onDelete: SetNull)
+  assignedUser            User?    @relation("CloudBoxAssignedUser", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  
+  @@map("cloud_boxes")
+  @@index([serialNumber])
+  @@index([status])
+  @@index([edgeDataCenterId])
+  @@index([assignedUserId])
+  @@index([temporaryInstanceId])
+  @@index([temporaryBindExpiresAt])
+}
+
+enum CloudBoxStatus {
+  ONLINE          @map("online")
+  OFFLINE         @map("offline")
+  INITIALIZING    @map("initializing")
+  MAINTENANCE     @map("maintenance")
+  ERROR           @map("error")
 }

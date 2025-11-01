@@ -59,6 +59,14 @@ router.post(
   instanceSetController.addInstanceToSet
 );
 
+// 批量创建实例集成员实例 - 需要更新权限
+router.post(
+  '/:id/batch-create-instances',
+  authenticateToken,
+  requirePermission(ResourceType.INSTANCE_SET, PermissionAction.UPDATE),
+  instanceSetController.batchCreateInstances
+);
+
 // 从实例集中移除实例 - 需要更新权限
 router.delete(
   '/:id/members/:instance_id',

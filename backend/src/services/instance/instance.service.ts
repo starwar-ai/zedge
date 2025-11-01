@@ -562,6 +562,7 @@ export class InstanceService {
                   select: {
                     id: true,
                     name: true,
+                    setType: true,
                   },
                 },
               },
@@ -679,6 +680,7 @@ export class InstanceService {
                 select: {
                   id: true,
                   name: true,
+                  setType: true,
                 },
               },
             },

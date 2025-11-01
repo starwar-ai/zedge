@@ -5,6 +5,7 @@
 
 import { prisma } from '../../utils/prisma.client';
 import { InstanceSet, InstanceSetStatus, InstanceSetType, Prisma, UserRole } from '@prisma/client';
+import { InstanceService, CreateInstanceDto, InstanceStatus } from '../instance/instance.service';
 
 /**
  * 创建实例集 DTO
@@ -45,11 +46,44 @@ export interface InstanceSetListQuery {
 }
 
 /**
- * 添加实例到实例集 DTO
+ * 批量添加实例到实例集 DTO
  */
-export interface AddInstanceToSetDto {
-  instanceId: string;
-  role?: string;
+export interface BatchAddInstancesToSetDto {
+  instances: Array<{
+    instanceId: string;
+    role?: string;
+  }>;
+}
+
+/**
+ * 批量创建实例配置 DTO
+ */
+export interface BatchCreateInstanceConfig {
+  userId: string;
+  name: string;
+  templateId?: string;
+  cpuCores?: number;
+  memoryGb?: number;
+  storageGb?: number;
+  gpuCount?: number;
+  bandwidthGbps?: number;
+  imageId?: string;
+  imageVersionId?: string;
+  description?: string;
+  networkConfig?: any;
+  userData?: string;
+}
+
+/**
+ * 批量创建实例集成员请求 DTO
+ */
+export interface BatchCreateInstancesDto {
+  teacherConfig?: BatchCreateInstanceConfig;
+  studentConfig: BatchCreateInstanceConfig;
+  studentUsers: Array<{
+    userId: string;
+    name: string;
+  }>;
 }
 
 /**
@@ -448,6 +482,67 @@ export class InstanceSetService {
   }
 
   /**
+   * 批量添加实例到实例集
+   */
+  static async batchAddInstancesToSet(
+    instanceSetId: string,
+    data: BatchAddInstancesToSetDto,
+    addedBy: string
+  ): Promise<void> {
+    // 检查实例集是否存在
+    const instanceSet = await prisma.instanceSet.findUnique({
+      where: { id: instanceSetId },
+    });
+
+    if (!instanceSet) {
+      throw new Error('Instance set not found');
+    }
+
+    // 检查所有实例是否存在且属于同一租户
+    const instanceIds = data.instances.map(i => i.instanceId);
+    const instances = await prisma.instance.findMany({
+      where: {
+        id: { in: instanceIds },
+      },
+    });
+
+    if (instances.length !== instanceIds.length) {
+      const foundIds = instances.map(i => i.id);
+      const missingIds = instanceIds.filter(id => !foundIds.includes(id));
+      throw new Error(`Some instances not found: ${missingIds.join(', ')}`);
+    }
+
+    // 检查所有实例是否属于同一租户
+    const invalidInstances = instances.filter(i => i.tenantId !== instanceSet.tenantId);
+    if (invalidInstances.length > 0) {
+      throw new Error(`Some instances do not belong to the same tenant: ${invalidInstances.map(i => i.id).join(', ')}`);
+    }
+
+    // 检查实例是否已经在实例集中
+    const existingMembers = await prisma.instanceSetMember.findMany({
+      where: {
+        setId: instanceSetId,
+        instanceId: { in: instanceIds },
+      },
+    });
+
+    if (existingMembers.length > 0) {
+      const existingIds = existingMembers.map(m => m.instanceId);
+      throw new Error(`Some instances are already in this instance set: ${existingIds.join(', ')}`);
+    }
+
+    // 批量创建实例集成员关系
+    await prisma.instanceSetMember.createMany({
+      data: data.instances.map(instance => ({
+        setId: instanceSetId,
+        instanceId: instance.instanceId,
+        role: instance.role || 'member',
+        addedBy,
+      })),
+    });
+  }
+
+  /**
    * 从实例集中移除实例
    */
   static async removeInstanceFromSet(
@@ -577,6 +672,160 @@ export class InstanceSetService {
       page,
       limit,
     };
+  }
+
+  /**
+   * 批量创建实例集成员实例
+   * 用于教学场景：老师创建实例集后，批量创建学生实例和老师实例
+   */
+  static async batchCreateInstances(
+    instanceSetId: string,
+    data: BatchCreateInstancesDto,
+    createdBy: string
+  ): Promise<{
+    teacherInstance?: any;
+    studentInstances: any[];
+  }> {
+    // 检查实例集是否存在
+    const instanceSet = await prisma.instanceSet.findUnique({
+      where: { id: instanceSetId },
+      include: {
+        tenant: true,
+      },
+    });
+
+    if (!instanceSet) {
+      throw new Error('Instance set not found');
+    }
+
+    const tenantId = instanceSet.tenantId;
+    const results: {
+      teacherInstance?: any;
+      studentInstances: any[];
+    } = {
+      studentInstances: [],
+    };
+
+    // 1. 创建老师实例（如果提供了teacherConfig）
+    if (data.teacherConfig) {
+      const teacherConfig = data.teacherConfig;
+      
+      // 验证用户是否存在且属于同一租户
+      const teacherUser = await prisma.user.findUnique({
+        where: { id: teacherConfig.userId },
+      });
+
+      if (!teacherUser || teacherUser.tenantId !== tenantId) {
+        throw new Error(`Teacher user ${teacherConfig.userId} not found or does not belong to the same tenant`);
+      }
+
+      // 准备创建实例的配置
+      const createInstanceDto: CreateInstanceDto = {
+        name: teacherConfig.name,
+        cpuCores: teacherConfig.cpuCores || 4,
+        memoryGb: teacherConfig.memoryGb || 8,
+        storageGb: teacherConfig.storageGb || 100,
+        gpuCount: teacherConfig.gpuCount,
+        bandwidthGbps: teacherConfig.bandwidthGbps,
+        templateId: teacherConfig.templateId,
+        imageId: teacherConfig.imageId,
+        imageVersionId: teacherConfig.imageVersionId,
+        description: teacherConfig.description,
+        networkConfig: teacherConfig.networkConfig,
+        userData: teacherConfig.userData,
+      };
+
+      // 创建老师实例
+      const teacherInstance = await InstanceService.createInstance(
+        createInstanceDto,
+        teacherConfig.userId,
+        tenantId
+      );
+
+      // 将老师实例添加到实例集，角色为teacher
+      await prisma.instanceSetMember.create({
+        data: {
+          setId: instanceSetId,
+          instanceId: teacherInstance.id,
+          role: 'teacher',
+          addedBy: createdBy,
+        },
+      });
+
+      results.teacherInstance = teacherInstance;
+    }
+
+    // 2. 批量创建学生实例
+    if (data.studentUsers && data.studentUsers.length > 0) {
+      const studentConfig = data.studentConfig;
+
+      // 验证所有学生用户是否存在且属于同一租户
+      const studentUserIds = data.studentUsers.map(su => su.userId);
+      const studentUsers = await prisma.user.findMany({
+        where: {
+          id: { in: studentUserIds },
+        },
+      });
+
+      if (studentUsers.length !== studentUserIds.length) {
+        const foundIds = studentUsers.map(u => u.id);
+        const missingIds = studentUserIds.filter(id => !foundIds.includes(id));
+        throw new Error(`Some student users not found: ${missingIds.join(', ')}`);
+      }
+
+      // 检查所有学生用户是否属于同一租户
+      const invalidUsers = studentUsers.filter(u => u.tenantId !== tenantId);
+      if (invalidUsers.length > 0) {
+        throw new Error(`Some student users do not belong to the same tenant: ${invalidUsers.map(u => u.id).join(', ')}`);
+      }
+
+      // 准备创建实例的配置（所有学生实例使用相同配置）
+      const createInstanceDto: CreateInstanceDto = {
+        name: '', // 会为每个学生设置不同的名称
+        cpuCores: studentConfig.cpuCores || 4,
+        memoryGb: studentConfig.memoryGb || 8,
+        storageGb: studentConfig.storageGb || 100,
+        gpuCount: studentConfig.gpuCount,
+        bandwidthGbps: studentConfig.bandwidthGbps,
+        templateId: studentConfig.templateId,
+        imageId: studentConfig.imageId,
+        imageVersionId: studentConfig.imageVersionId,
+        description: studentConfig.description,
+        networkConfig: studentConfig.networkConfig,
+        userData: studentConfig.userData,
+      };
+
+      // 批量创建学生实例
+      const studentInstancePromises = data.studentUsers.map(async (studentUser) => {
+        // 为每个学生创建实例
+        const instanceDto = {
+          ...createInstanceDto,
+          name: studentUser.name,
+        };
+
+        const instance = await InstanceService.createInstance(
+          instanceDto,
+          studentUser.userId,
+          tenantId
+        );
+
+        // 将实例添加到实例集，角色为student
+        await prisma.instanceSetMember.create({
+          data: {
+            setId: instanceSetId,
+            instanceId: instance.id,
+            role: 'student',
+            addedBy: createdBy,
+          },
+        });
+
+        return instance;
+      });
+
+      results.studentInstances = await Promise.all(studentInstancePromises);
+    }
+
+    return results;
   }
 }
 
