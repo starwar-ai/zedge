@@ -4,8 +4,11 @@
  */
 
 import { prisma } from '../../utils/prisma.client';
-import { Instance, Prisma } from '@prisma/client';
+import { Instance, Prisma, RentalMode } from '@prisma/client';
 import { TemplateService, TemplateConfig } from '../template/template.service';
+import { VirtualMachineService } from '../virtual-machine/virtual-machine.service';
+import { ComputeMachineService } from '../compute-machine/compute-machine.service';
+import { ResourcePoolService } from '../resource-pool/resource-pool.service';
 
 /**
  * 实例状态枚举
@@ -340,14 +343,14 @@ export class InstanceService {
     // 验证配额
     await this.validateQuota(userId, tenantId, data);
 
-    // 创建实例（先创建，IP地址后续分配）
+    // 创建实例（只创建记录，不分配资源）
     const instance = await prisma.instance.create({
       data: {
         name: data.name,
         tenantId,
         userId,
         templateId: data.templateId,
-        status: InstanceStatus.CREATING,
+        status: InstanceStatus.STOPPED, // 初始状态为stopped，启动时才分配资源
         // 将配置信息存储在config字段中（JSON格式）
         config: {
           imageId: data.imageId,
@@ -361,11 +364,13 @@ export class InstanceService {
           networkConfig: data.networkConfig,
           userData: data.userData,
         },
+        // 资源分配字段在启动时才会设置
+        rentalMode: null,
+        resourcePoolId: null,
+        computeMachineId: null,
+        virtualMachineId: null,
       },
     });
-
-    // TODO: 异步分配IP地址（后续实现）
-    // TODO: 异步创建虚拟机实例（后续实现）
 
     return instance;
   }
@@ -919,6 +924,11 @@ export class InstanceService {
       throw new Error('Instance not found');
     }
 
+    // 如果Instance正在运行，先停止并释放资源
+    if (instance.status === InstanceStatus.RUNNING) {
+      await this.stopInstance(instanceId);
+    }
+
     // 软删除：更新状态为deleted
     await prisma.instance.update({
       where: { id: instanceId },
@@ -926,9 +936,334 @@ export class InstanceService {
         status: InstanceStatus.DELETED,
       },
     });
+  }
 
-    // TODO: 释放IP地址（后续实现）
-    // TODO: 删除虚拟机实例（后续实现）
+  /**
+   * 启动实例（分配资源）
+   */
+  static async startInstance(
+    instanceId: string,
+    resourcePoolId?: string,
+    rentalMode?: RentalMode
+  ): Promise<Instance> {
+    const instance = await prisma.instance.findUnique({
+      where: { id: instanceId },
+      include: {
+        computeMachine: true,
+        virtualMachine: true,
+      },
+    });
+
+    if (!instance) {
+      throw new Error('Instance not found');
+    }
+
+    if (instance.status === InstanceStatus.RUNNING) {
+      throw new Error('Instance is already running');
+    }
+
+    if (instance.status === InstanceStatus.DELETED) {
+      throw new Error('Cannot start deleted instance');
+    }
+
+    const config = (instance.config as any) || {};
+    const finalRentalMode = rentalMode || instance.rentalMode || RentalMode.SHARED;
+    const finalResourcePoolId = resourcePoolId || instance.resourcePoolId;
+
+    if (!finalResourcePoolId) {
+      throw new Error('Resource pool ID is required to start instance');
+    }
+
+    // 验证算力池存在
+    const resourcePool = await prisma.resourcePool.findUnique({
+      where: { id: finalResourcePoolId },
+    });
+
+    if (!resourcePool) {
+      throw new Error('Resource pool not found');
+    }
+
+    // 更新Instance状态为starting
+    await prisma.instance.update({
+      where: { id: instanceId },
+      data: {
+        status: InstanceStatus.INITIALIZING,
+        rentalMode: finalRentalMode,
+        resourcePoolId: finalResourcePoolId,
+      },
+    });
+
+    try {
+      if (finalRentalMode === RentalMode.EXCLUSIVE) {
+        // 独占模式：分配整个算力机
+        await this.allocateExclusiveComputeMachine(instanceId, finalResourcePoolId, config);
+      } else {
+        // 共享模式：创建虚拟机
+        await this.createSharedVirtualMachine(instanceId, finalResourcePoolId, config);
+      }
+
+      // 更新Instance状态为running
+      const updatedInstance = await prisma.instance.update({
+        where: { id: instanceId },
+        data: {
+          status: InstanceStatus.RUNNING,
+        },
+      });
+
+      return updatedInstance;
+    } catch (error) {
+      // 启动失败，回滚状态
+      await prisma.instance.update({
+        where: { id: instanceId },
+        data: {
+          status: InstanceStatus.STOPPED,
+          computeMachineId: null,
+          virtualMachineId: null,
+        },
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * 停止实例（释放资源）
+   */
+  static async stopInstance(instanceId: string): Promise<Instance> {
+    const instance = await prisma.instance.findUnique({
+      where: { id: instanceId },
+      include: {
+        computeMachine: true,
+        virtualMachine: true,
+      },
+    });
+
+    if (!instance) {
+      throw new Error('Instance not found');
+    }
+
+    if (instance.status === InstanceStatus.STOPPED) {
+      return instance;
+    }
+
+    if (instance.status === InstanceStatus.DELETED) {
+      throw new Error('Cannot stop deleted instance');
+    }
+
+    // 更新状态为stopping
+    await prisma.instance.update({
+      where: { id: instanceId },
+      data: {
+        status: InstanceStatus.STOPPING,
+      },
+    });
+
+    try {
+      if (instance.rentalMode === RentalMode.EXCLUSIVE && instance.computeMachineId) {
+        // 独占模式：释放算力机
+        await this.releaseExclusiveComputeMachine(instanceId, instance.computeMachineId);
+      } else if (instance.virtualMachineId) {
+        // 共享模式：删除虚拟机
+        await VirtualMachineService.deleteVirtualMachine(instance.virtualMachineId);
+      }
+
+      // 更新Instance状态为stopped，清除资源关联
+      const updatedInstance = await prisma.instance.update({
+        where: { id: instanceId },
+        data: {
+          status: InstanceStatus.STOPPED,
+          computeMachineId: null,
+          virtualMachineId: null,
+        },
+      });
+
+      return updatedInstance;
+    } catch (error) {
+      // 停止失败，但仍然更新状态
+      await prisma.instance.update({
+        where: { id: instanceId },
+        data: {
+          status: InstanceStatus.STOPPED,
+        },
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * 分配独占算力机
+   */
+  private static async allocateExclusiveComputeMachine(
+    instanceId: string,
+    resourcePoolId: string,
+    config: any
+  ): Promise<void> {
+    // 查找可用的独占模式算力机
+    const computeMachine = await prisma.computeMachine.findFirst({
+      where: {
+        resourcePoolId,
+        rentalMode: RentalMode.EXCLUSIVE,
+        status: {
+          in: ['ACTIVE', 'MAINTENANCE'],
+        },
+        // 确保没有其他Instance在使用
+        instances: {
+          none: {
+            status: 'running',
+            id: { not: instanceId },
+          },
+        },
+      },
+      orderBy: {
+        allocatedCpuCores: 'asc', // 优先选择负载较低的
+      },
+    });
+
+    if (!computeMachine) {
+      throw new Error('No available exclusive compute machine found in the resource pool');
+    }
+
+    // 检查资源是否足够
+    const requiredCpu = config.cpuCores || 0;
+    const requiredMemory = config.memoryGb || 0;
+    const requiredStorage = config.storageGb || 0;
+
+    if (computeMachine.cpuCores < requiredCpu ||
+        computeMachine.memoryGb < requiredMemory ||
+        computeMachine.storageGb < requiredStorage) {
+      throw new Error('Compute machine does not have sufficient resources');
+    }
+
+    // 关联Instance到算力机
+    await prisma.instance.update({
+      where: { id: instanceId },
+      data: {
+        computeMachineId: computeMachine.id,
+      },
+    });
+
+    // 更新算力机资源分配（独占模式，整个机器视为已分配）
+    await prisma.computeMachine.update({
+      where: { id: computeMachine.id },
+      data: {
+        allocatedCpuCores: computeMachine.cpuCores,
+        allocatedMemoryGb: computeMachine.memoryGb,
+        allocatedStorageGb: computeMachine.storageGb,
+      },
+    });
+
+    // 更新算力池资源统计
+    await ResourcePoolService.updateResourcePoolStatistics(computeMachine.resourcePoolId);
+    await ComputeMachineService.updateEdgeDataCenterStatistics(computeMachine.edgeDataCenterId);
+  }
+
+  /**
+   * 创建共享模式虚拟机
+   */
+  private static async createSharedVirtualMachine(
+    instanceId: string,
+    resourcePoolId: string,
+    config: any
+  ): Promise<void> {
+    // 查找可用的共享模式算力机
+    const computeMachines = await prisma.computeMachine.findMany({
+      where: {
+        resourcePoolId,
+        rentalMode: RentalMode.SHARED,
+        status: {
+          in: ['ACTIVE', 'MAINTENANCE'],
+        },
+      },
+      orderBy: {
+        allocatedCpuCores: 'asc', // 优先选择负载较低的
+      },
+    });
+
+    if (computeMachines.length === 0) {
+      throw new Error('No available shared compute machine found in the resource pool');
+    }
+
+    const requiredCpu = config.cpuCores || 0;
+    const requiredMemory = config.memoryGb || 0;
+    const requiredStorage = config.storageGb || 0;
+
+    // 查找有足够资源的算力机
+    let selectedMachine = null;
+    for (const machine of computeMachines) {
+      const availableCpu = machine.cpuCores - machine.allocatedCpuCores;
+      const availableMemory = machine.memoryGb - machine.allocatedMemoryGb;
+      const availableStorage = machine.storageGb - machine.allocatedStorageGb;
+
+      if (availableCpu >= requiredCpu &&
+          availableMemory >= requiredMemory &&
+          availableStorage >= requiredStorage) {
+        selectedMachine = machine;
+        break;
+      }
+    }
+
+    if (!selectedMachine) {
+      throw new Error('No compute machine has sufficient resources in the resource pool');
+    }
+
+    // 创建虚拟机
+    const virtualMachine = await VirtualMachineService.createVirtualMachine({
+      instanceId,
+      computeMachineId: selectedMachine.id,
+      vmName: `${instanceId.substring(0, 8)}-vm`,
+      cpuCores: requiredCpu,
+      memoryGb: requiredMemory,
+      storageGb: requiredStorage,
+      gpuCount: config.gpuCount || 0,
+      imageId: config.imageId,
+      imageVersionId: config.imageVersionId,
+      networkConfig: config.networkConfig,
+      userData: config.userData,
+    });
+
+    // 关联Instance到虚拟机
+    await prisma.instance.update({
+      where: { id: instanceId },
+      data: {
+        virtualMachineId: virtualMachine.id,
+      },
+    });
+  }
+
+  /**
+   * 释放独占算力机
+   */
+  private static async releaseExclusiveComputeMachine(
+    instanceId: string,
+    computeMachineId: string
+  ): Promise<void> {
+    // 解除Instance关联
+    await prisma.instance.update({
+      where: { id: instanceId },
+      data: {
+        computeMachineId: null,
+      },
+    });
+
+    // 更新算力机资源分配（释放所有资源）
+    const computeMachine = await prisma.computeMachine.findUnique({
+      where: { id: computeMachineId },
+    });
+
+    if (computeMachine) {
+      await prisma.computeMachine.update({
+        where: { id: computeMachineId },
+        data: {
+          allocatedCpuCores: 0,
+          allocatedMemoryGb: 0,
+          allocatedStorageGb: 0,
+          allocatedGpuCount: 0,
+        },
+      });
+
+      // 更新算力池和边缘机房资源统计
+      await ResourcePoolService.updateResourcePoolStatistics(computeMachine.resourcePoolId);
+      await ComputeMachineService.updateEdgeDataCenterStatistics(computeMachine.edgeDataCenterId);
+    }
   }
 }
 

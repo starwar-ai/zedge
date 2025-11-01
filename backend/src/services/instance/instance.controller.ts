@@ -310,6 +310,7 @@ export const startInstance = async (
 ): Promise<void> => {
   try {
     const { instance_id } = req.params;
+    const { resource_pool_id, rental_mode } = req.body;
 
     // 权限检查
     const instance = await InstanceService.getInstanceById(instance_id);
@@ -335,7 +336,11 @@ export const startInstance = async (
       return;
     }
 
-    const updatedInstance = await InstanceService.startInstance(instance_id);
+    const updatedInstance = await InstanceService.startInstance(
+      instance_id,
+      resource_pool_id,
+      rental_mode
+    );
 
     res.status(200).json({
       code: 200,
@@ -345,8 +350,8 @@ export const startInstance = async (
   } catch (error) {
     console.error('Error starting instance:', error);
     const statusCode = error instanceof Error && 
-      (error.message.includes('already') || error.message.includes('Cannot') || error.message.includes('quota')) 
-      ? 400 : 500;
+      (error.message.includes('already') || error.message.includes('Cannot') || error.message.includes('quota') || error.message.includes('not found')) 
+      ? (error.message.includes('not found') ? 404 : 400) : 500;
     res.status(statusCode).json({
       code: statusCode,
       message: error instanceof Error ? error.message : 'Failed to start instance',
