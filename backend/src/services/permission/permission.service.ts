@@ -86,6 +86,13 @@ const ROLE_PERMISSIONS: Record<UserRole, PermissionDefinition[]> = {
     { resourceType: ResourceType.EDGE_DC, action: PermissionAction.UPDATE, permissionName: 'edge_dc:update', description: '更新边缘机房' },
     { resourceType: ResourceType.EDGE_DC, action: PermissionAction.DELETE, permissionName: 'edge_dc:delete', description: '删除边缘机房' },
     { resourceType: ResourceType.EDGE_DC, action: PermissionAction.MANAGE, permissionName: 'edge_dc:manage', description: '管理边缘机房' },
+
+    // 场所管理
+    { resourceType: ResourceType.PLACE, action: PermissionAction.CREATE, permissionName: 'place:create', description: '创建场所' },
+    { resourceType: ResourceType.PLACE, action: PermissionAction.READ, permissionName: 'place:read', description: '查看场所' },
+    { resourceType: ResourceType.PLACE, action: PermissionAction.UPDATE, permissionName: 'place:update', description: '更新场所' },
+    { resourceType: ResourceType.PLACE, action: PermissionAction.DELETE, permissionName: 'place:delete', description: '删除场所' },
+    { resourceType: ResourceType.PLACE, action: PermissionAction.MANAGE, permissionName: 'place:manage', description: '管理场所' },
   ],
 
   // 租户管理员 - 只能管理自己租户内的资源
@@ -122,6 +129,20 @@ const ROLE_PERMISSIONS: Record<UserRole, PermissionDefinition[]> = {
     // 镜像管理（租户内）
     { resourceType: ResourceType.IMAGE, action: PermissionAction.READ, permissionName: 'image:read', description: '查看镜像' },
     { resourceType: ResourceType.IMAGE, action: PermissionAction.CREATE, permissionName: 'image:create', description: '创建镜像' },
+
+    // 网络管理（租户内）
+    { resourceType: ResourceType.NETWORK, action: PermissionAction.CREATE, permissionName: 'network:create', description: '创建网络' },
+    { resourceType: ResourceType.NETWORK, action: PermissionAction.READ, permissionName: 'network:read', description: '查看网络' },
+    { resourceType: ResourceType.NETWORK, action: PermissionAction.UPDATE, permissionName: 'network:update', description: '更新网络' },
+    { resourceType: ResourceType.NETWORK, action: PermissionAction.DELETE, permissionName: 'network:delete', description: '删除网络' },
+    { resourceType: ResourceType.NETWORK, action: PermissionAction.MANAGE, permissionName: 'network:manage', description: '管理网络' },
+
+    // 场所管理（租户内）
+    { resourceType: ResourceType.PLACE, action: PermissionAction.CREATE, permissionName: 'place:create', description: '创建场所' },
+    { resourceType: ResourceType.PLACE, action: PermissionAction.READ, permissionName: 'place:read', description: '查看场所' },
+    { resourceType: ResourceType.PLACE, action: PermissionAction.UPDATE, permissionName: 'place:update', description: '更新场所' },
+    { resourceType: ResourceType.PLACE, action: PermissionAction.DELETE, permissionName: 'place:delete', description: '删除场所' },
+    { resourceType: ResourceType.PLACE, action: PermissionAction.MANAGE, permissionName: 'place:manage', description: '管理场所' },
 
     // 租户信息查看
     { resourceType: ResourceType.TENANT, action: PermissionAction.READ, permissionName: 'tenant:read', description: '查看租户' },

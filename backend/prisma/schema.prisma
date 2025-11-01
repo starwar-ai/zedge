@@ -31,6 +31,9 @@ model Tenant {
   userGroups      UserGroup[]
   instances       Instance[]
   privateDataDisks PrivateDataDisk[]
+  vpcs            Vpc[]
+  places          Place[]
+  templates       Template[]
   creator         User?    @relation("TenantCreator", fields: [createdBy], references: [id])
 
   @@map("tenants")
@@ -67,7 +70,16 @@ model User {
   instances       Instance[]
   privateDataDisks PrivateDataDisk[]
   createdTenants  Tenant[] @relation("TenantCreator")
+  vpcs            Vpc[]
+  createdVpcs     Vpc[]   @relation("VpcCreator")
+  updatedVpcs      Vpc[]   @relation("VpcUpdater")
+  createdPlaces   Place[] @relation("PlaceCreator")
+  updatedPlaces   Place[] @relation("PlaceUpdater")
+  createdSubnets  Subnet[] @relation("SubnetCreator")
+  updatedSubnets  Subnet[] @relation("SubnetUpdater")
   auditLogs       AuditLog[]
+  createdTemplates Template[] @relation("TemplateOwner")
+  createdTemplateVersions TemplateVersion[] @relation("TemplateVersionCreator")
 
   @@map("users")
   @@index([tenantId])
@@ -162,6 +174,8 @@ enum ResourceType {
   IMAGE         @map("image")
   SERVER        @map("server")
   EDGE_DC       @map("edge_dc")
+  PLACE         @map("place")
+  TEMPLATE      @map("template")
 }
 
 enum PermissionAction {
@@ -196,18 +210,22 @@ model Instance {
   name            String   @db.VarChar(255)
   tenantId        String   @map("tenant_id") @db.Uuid
   userId          String   @map("user_id") @db.Uuid
+  templateId      String?  @map("template_id") @db.Uuid
   status          String   @db.VarChar(50)
+  config          Json?    @db.JsonB
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   // Relations
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
   user            User     @relation(fields: [userId], references: [id])
+  template        Template? @relation(fields: [templateId], references: [id])
 
   @@map("instances")
   @@index([tenantId])
   @@index([userId])
   @@index([status])
+  @@index([templateId])
 }
 
 // ============================================================================
@@ -235,6 +253,112 @@ model PrivateDataDisk {
 }
 
 // ============================================================================
+// 网络管理 (Network Management)
+// ============================================================================
+
+model Vpc {
+  id              String   @id @default(uuid()) @map("vpc_id") @db.Uuid
+  name            String   @db.VarChar(255)
+  description     String?  @db.Text
+  tenantId        String   @map("tenant_id") @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  cidrBlock       String   @map("cidr_block") @db.VarChar(50)
+  edgeDataCenterId String? @map("edge_data_center_id") @db.Uuid
+  vlanId          Int?     @map("vlan_id")
+  enableDns       Boolean  @default(true) @map("enable_dns")
+  dnsServers      Json?    @map("dns_servers") @db.JsonB
+  status          VpcStatus @default(ACTIVE)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdBy       String?  @map("created_by") @db.Uuid
+  updatedBy       String?  @map("updated_by") @db.Uuid
+
+  // Relations
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id])
+  subnets         Subnet[]
+  creator         User?    @relation("VpcCreator", fields: [createdBy], references: [id])
+  updater         User?    @relation("VpcUpdater", fields: [updatedBy], references: [id])
+
+  @@unique([tenantId, name])
+  @@map("vpcs")
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+}
+
+enum VpcStatus {
+  ACTIVE      @map("active")
+  DISABLED    @map("disabled")
+  DELETED     @map("deleted")
+}
+
+model Place {
+  id              String   @id @default(uuid()) @map("place_id") @db.Uuid
+  name            String   @db.VarChar(255)
+  description     String?  @db.Text
+  tenantId        String   @map("tenant_id") @db.Uuid
+  subnetId        String?  @unique @map("subnet_id") @db.Uuid
+  location        String?  @db.VarChar(255)
+  status          PlaceStatus @default(ACTIVE)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdBy       String?  @map("created_by") @db.Uuid
+  updatedBy       String?  @map("updated_by") @db.Uuid
+
+  // Relations
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subnet          Subnet?  @relation(fields: [subnetId], references: [id], onDelete: SetNull)
+  creator         User?    @relation("PlaceCreator", fields: [createdBy], references: [id])
+  updater         User?    @relation("PlaceUpdater", fields: [updatedBy], references: [id])
+
+  @@unique([tenantId, name])
+  @@map("places")
+  @@index([tenantId])
+  @@index([subnetId])
+  @@index([status])
+}
+
+enum PlaceStatus {
+  ACTIVE      @map("active")
+  INACTIVE    @map("inactive")
+  DISABLED    @map("disabled")
+}
+
+model Subnet {
+  id              String   @id @default(uuid()) @map("subnet_id") @db.Uuid
+  name            String   @db.VarChar(255)
+  vpcId           String   @map("vpc_id") @db.Uuid
+  cidrBlock       String   @map("cidr_block") @db.VarChar(50)
+  availabilityZone String? @map("availability_zone") @db.VarChar(100)
+  gateway         String?  @db.VarChar(50)
+  vlanId          Int?     @map("vlan_id")
+  isPublic        Boolean  @default(false) @map("is_public")
+  autoAssignIp    Boolean  @default(true) @map("auto_assign_ip")
+  status          SubnetStatus @default(ACTIVE)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdBy       String?  @map("created_by") @db.Uuid
+  updatedBy       String?  @map("updated_by") @db.Uuid
+
+  // Relations
+  vpc             Vpc      @relation(fields: [vpcId], references: [id], onDelete: Cascade)
+  place           Place?
+  creator         User?    @relation("SubnetCreator", fields: [createdBy], references: [id])
+  updater         User?    @relation("SubnetUpdater", fields: [updatedBy], references: [id])
+
+  @@unique([vpcId, cidrBlock])
+  @@map("subnets")
+  @@index([vpcId])
+  @@index([status])
+}
+
+enum SubnetStatus {
+  ACTIVE      @map("active")
+  DISABLED    @map("disabled")
+}
+
+// ============================================================================
 // 审计日志 (Audit Logs)
 // ============================================================================
 
@@ -258,4 +382,94 @@ model AuditLog {
   @@index([action])
   @@index([resourceType])
   @@index([createdAt])
+}
+
+// ============================================================================
+// 模板管理 (Template Management)
+// ============================================================================
+
+model Template {
+  id                  String         @id @default(uuid()) @map("template_id") @db.Uuid
+  name                String         @db.VarChar(255)
+  description         String?        @db.Text
+  useCase             TemplateUseCase? @map("use_case")
+  templateType        TemplateType  @default(INSTANCE) @map("template_type")
+  baseImageId         String?       @map("base_image_id") @db.Uuid
+  defaultCpuCores     Int           @map("default_cpu_cores")
+  defaultMemoryGb     Int           @map("default_memory_gb")
+  defaultStorageGb    Int           @map("default_storage_gb")
+  defaultGpuCount     Int?          @default(0) @map("default_gpu_count")
+  defaultBandwidthGbps Float?       @map("default_bandwidth_gbps")
+  networkConfig       Json?         @map("network_config") @db.JsonB
+  userData            String?       @map("user_data") @db.Text
+  tags                Json?         @db.JsonB
+  visibility          TemplateVisibility @default(PRIVATE)
+  ownerId             String        @map("owner_id") @db.Uuid
+  tenantId            String?       @map("tenant_id") @db.Uuid
+  version             String        @default("v1.0.0") @db.VarChar(50)
+  status              TemplateStatus @default(ACTIVE)
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  owner               User          @relation("TemplateOwner", fields: [ownerId], references: [id])
+  tenant              Tenant?       @relation(fields: [tenantId], references: [id])
+  versions            TemplateVersion[]
+  instances           Instance[]
+  
+  @@unique([tenantId, name])
+  @@map("templates")
+  @@index([ownerId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([visibility])
+  @@index([templateType])
+}
+
+enum TemplateUseCase {
+  AI_APPLICATION          @map("ai_application")
+  GRAPHICS_RENDERING      @map("graphics_rendering")
+  GAMING_HIGH_PERFORMANCE @map("gaming_high_performance")
+  LIGHTWEIGHT_OFFICE      @map("lightweight_office")
+  WEB_SERVER              @map("web_server")
+  DATABASE                @map("database")
+  DEVELOPMENT             @map("development")
+  GENERAL                 @map("general")
+}
+
+enum TemplateType {
+  INSTANCE       @map("instance")
+  INSTANCE_GROUP @map("instance_group")
+}
+
+enum TemplateVisibility {
+  PUBLIC         @map("public")
+  PRIVATE        @map("private")
+  GROUP_SPECIFIC @map("group_specific")
+}
+
+enum TemplateStatus {
+  ACTIVE     @map("active")
+  DEPRECATED @map("deprecated")
+  ARCHIVED   @map("archived")
+}
+
+model TemplateVersion {
+  id              String   @id @default(uuid()) @map("version_id") @db.Uuid
+  templateId      String   @map("template_id") @db.Uuid
+  versionNumber   String   @map("version_number") @db.VarChar(50)
+  isLatest        Boolean  @default(false) @map("is_latest")
+  configSnapshot  Json     @map("config_snapshot") @db.JsonB
+  changelog        String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  createdBy       String   @map("created_by") @db.Uuid
+  
+  // Relations
+  template        Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  creator         User     @relation("TemplateVersionCreator", fields: [createdBy], references: [id])
+  
+  @@unique([templateId, versionNumber])
+  @@map("template_versions")
+  @@index([templateId])
+  @@index([isLatest])
 }

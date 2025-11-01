@@ -260,25 +260,40 @@
 ```
 
 **关键属性**:
-- `user_id`: 所有者用户
-- `compute_machine_id`: 所在宿主机
-- `rental_mode`: 租赁方式 (exclusive-独占实机, shared-共享虚拟机)
-- `template_id`: 创建源模板
-- `image_id`: 使用的镜像ID（外键 → images.image_id）
-- `image_version_id`: 具体使用的镜像版本ID（外键 → image_versions.version_id）
-- `image_tag_used`: 创建时使用的镜像标签（用于审计，e.g., "latest", "v1.2.0"）
+- `instance_id`: 实例唯一标识 (UUID)
 - `name`: 实例名称
-- `allocated_cpu_cores`: 分配CPU
-- `allocated_memory_gb`: 分配内存
-- `allocated_storage_gb`: 分配存储
-- `allocated_gpu_count`: 分配GPU数量
-- `allocated_bandwidth_gbps`: 分配网络带宽（Gbps）
-- `ip_address`: 网络地址
-- `hostname`: 主机名
-- `vnc_port`: VNC远程访问端口
-- `health_status`: 健康状态 (initializing, healthy, warning, critical)
-- `tags`: 标签和元数据
-- `started_at`, `stopped_at`: 时间戳
+- `user_id`: 所有者用户ID（外键 → users.user_id）
+- `tenant_id`: 所属租户ID（外键 → tenants.tenant_id）
+- `template_id`: 创建源模板ID（可选，外键 → templates.template_id）
+- `status`: 实例状态 (creating, initializing, running, suspended, stopping, stopped, terminating, deleted)
+- `config`: 实例配置信息（JSON格式）
+  - `imageId`: 使用的镜像ID（如果从模板创建，继承模板的baseImageId）
+  - `imageVersionId`: 具体使用的镜像版本ID（可选）
+  - `cpuCores`: CPU核心数
+  - `memoryGb`: 内存大小（GB）
+  - `storageGb`: 存储大小（GB）
+  - `gpuCount`: GPU数量（可选）
+  - `bandwidthGbps`: 网络带宽（Gbps，可选）
+  - `networkConfig`: 网络配置（JSON，可选）
+    - vpc_id: VPC ID
+    - subnet_id: 子网ID
+    - security_group_ids: 安全组ID列表
+    - auto_assign_public_ip: 是否自动分配公网IP
+  - `userData`: 实例初始化脚本（cloud-init，可选）
+  - `description`: 实例描述
+- `created_at`, `updated_at`: 时间戳
+
+**实例与模板的关系** (多对一，可选):
+- 实例可以关联到一个模板（`template_id`）
+- 从模板创建的实例会记录模板ID
+- 直接创建的实例可以不关联模板（`template_id` 为 null）
+- 一个模板可以被多个实例使用
+- 通过模板创建实例时，模板的默认配置会被应用，用户可以选择性地覆盖部分参数
+- 镜像ID从模板继承，不可覆盖（由模板的 `base_image_id` 决定）
+
+**实例创建方式**:
+1. **直接创建**: 用户直接指定所有配置参数创建实例
+2. **从模板创建**: 用户选择模板，系统应用模板默认配置，用户可选择性覆盖部分参数
 
 ---
 
@@ -744,7 +759,7 @@
 
 ---
 
-### 5.1 资源池 (Resource Pool)
+### 6.1 资源池 (Resource Pool)
 
 **功能**: 对共享计算资源进行逻辑分组和管理
 
@@ -765,7 +780,7 @@
 
 ---
 
-#### 5.1.1 算力池 (Compute Pool)
+#### 6.1.1 算力池 (Compute Pool)
 
 **功能**: 聚合多个计算机器形成共享计算资源池
 
@@ -808,7 +823,7 @@
 
 ---
 
-#### 5.1.2 存储池 (Storage Pool)
+#### 6.1.2 存储池 (Storage Pool)
 
 **功能**: 聚合私有数据盘存储资源形成共享存储资源池
 
@@ -839,9 +854,9 @@
 
 ---
 
-#### 5.1.3 IP地址池 (IP Address Pool)
+#### 6.1.3 IP地址池 (IP Address Pool)
 
-**详细内容参见**: [6.1 IP地址管理](#61-ip地址管理-ip-address-management)
+**详细内容参见**: [7.1 IP地址管理](#71-ip地址管理-ip-address-management)
 
 **功能概述**:
 - 聚合可用IP地址形成共享网络资源池
@@ -869,19 +884,19 @@
 
 ---
 
-### 5.2 模板 (Template)
+### 6.2 模板 (Template)
 
 **共享特性**: 模板是可在多个用户和实例间共享的标准配置资源，提高部署效率和配置一致性。
 
 ---
 
-#### 5.2.1 实例模板 (Instance Template)
+#### 6.2.1 实例模板 (Instance Template)
 
 **定义**: 预定义的单个实例配置模板，用于快速创建具有标准配置的实例
 
 **实例模板属性**:
 - `template_id`: 模板唯一标识 (UUID)
-- `name`: 模板名称
+- `name`: 模板名称（在租户内唯一）
 - `description`: 模板描述
 - `use_case`: 模板用途（枚举类型，可选）
   - `ai_application`: AI应用 - 适用于机器学习、深度学习等AI工作负载
@@ -893,24 +908,48 @@
   - `development`: 开发环境 - 适用于开发、测试环境
   - `general`: 通用 - 通用用途，无特定场景要求
 - `template_type`: 模板类型 (instance, instance_group)
-- `base_image_id`: 基础镜像ID（外键 → images.image_id）
+- `base_image_id`: 基础镜像ID（外键 → images.image_id，可选）
 - `default_cpu_cores`: 默认CPU核心数
 - `default_memory_gb`: 默认内存大小
 - `default_storage_gb`: 默认存储容量
-- `default_gpu_count`: 默认GPU数量（可选）
-- `default_bandwidth_gbps`: 默认网络带宽
-- `network_config`: 网络配置（JSON）
+- `default_gpu_count`: 默认GPU数量（可选，默认0）
+- `default_bandwidth_gbps`: 默认网络带宽（可选）
+- `network_config`: 网络配置（JSON，可选）
   - vpc_id: VPC ID
   - subnet_id: 子网ID
   - security_group_ids: 安全组ID列表
   - auto_assign_public_ip: 是否自动分配公网IP
-- `user_data`: 实例初始化脚本（cloud-init）
-- `tags`: 默认标签（JSON）
+- `user_data`: 实例初始化脚本（cloud-init，可选）
+- `tags`: 默认标签（JSON，可选）
 - `visibility`: 可见性 (public, private, group_specific)
-- `owner_id`: 创建者用户ID
-- `version`: 模板版本号
+  - `public`: 公开 - 所有用户可见
+  - `private`: 私有 - 仅创建者可见
+  - `group_specific`: 组内共享 - 仅创建者所属用户组可见
+- `owner_id`: 创建者用户ID（外键 → users.user_id）
+- `tenant_id`: 所属租户ID（外键 → tenants.tenant_id，可选）
+- `version`: 模板版本号（默认 "v1.0.0"）
 - `status`: 状态 (active, deprecated, archived)
+  - `active`: 活跃状态，可以使用
+  - `deprecated`: 已废弃，不推荐使用但仍可用
+  - `archived`: 已归档，不可使用
 - `created_at`, `updated_at`: 时间戳
+
+**模板与租户的关系** (多对一，可选):
+- 模板可以属于一个租户（`tenant_id`）
+- 租户内的模板名称必须唯一（`tenant_id` + `name` 唯一）
+- 租户管理员可以管理租户内的模板
+- 系统管理员可以管理所有模板
+
+**模板与用户的关系** (多对一):
+- 每个模板必须有一个所有者（`owner_id`）
+- 所有者可以管理自己创建的模板
+- 根据可见性设置，其他用户可以使用模板
+
+**模板版本管理**:
+- 通过 `template_versions` 表管理模板版本历史
+- 每个版本保存完整的配置快照（`config_snapshot`）
+- 支持版本号（`version_number`）和最新版本标记（`is_latest`）
+- 版本变更记录变更日志（`changelog`）
 
 **模板与镜像的关系** (多对一):
 - 每个实例模板必须关联一个基础镜像（`base_image_id`）
@@ -924,22 +963,49 @@
 - 镜像ID不可覆盖（固定）
 - 用户数据脚本可定制
 
-**模板创建实例流程**:
+**模板访问权限验证**:
+- **模板状态检查**: 模板状态必须为 `active`，`deprecated` 和 `archived` 状态的模板不可使用
+- **可见性检查**:
+  - `public`: 所有用户可以使用
+  - `private`: 仅模板所有者可以使用
+  - `group_specific`: 仅模板所有者所属用户组的成员可以使用
+- **租户检查**: 如果模板属于某个租户，则只有该租户内的用户可以使用
+
+**模板参数覆盖规则**:
+- 用户提供的参数优先级高于模板默认值
+- 镜像ID（`base_image_id`）不可覆盖，固定使用模板指定的镜像
+- 用户可以指定镜像版本ID（`image_version_id`），但必须是指定镜像的版本
+- 如果用户未提供某个参数，使用模板的默认值
+- 网络配置和用户数据脚本可以完全覆盖或部分覆盖
+
+**配置合并示例**:
 ```
-1. 用户选择模板 (template_id)
-2. 系统读取模板配置
-   - base_image_id: 确定使用的镜像
-   - default_cpu_cores, default_memory_gb, etc.
-3. 用户可选覆盖默认参数（如增加内存）
-4. 验证镜像资源要求
-   - 检查用户指定的资源 >= 镜像的 min_cpu_cores, min_memory_gb, etc.
-5. 验证用户配额
-6. 创建实例，使用镜像和模板配置
+模板配置:
+  base_image_id: "img-ubuntu-22.04"
+  default_cpu_cores: 4
+  default_memory_gb: 8
+  default_storage_gb: 100
+  default_bandwidth_gbps: 5.0
+  network_config: { vpc_id: "vpc-001", subnet_id: "subnet-001" }
+
+用户覆盖:
+  cpu_cores: 8
+  memory_gb: 16
+  image_version_id: "version-uuid"
+
+最终配置:
+  imageId: "img-ubuntu-22.04"  (不可覆盖)
+  imageVersionId: "version-uuid" (用户指定)
+  cpuCores: 8                    (用户覆盖)
+  memoryGb: 16                   (用户覆盖)
+  storageGb: 100                 (使用模板默认值)
+  bandwidthGbps: 5.0             (使用模板默认值)
+  networkConfig: { vpc_id: "vpc-001", subnet_id: "subnet-001" } (使用模板默认值)
 ```
 
 ---
 
-#### 5.2.2 实例组模板 (Instance Group Template)
+#### 6.2.2 实例组模板 (Instance Group Template)
 
 **定义**: 预定义的多实例配置模板，用于批量创建具有统一配置的实例组
 
@@ -960,7 +1026,7 @@
 
 ---
 
-#### 5.2.3 模板版本管理
+#### 6.2.3 模板版本管理
 
 **版本控制机制**:
 - 每个模板有版本号（语义化版本，如 v1.0.0）
@@ -980,10 +1046,64 @@
 | `created_at` | TIMESTAMP | 版本创建时间 |
 | `created_by` | UUID | 创建者 |
 
-**版本管理操作**:
-- 发布新版本：创建新版本记录，标记为 `is_latest`
-- 回滚：将旧版本标记为 `is_latest`
-- 删除版本：仅限非活跃版本（无实例使用）
+**数据库模型实现**:
+
+**模板表 (`templates`)**:
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `template_id` | UUID | 模板唯一标识（主键） |
+| `name` | VARCHAR(255) | 模板名称（与tenant_id组合唯一） |
+| `description` | TEXT | 模板描述 |
+| `use_case` | ENUM | 模板用途（ai_application, graphics_rendering, gaming_high_performance, lightweight_office, web_server, database, development, general） |
+| `template_type` | ENUM | 模板类型（instance, instance_group），默认 instance |
+| `base_image_id` | UUID | 基础镜像ID（外键 → images.image_id，可选） |
+| `default_cpu_cores` | INT | 默认CPU核心数 |
+| `default_memory_gb` | INT | 默认内存大小（GB） |
+| `default_storage_gb` | INT | 默认存储容量（GB） |
+| `default_gpu_count` | INT | 默认GPU数量，默认0 |
+| `default_bandwidth_gbps` | FLOAT | 默认网络带宽（Gbps） |
+| `network_config` | JSONB | 网络配置（JSON格式） |
+| `user_data` | TEXT | 实例初始化脚本（cloud-init） |
+| `tags` | JSONB | 默认标签（JSON格式） |
+| `visibility` | ENUM | 可见性（public, private, group_specific），默认 private |
+| `owner_id` | UUID | 创建者用户ID（外键 → users.user_id） |
+| `tenant_id` | UUID | 所属租户ID（外键 → tenants.tenant_id，可选） |
+| `version` | VARCHAR(50) | 模板版本号，默认 "v1.0.0" |
+| `status` | ENUM | 状态（active, deprecated, archived），默认 active |
+| `created_at` | TIMESTAMP | 创建时间 |
+| `updated_at` | TIMESTAMP | 更新时间 |
+
+**索引**:
+- `(tenant_id, name)` - 唯一索引，确保同一租户内模板名称唯一
+- `owner_id` - 索引，快速查找用户创建的模板
+- `tenant_id` - 索引，快速查找租户的模板
+- `status` - 索引，快速过滤活跃模板
+- `visibility` - 索引，快速过滤可见性
+- `template_type` - 索引，快速过滤模板类型
+
+**模板版本表 (`template_versions`)**:
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `version_id` | UUID | 版本唯一标识（主键） |
+| `template_id` | UUID | 模板ID（外键 → templates.template_id） |
+| `version_number` | VARCHAR(50) | 版本号（e.g., v1.0.0，与template_id组合唯一） |
+| `is_latest` | BOOLEAN | 是否为最新版本，默认 false |
+| `config_snapshot` | JSONB | 该版本的完整配置快照 |
+| `changelog` | TEXT | 版本更新说明 |
+| `created_at` | TIMESTAMP | 版本创建时间 |
+| `created_by` | UUID | 创建者用户ID（外键 → users.user_id） |
+
+**索引**:
+- `(template_id, version_number)` - 唯一索引
+- `template_id` - 索引，快速查找模板的所有版本
+- `is_latest` - 索引，快速查找最新版本
+
+**关联关系**:
+- `Template` ←→ `Instance` (一对多): 通过 `instances.template_id` 关联
+- `Template` ←→ `User` (多对一): 通过 `templates.owner_id` 关联
+- `Template` ←→ `Tenant` (多对一): 通过 `templates.tenant_id` 关联
+- `Template` ←→ `TemplateVersion` (一对多): 通过 `template_versions.template_id` 关联
+- `TemplateVersion` ←→ `User` (多对一): 通过 `template_versions.created_by` 关联
 
 ---
 
@@ -997,13 +1117,13 @@
 
 ---
 
-### 5.3 算力机 (Compute Machine)
+### 6.3 算力机 (Compute Machine)
 
 参见 [1.3 算力机](#13-算力机-compute-machine)
 
 ---
 
-### 5.4 镜像 (Image)
+### 6.4 镜像 (Image)
 
 **功能**: 虚拟机的基础操作系统和应用镜像
 
@@ -1033,7 +1153,7 @@
 
 ---
 
-#### 5.4.1 镜像版本管理
+#### 6.4.1 镜像版本管理
 
 **版本控制机制**:
 
@@ -1075,7 +1195,7 @@ v2.0.0 → 升级到 Ubuntu 24.04（重大更新）
 
 ---
 
-#### 5.4.2 镜像标签系统
+#### 6.4.2 镜像标签系统
 
 **镜像标签表** (`image_tags`):
 
@@ -1124,7 +1244,7 @@ v2.0.0 → 升级到 Ubuntu 24.04（重大更新）
 
 ---
 
-#### 5.4.3 镜像版本操作
+#### 6.4.3 镜像版本操作
 
 **发布新版本**:
 ```
@@ -1182,7 +1302,7 @@ v2.0.0 → 升级到 Ubuntu 24.04（重大更新）
 
 ---
 
-#### 5.4.4 实例与镜像版本的关系
+#### 6.4.4 实例与镜像版本的关系
 
 **实例镜像引用** (更新 instances 表):
 - `image_id`: 镜像ID
@@ -1207,7 +1327,7 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-#### 5.4.5 镜像资源要求
+#### 6.4.5 镜像资源要求
 
 关联表 `image_requirements` 定义了每个镜像的最低和推荐资源:
 
@@ -1235,15 +1355,15 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-## 6. 网络与IP地址管理 (Network & IP Address Management)
+## 7. 网络与IP地址管理 (Network & IP Address Management)
 
-### 6.1 IP地址管理 (IP Address Management)
+### 7.1 IP地址管理 (IP Address Management)
 
 **功能**: 管理和分配实例使用的IP地址资源
 
 **核心组件**:
 
-#### 6.1.1 IP地址池 (IP Address Pool)
+#### 7.1.1 IP地址池 (IP Address Pool)
 
 **定义**: 预定义的可用IP地址集合，供实例动态分配使用
 
@@ -1269,7 +1389,7 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-#### 6.1.2 IP地址记录 (IP Address Record)
+#### 7.1.2 IP地址记录 (IP Address Record)
 
 **属性**:
 - `ip_address`: IP地址
@@ -1282,7 +1402,7 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-#### 6.1.3 IP分配策略 (IP Allocation Strategy)
+#### 7.1.3 IP分配策略 (IP Allocation Strategy)
 
 **分配模式**:
 
@@ -1300,9 +1420,9 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-### 6.2 IP地址管理操作 (IP Management Operations)
+### 7.2 IP地址管理操作 (IP Management Operations)
 
-#### 6.2.1 创建IP地址池
+#### 7.2.1 创建IP地址池
 
 **流程**:
 ```
@@ -1324,7 +1444,7 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-#### 6.2.2 IP分配流程
+#### 7.2.2 IP分配流程
 
 **实例创建时的IP分配**:
 ```
@@ -1353,7 +1473,7 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-#### 6.2.3 IP回收流程
+#### 7.2.3 IP回收流程
 
 **实例删除时的IP回收**:
 ```
@@ -1377,9 +1497,9 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-### 6.3 IP地址监控与管理 (IP Monitoring & Management)
+### 7.3 IP地址监控与管理 (IP Monitoring & Management)
 
-#### 6.3.1 IP池容量监控
+#### 7.3.1 IP池容量监控
 
 **监控指标**:
 - IP使用率：已分配/总可用 × 100%
@@ -1395,7 +1515,7 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-#### 6.3.2 IP冲突检测
+#### 7.3.2 IP冲突检测
 
 **检测机制**:
 - ARP扫描检测重复IP
@@ -1410,7 +1530,7 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-#### 6.3.3 IP管理报表
+#### 7.3.3 IP管理报表
 
 **报表类型**:
 - IP使用情况报表（按池、按用户、按时间）
@@ -1421,7 +1541,7 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-### 6.4 虚拟私有云 (VPC - Virtual Private Cloud)
+### 7.4 虚拟私有云 (VPC - Virtual Private Cloud)
 
 **定义**: 用户专属的隔离网络环境，提供完全的网络控制和安全隔离
 
@@ -1455,7 +1575,7 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-### 6.5 子网 (Subnet)
+### 7.5 子网 (Subnet)
 
 **定义**: VPC内的网络分段，用于进一步隔离和组织资源
 
@@ -1482,9 +1602,60 @@ ORDER BY iv.created_at DESC;
 - 同一VPC内子网的cidr_block不能重叠
 - 子网删除前必须先释放所有已分配的IP
 
+**子网与场所的关系**:
+- 子网可以独立存在（不关联场所）
+- 子网可以关联到场所（通过Place.subnet_id）
+- 一个子网最多只能被一个场所使用（一对一关系）
+
 ---
 
-### 6.6 安全组 (Security Group)
+### 7.5.1 场所管理 (Place Management)
+
+**定义**: 场所是租户下的物理或逻辑位置，用于组织和标识不同的部署位置。每个场所可以关联一个子网。
+
+**场所属性**:
+- `place_id`: 场所唯一标识 (UUID)
+- `name`: 场所名称
+- `description`: 场所描述
+- `tenant_id`: 所属租户ID（外键 → tenants.tenant_id）**必填，场所在租户下，不在VPC下**
+- `subnet_id`: 关联的子网ID（外键 → subnets.subnet_id，可选）
+- `location`: 物理位置描述（可选）
+- `status`: 状态 (active, inactive, disabled)
+- `created_at`, `updated_at`: 时间戳
+- `created_by`, `updated_by`: 审计字段
+
+**场所与租户的关系** (一对多):
+- 一个租户可以有多个场所
+- 每个场所必须属于一个租户
+- 场所通过 `tenant_id` 字段关联到租户
+- **场所在租户下，不在VPC下**
+
+**场所与子网的关系** (一对一，可选):
+- 一个场所可以关联一个子网（`subnet_id` 可选）
+- 一个子网最多只能被一个场所使用
+- 子网可以独立存在（不关联场所）
+- 如果场所关联了子网，该子网必须属于同一租户下的VPC
+
+**约束条件**:
+- 同一租户下场所名称唯一（tenant_id + name 唯一）
+- 如果关联子网，子网必须属于同一租户下的VPC
+- 一个子网最多只能被一个场所使用（通过Place.subnet_id的@unique约束实现）
+
+**特性**:
+- 场所级别的资源组织和管理
+- 支持场所与子网的灵活关联
+- 子网可以独立存在，不绑定场所
+- 租户级别的场所隔离
+
+**场所使用场景**:
+- 多地点部署：不同物理位置的资源管理
+- 部门隔离：同一租户下不同部门的资源分组
+- 环境隔离：测试环境、生产环境等不同环境的管理
+- 子网组织：将子网按场所进行分组管理
+
+---
+
+### 7.6 安全组 (Security Group)
 
 **定义**: 虚拟防火墙，控制实例的入站和出站流量
 
@@ -1568,9 +1739,9 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-### 6.7 网络隔离与安全实现 (Network Isolation Implementation)
+### 7.7 网络隔离与安全实现 (Network Isolation Implementation)
 
-#### 6.7.1 VLAN隔离
+#### 7.7.1 VLAN隔离
 - 不同租户/用户组使用不同VLAN
 - VPC与VLAN ID绑定
 - 子网继承VPC的VLAN配置
@@ -1785,7 +1956,7 @@ ORDER BY iv.created_at DESC;
    - 支持QinQ（双层VLAN标签，用于更复杂的网络场景）
 
 ---
-#### 6.7.2 访问控制列表 (ACL)
+#### 7.7.2 访问控制列表 (ACL)
 
 - 基于IP的访问控制列表
 - 入站/出站规则管理
@@ -1795,7 +1966,7 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-### 6.8 网络配额与带宽管理 (Network Quotas & Bandwidth Management)
+### 7.8 网络配额与带宽管理 (Network Quotas & Bandwidth Management)
 
 **IP配额管理**:
 - 每个用户/组的IP数量限制
@@ -1850,53 +2021,146 @@ ORDER BY iv.created_at DESC;
 ---
 
 
-## 7. 系统架构关系 (System Architecture Relationships)
+## 8. 系统架构关系 (System Architecture Relationships)
 
-### 7.1 实例创建流程（含IP和带宽分配）
+### 8.1 实例创建流程（含IP和带宽分配）
+
+#### 8.1.1 直接创建实例流程
 
 ```
 用户 (User)
   ↓
-选择镜像 (Select Image)
+选择镜像 (Select Image) 或 提供镜像ID
+  ↓
+指定实例规格 (Specify Instance Specs)
+  - CPU核心数
+  - 内存大小
+  - 存储容量
+  - GPU数量（可选）
+  - 网络带宽（可选）
+  ↓
+指定网络配置 (Specify Network Config)
+  - VPC ID（可选）
+  - 子网ID（可选）
+  - 安全组ID列表（可选）
   ↓
 验证镜像要求 (Validate Image Requirements)
-  ↓
-选择/创建实例规格 (Choose Instance Specs + Bandwidth)
-  ↓
-选择租赁方式 (Choose Rental Mode: exclusive/shared)
+  - 检查用户指定的资源 >= 镜像的最低资源要求
   ↓
 验证用户配额 (Check User Quota: CPU/Memory/Storage/IP/Bandwidth)
-  ↓
-寻找可用算力机 (Find Available Compute Machine)
-  - 独占模式: 查找 rental_mode=exclusive 且未分配的算力机
-  - 共享模式: 查找 rental_mode=shared 且有足够资源的算力机
-  ↓
-选择IP地址池 (Select IP Address Pool)
-  ↓
-分配IP地址 (Allocate IP Address)
-  ↓
-验证带宽配额 (Validate Bandwidth Quota)
+  - 验证租户配额（最高优先级）
+  - 验证用户配额
   ↓
 创建实例记录 (Create Instance Record)
+  - 状态设为 creating
+  - 保存配置到 config 字段
+  - template_id 为 null（直接创建）
   ↓
-更新机器分配状态 (Update Machine Allocation)
-  - 独占模式: 标记整台算力机为已分配
-  - 共享模式: 累计已分配资源
+异步分配IP地址 (Async Allocate IP Address)
+  - 后续实现：从IP地址池分配IP
+  - 更新实例IP地址
   ↓
-更新IP分配记录 (Update IP Allocation Record)
-  ↓
-更新带宽分配记录 (Update Bandwidth Allocation)
-  ↓
-触发异步配置任务 (Trigger Provisioning Job)
-  - 独占模式: 直接配置物理机
-  - 共享模式: 在物理机上创建虚拟机
-  ↓
-配置实例网络 (Configure Instance Network + QoS)
+异步创建虚拟机 (Async Create VM)
+  - 后续实现：在算力机上创建虚拟机
+  - 配置实例网络
   ↓
 实例运行 (Instance Running)
 ```
 
-### 7.2 私有数据盘挂载流程
+#### 8.1.2 从模板创建实例流程
+
+```
+用户 (User)
+  ↓
+选择模板 (Select Template)
+  - 用户指定 template_id
+  - 系统验证模板访问权限
+    * 检查模板状态（必须为 active）
+    * 检查模板可见性（public/private/group_specific）
+    * 验证用户是否有权限使用该模板
+  ↓
+读取模板配置 (Load Template Config)
+  - base_image_id: 基础镜像ID（不可覆盖）
+  - default_cpu_cores: 默认CPU核心数
+  - default_memory_gb: 默认内存大小
+  - default_storage_gb: 默认存储容量
+  - default_gpu_count: 默认GPU数量
+  - default_bandwidth_gbps: 默认网络带宽
+  - network_config: 网络配置模板
+  - user_data: 初始化脚本
+  ↓
+用户覆盖参数 (User Override Parameters)
+  - 实例名称（可选，默认自动生成）
+  - CPU核心数（可选，覆盖 default_cpu_cores）
+  - 内存大小（可选，覆盖 default_memory_gb）
+  - 存储容量（可选，覆盖 default_storage_gb）
+  - GPU数量（可选，覆盖 default_gpu_count）
+  - 带宽（可选，覆盖 default_bandwidth_gbps）
+  - 镜像版本ID（可选，指定镜像版本）
+  - 网络配置（可选，覆盖 network_config）
+  - 用户数据脚本（可选，覆盖 user_data）
+  ↓
+合并配置 (Merge Config)
+  - 用户提供的参数优先于模板默认值
+  - 镜像ID固定使用模板的 base_image_id（不可覆盖）
+  - 生成最终配置
+  ↓
+验证镜像要求 (Validate Image Requirements)
+  - 检查最终配置的资源 >= 镜像的最低资源要求
+  ↓
+验证用户配额 (Check User Quota)
+  - 验证租户配额（最高优先级）
+  - 验证用户配额
+  ↓
+创建实例记录 (Create Instance Record)
+  - 状态设为 creating
+  - 保存最终配置到 config 字段
+  - 设置 template_id 关联到模板
+  ↓
+异步分配IP地址 (Async Allocate IP Address)
+  - 后续实现：从IP地址池分配IP
+  - 更新实例IP地址
+  ↓
+异步创建虚拟机 (Async Create VM)
+  - 后续实现：在算力机上创建虚拟机
+  - 应用模板的网络配置和用户数据脚本
+  - 配置实例网络
+  ↓
+实例运行 (Instance Running)
+```
+
+**API实现方式**:
+
+1. **方式1**: 在创建实例API中提供 `template_id` 参数
+   ```
+   POST /api/v1/instances
+   {
+     "template_id": "uuid",
+     "name": "my-instance",
+     "cpu_cores": 8,  // 覆盖模板默认值（可选）
+     "memory_gb": 16,
+     // ... 其他覆盖参数
+   }
+   ```
+
+2. **方式2**: 使用专用路由
+   ```
+   POST /api/v1/instances/from-template/:template_id
+   {
+     "name": "my-instance",
+     "cpu_cores": 8,  // 覆盖模板默认值（可选）
+     "memory_gb": 16,
+     // ... 其他覆盖参数
+   }
+   ```
+
+**配置合并规则**:
+- 用户提供的参数优先级高于模板默认值
+- 镜像ID（base_image_id）不可覆盖，固定使用模板指定的镜像
+- 如果用户未提供某个参数，使用模板的默认值
+- 网络配置和用户数据脚本也遵循相同的合并规则
+
+### 8.2 私有数据盘挂载流程
 
 ```
 用户请求挂载 (User Request Attach)
@@ -1914,7 +2178,7 @@ ORDER BY iv.created_at DESC;
 操作日志记录 (Log Operation)
 ```
 
-### 7.3 资源层次关系
+### 8.3 资源层次关系
 
 ```
 边缘机房 (Edge Data Center)
@@ -1969,9 +2233,9 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-## 8. 关键概念 (Key Concepts)
+## 9. 关键概念 (Key Concepts)
 
-### 8.1 实例资源挂载规则 (Instance Resource Attachment Rules)
+### 9.1 实例资源挂载规则 (Instance Resource Attachment Rules)
 
 **目的**: 定义实例可附加的资源约束
 
@@ -1993,7 +2257,7 @@ ORDER BY iv.created_at DESC;
 }
 ```
 
-### 8.2 镜像最低资源要求 (Image Minimum Requirements)
+### 9.2 镜像最低资源要求 (Image Minimum Requirements)
 
 **目的**: 确保实例有足够资源运行镜像
 
@@ -2007,7 +2271,7 @@ ORDER BY iv.created_at DESC;
 - 返回详细错误信息
 - 建议推荐规格
 
-### 8.3 IP地址资源共享 (IP Address Resource Sharing)
+### 9.3 IP地址资源共享 (IP Address Resource Sharing)
 
 **目的**: 通过IP地址池实现网络资源的高效共享
 
@@ -2244,7 +2508,7 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-## 10. 计费与订阅管理 (Billing and Subscription Management)
+## 11. 计费与订阅管理 (Billing and Subscription Management)
 
 **功能**: 处理业务侧的计费、计量和订阅管理，支持灵活的计费模式和套餐管理
 
@@ -2256,11 +2520,11 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-### 10.1 订阅计划 (Subscription Plans)
+### 11.1 订阅计划 (Subscription Plans)
 
 **定义**: 预定义的服务套餐，包含资源配额和定价策略
 
-#### 10.1.1 套餐类型
+#### 11.1.1 套餐类型
 
 | 套餐级别 | 月费 | CPU核心 | 内存(GB) | 存储(GB) | 带宽(Gbps) | IP数量 | 支持级别 |
 |---------|------|---------|----------|----------|------------|--------|---------|
@@ -2269,7 +2533,7 @@ ORDER BY iv.created_at DESC;
 | **企业版** (Enterprise) | ¥2999/月 | 64核 | 128GB | 2000GB | 100 Gbps | 50个 | 专属客户经理 |
 | **定制版** (Custom) | 协商定价 | 自定义 | 自定义 | 自定义 | 自定义 | 自定义 | VIP支持 |
 
-#### 10.1.2 套餐属性
+#### 11.1.2 套餐属性
 
 **基本属性**:
 - `plan_id`: 套餐唯一标识
@@ -2320,7 +2584,7 @@ ORDER BY iv.created_at DESC;
 }
 ```
 
-#### 10.1.3 套餐管理操作
+#### 11.1.3 套餐管理操作
 
 **订阅套餐**:
 ```
@@ -2351,11 +2615,11 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-### 10.2 使用计量 (Usage Metering)
+### 11.2 使用计量 (Usage Metering)
 
 **功能**: 实时跟踪和记录用户的资源使用情况，作为计费依据
 
-#### 10.2.1 计量维度
+#### 11.2.1 计量维度
 
 **计算资源计量**:
 - **CPU使用**: 核心数 × 使用时长
@@ -2375,7 +2639,7 @@ ORDER BY iv.created_at DESC;
 - **IP地址**: IP数 × 占用时长
 - 计量单位: Gbps·小时、GB、IP·天
 
-#### 10.2.2 计量采集策略
+#### 11.2.2 计量采集策略
 
 **采集频率**:
 - **实时采集**: 每分钟采集一次资源使用数据
@@ -2419,7 +2683,7 @@ ORDER BY iv.created_at DESC;
 }
 ```
 
-#### 10.2.3 计量数据存储
+#### 11.2.3 计量数据存储
 
 **数据表设计**:
 - `usage_records`: 原始计量记录（分钟级）
@@ -2435,9 +2699,9 @@ ORDER BY iv.created_at DESC;
 
 ---
 
-### 10.3 计费模式 (Billing Models)
+### 11.3 计费模式 (Billing Models)
 
-#### 10.3.1 包年包月 (Subscription-based)
+#### 11.3.1 包年包月 (Subscription-based)
 
 **特点**:
 - 固定月费/年费
@@ -2470,7 +2734,7 @@ ORDER BY iv.created_at DESC;
 月度总费用 = ¥999 + ¥720 + ¥432 + ¥100 = ¥2,251
 ```
 
-#### 10.3.2 按需付费 (Pay-as-you-go)
+#### 11.3.2 按需付费 (Pay-as-you-go)
 
 **特点**:
 - 无固定月费
@@ -2499,7 +2763,7 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 | 出站流量 | ¥0.5/GB | GB |
 | IP地址 | ¥15/个·月 | IP·月 |
 
-#### 10.3.3 预付费资源包 (Prepaid Resource Package)
+#### 11.3.3 预付费资源包 (Prepaid Resource Package)
 
 **特点**:
 - 预付费购买资源包
@@ -2515,9 +2779,9 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 
 ---
 
-### 10.4 账单生成 (Invoice Generation)
+### 11.4 账单生成 (Invoice Generation)
 
-#### 10.4.1 账单周期
+#### 11.4.1 账单周期
 
 **月度账单**:
 - 每月1日生成上月账单
@@ -2529,7 +2793,7 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 - 每小时更新一次
 - 包含已确定费用和预估费用
 
-#### 10.4.2 账单明细
+#### 11.4.2 账单明细
 
 **账单结构**:
 ```json
@@ -2580,7 +2844,7 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 }
 ```
 
-#### 10.4.3 费用明细导出
+#### 11.4.3 费用明细导出
 
 **支持格式**:
 - PDF账单
@@ -2596,9 +2860,9 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 
 ---
 
-### 10.5 支付与结算 (Payment and Settlement)
+### 11.5 支付与结算 (Payment and Settlement)
 
-#### 10.5.1 支付方式
+#### 11.5.1 支付方式
 
 **在线支付**:
 - 支付宝
@@ -2616,7 +2880,7 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 - 先使用后付款
 - 月结账单
 
-#### 10.5.2 自动续费
+#### 11.5.2 自动续费
 
 **配置选项**:
 - 开启/关闭自动续费
@@ -2641,7 +2905,7 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
          到期暂停服务 (Suspend on Expiry)
 ```
 
-#### 10.5.3 欠费处理
+#### 11.5.3 欠费处理
 
 **欠费阶段**:
 1. **提醒期** (账单到期后1-7天)
@@ -2665,9 +2929,9 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 
 ---
 
-### 10.6 成本优化建议 (Cost Optimization)
+### 11.6 成本优化建议 (Cost Optimization)
 
-#### 10.6.1 成本分析
+#### 11.6.1 成本分析
 
 **成本洞察**:
 - 按资源类型分析成本占比
@@ -2681,7 +2945,7 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 - 推荐使用预付费资源包
 - 提示升级/降级套餐
 
-#### 10.6.2 预算管理
+#### 11.6.2 预算管理
 
 **预算设置**:
 - 设置月度预算
@@ -2696,9 +2960,9 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 
 ---
 
-### 10.7 计费集成 (Billing Integration)
+### 11.7 计费集成 (Billing Integration)
 
-#### 10.7.1 与配额系统集成
+#### 11.7.1 与配额系统集成
 
 **订阅套餐 → 配额限制**:
 ```
@@ -2713,14 +2977,14 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
   - max_ip_addresses = 10
 ```
 
-#### 10.7.2 与监控系统集成
+#### 11.7.2 与监控系统集成
 
 **使用计量 ← 监控指标**:
 - 实时从监控系统获取资源使用数据
 - 聚合计算计量数据
 - 生成计费记录
 
-#### 10.7.3 与实例管理集成
+#### 11.7.3 与实例管理集成
 
 **实例生命周期 → 计费事件**:
 - 实例创建: 开始计费
@@ -2730,9 +2994,9 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 
 ---
 
-## 11. 系统状态跟踪 (System State Tracking)
+## 12. 系统状态跟踪 (System State Tracking)
 
-### 11.1 操作日志 (Operation Logs)
+### 12.1 操作日志 (Operation Logs)
 
 记录所有重要操作:
 - 资源创建/修改/删除
@@ -2742,7 +3006,7 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 - IP分配和回收记录
 - 订阅和计费相关操作
 
-### 11.2 实例事件 (Instance Events)
+### 12.2 实例事件 (Instance Events)
 
 记录实例相关事件:
 - 状态转换
@@ -2752,7 +3016,7 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 - 网络配置变更
 - 计费事件（开始/停止计费）
 
-### 11.3 监控指标 (Metrics)
+### 12.3 监控指标 (Metrics)
 
 实时收集:
 - CPU使用率
@@ -2777,23 +3041,23 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 
 ---
 
-## 12. 数据一致性和可靠性 (Consistency & Reliability)
+## 13. 数据一致性和可靠性 (Consistency & Reliability)
 
-### 12.1 软删除 (Soft Deletes)
+### 13.1 软删除 (Soft Deletes)
 - 标记为deleted而非物理删除
 - 保留历史数据用于审计
 - 支持数据恢复
 - IP地址回收但保留分配历史
 - 计费记录永久保留
 
-### 12.2 审计跟踪 (Audit Trail)
+### 13.2 审计跟踪 (Audit Trail)
 - 每个主要实体记录created_by, updated_by
 - 完整的操作历史
 - 合规性要求支持
 - IP分配和回收的完整审计日志
 - 计费和支付操作审计
 
-### 12.3 状态机 (State Machines)
+### 13.3 状态机 (State Machines)
 - 严格的状态转换规则
 - 防止无效操作
 - 应用层强制执行
@@ -3096,10 +3360,32 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 
 ---
 
-**文档版本**: 1.5
-**最后更新**: 2025-10-31
+**文档版本**: 1.7
+**最后更新**: 2025-11-01
 
 **更新历史**:
+
+**v1.7 (2025-11-01)** - 文档结构修复:
+
+**重要修复**:
+- ✅ 修复章节编号重复问题：将"网络与IP地址管理"重新编号为第7章
+- ✅ 修复章节编号重复问题：将"计费与订阅管理"重新编号为第11章
+- ✅ 修复共享资源管理章节子章节编号错误：将所有5.x编号修正为6.x
+- ✅ 重新编号后续章节：系统架构关系→第8章，关键概念→第9章，系统状态跟踪→第12章，数据一致性→第13章
+- ✅ 更新所有内部引用链接，确保链接正确
+- ✅ 更新文档版本历史中的章节引用，保持一致性
+
+**v1.6 (2025-11-01)** - 模板管理和实例创建流程完善:
+
+**重要更新**:
+- ✅ 新增模板管理模块：完整的Template和TemplateVersion模型定义
+- ✅ 完善实例与模板的关系：支持从模板创建实例，实例记录template_id
+- ✅ 更新实例创建流程：分为直接创建和从模板创建两种方式
+- ✅ 完善模板属性定义：增加tenant_id、owner_id、visibility等字段说明
+- ✅ 完善模板版本管理：详细说明版本控制机制和操作流程
+- ✅ 完善模板访问权限：说明可见性控制和权限验证规则
+- ✅ 完善配置合并规则：说明模板默认值与用户覆盖参数的合并逻辑
+- ✅ 完善实例属性：使用config字段存储配置，支持template_id关联
 
 **v1.5 (2025-10-31)** - 数据盘共享策略明确化和文档一致性修复:
 
@@ -3109,10 +3395,10 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 - ✅ 完善实例组和单个实例挂载私有数据盘说明
 
 **文档一致性修复**:
-- ✅ 修复实例属性缺少镜像相关字段：补充 `image_id`、`image_version_id`、`image_tag_used` 字段（与5.4.5节保持一致）
+- ✅ 修复实例属性缺少镜像相关字段：补充 `image_id`、`image_version_id`、`image_tag_used` 字段（与6.4.5节保持一致）
 - ✅ 修复算力机属性缺少存储跟踪字段：补充 `allocated_storage_gb` 字段（与3.0.1节保持一致）
 - ✅ 修复实例组配额缺少带宽配额：补充 `max_bandwidth_gbps` 字段（与用户配额保持一致）
-- ✅ 修复IP地址池缺少资源池标识：补充 `pool_id` 字段（与5.1.3节资源池定义保持一致）
+- ✅ 修复IP地址池缺少资源池标识：补充 `pool_id` 字段（与6.1.3节资源池定义保持一致）
 
 **v1.4 (2025-10-31)** - 严重问题修复与功能完善:
 
@@ -3122,13 +3408,13 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 - ✅ 明确资源池与算力机关系：定义资源池属性、调度策略、`compute_pool_machines` 和 `storage_pool_servers` 关系表
 
 **重要问题修复**:
-- ✅ 补充配额计算逻辑（9.3节）：详细定义配额占用规则、三种配额计算模式（独立/共享/混合）、完整验证流程
-- ✅ 添加网络管理模块（6.4-6.7节）：新增VPC、子网、安全组完整定义及关系表，完善网络隔离机制
+- ✅ 补充配额计算逻辑（10.4节）：详细定义配额占用规则、三种配额计算模式（独立/共享/混合）、完整验证流程
+- ✅ 添加网络管理模块（7.4-7.7节）：新增VPC、子网、安全组完整定义及关系表，完善网络隔离机制
 - ✅ 明确存储架构（3.0节）：区分系统盘（算力机本地）和私有数据盘（独立存储池），包含架构对比表和配额计算
-- ✅ 完善模板与镜像关系（5.2节）：明确多对一关系、参数化机制、模板版本管理系统
+- ✅ 完善模板与镜像关系（6.2节）：明确多对一关系、参数化机制、模板版本管理系统
 
 **功能完善**:
-- ✅ 镜像版本管理系统（5.4.1-5.4.5节）：
+- ✅ 镜像版本管理系统（6.4.1-6.4.5节）：
   - 语义化版本号管理（`image_versions` 表）
   - 标签系统（`image_tags` 表）：latest/stable/dev/lts 等系统标签和自定义标签
   - 版本操作流程：发布、回滚、废弃、归档
@@ -3136,7 +3422,7 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
   - 实例与镜像版本的锁定机制
 
 **v1.3 (2025-10-31)**:
-- 新增完整的"计费与订阅管理"章节（第10章）
+- 新增完整的"计费与订阅管理"章节（第11章）
 - 订阅计划管理：基本版、专业版、企业版、定制版套餐
 - 使用计量系统：计算、存储、网络资源的实时计量
 - 三种计费模式：包年包月、按需付费、预付费资源包
@@ -3145,7 +3431,7 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 - 成本优化：成本分析、预算管理、优化建议
 - 计费集成：与配额系统、监控系统、实例管理的集成
 - 更新系统体系树，包含计费管理分支
-- 重新编号后续章节（系统状态跟踪→第11章，数据一致性→第12章）
+- 重新编号后续章节（系统状态跟踪→第12章，数据一致性→第13章）
 
 **v1.2 (2025-10-31)**:
 - 新增网络带宽配额管理 (`max_bandwidth_gbps`)
