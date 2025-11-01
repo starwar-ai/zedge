@@ -92,6 +92,7 @@ model User {
   createdPrivateDataDisks PrivateDataDisk[] @relation("PrivateDataDiskCreator")
   updatedPrivateDataDisks PrivateDataDisk[] @relation("PrivateDataDiskUpdater")
   diskAttachments InstancePrivateDataDiskAttachment[] @relation("DiskAttachmentAttacher")
+  allocatedIpAddresses IpAddress[] @relation("IpAddressAllocator")
 
   @@map("users")
   @@index([tenantId])
@@ -245,6 +246,7 @@ model Instance {
   instanceSetMembers InstanceSetMember[]
   temporaryCloudBoxes CloudBox[] @relation("CloudBoxTemporaryInstance")
   privateDataDiskAttachments InstancePrivateDataDiskAttachment[]
+  ipAddresses IpAddress[]
 
   @@map("instances")
   @@index([tenantId])
@@ -431,6 +433,7 @@ model Subnet {
   vlanId          Int?     @map("vlan_id")
   isPublic        Boolean  @default(false) @map("is_public")
   autoAssignIp    Boolean  @default(true) @map("auto_assign_ip")
+  ipPoolId        String?  @unique @map("ip_pool_id") @db.Uuid
   status          SubnetStatus @default(ACTIVE)
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
@@ -440,6 +443,8 @@ model Subnet {
   // Relations
   vpc             Vpc      @relation(fields: [vpcId], references: [id], onDelete: Cascade)
   place           Place?
+  ipPool          ResourcePool? @relation
+  ipAddresses     IpAddress[]
   creator         User?    @relation("SubnetCreator", fields: [createdBy], references: [id])
   updater         User?    @relation("SubnetUpdater", fields: [updatedBy], references: [id])
 
@@ -447,11 +452,54 @@ model Subnet {
   @@map("subnets")
   @@index([vpcId])
   @@index([status])
+  @@index([ipPoolId])
 }
 
 enum SubnetStatus {
   ACTIVE      @map("active")
   DISABLED    @map("disabled")
+}
+
+// ============================================================================
+// IP地址管理 (IP Address Management)
+// ============================================================================
+
+model IpAddress {
+  id              String          @id @default(uuid()) @map("ip_address_id") @db.Uuid
+  ipAddress       String          @unique @map("ip_address") @db.VarChar(50)
+  ipPoolId        String          @map("ip_pool_id") @db.Uuid
+  subnetId        String          @map("subnet_id") @db.Uuid
+  status          IpAddressStatus @default(AVAILABLE)
+  instanceId      String?         @map("instance_id") @db.Uuid
+  macAddress      String?         @map("mac_address") @db.VarChar(50)
+  allocatedAt     DateTime?       @map("allocated_at")
+  allocatedBy     String?         @map("allocated_by") @db.Uuid
+  leaseExpiresAt  DateTime?       @map("lease_expires_at")
+  isRangeStart    Boolean         @default(false) @map("is_range_start")
+  rangeSize       Int             @default(1) @map("range_size")
+  tags            Json?           @db.JsonB
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  ipPool          ResourcePool    @relation(fields: [ipPoolId], references: [id], onDelete: Cascade)
+  subnet          Subnet          @relation(fields: [subnetId], references: [id], onDelete: Cascade)
+  instance        Instance?       @relation(fields: [instanceId], references: [id], onDelete: SetNull)
+  allocator       User?           @relation("IpAddressAllocator", fields: [allocatedBy], references: [id])
+
+  @@map("ip_addresses")
+  @@index([ipPoolId, status])
+  @@index([subnetId, status])
+  @@index([instanceId])
+  @@index([status])
+  @@index([ipAddress])
+}
+
+enum IpAddressStatus {
+  AVAILABLE   @map("available")
+  ALLOCATED   @map("allocated")
+  RESERVED    @map("reserved")
+  FROZEN      @map("frozen")
 }
 
 // ============================================================================
@@ -763,19 +811,25 @@ model ResourcePool {
   allocatedMemoryGb   Int      @default(0) @map("allocated_memory_gb")
   allocatedStorageGb  Int      @default(0) @map("allocated_storage_gb")
   allocatedGpuCount   Int      @default(0) @map("allocated_gpu_count")
+  // IP地址池扩展字段
+  subnetId            String?  @unique @map("subnet_id") @db.Uuid
+  ipPoolConfig        Json?    @map("ip_pool_config") @db.JsonB
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
   
   // Relations
   edgeDataCenter      EdgeDataCenter @relation(fields: [edgeDataCenterId], references: [id], onDelete: Cascade)
+  subnet              Subnet?  @relation(fields: [subnetId], references: [id], onDelete: SetNull)
   computeMachines     ComputeMachine[]
   instances           Instance[]
+  ipAddresses         IpAddress[]
   
   @@unique([edgeDataCenterId, name])
   @@map("resource_pools")
   @@index([edgeDataCenterId])
   @@index([status])
   @@index([poolType])
+  @@index([subnetId])
 }
 
 enum ResourcePoolType {
