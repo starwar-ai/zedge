@@ -1,238 +1,634 @@
-# Zedge RBAC 后端系统
+# Zedge Backend
 
-基于 Node.js + TypeScript + Prisma + PostgreSQL 的 RBAC 权限管理系统。
+Cloud Desktop Management Platform with comprehensive RBAC (Role-Based Access Control) and multi-tenancy support.
 
-## 技术栈
+## Table of Contents
 
-- **运行时**: Node.js 18+ LTS
-- **语言**: TypeScript 5+
-- **框架**: Express.js
-- **ORM**: Prisma 5+
-- **数据库**: PostgreSQL 14+
-- **认证**: JWT (jsonwebtoken)
-- **密码加密**: bcrypt
+- [Overview](#overview)
+- [Technology Stack](#technology-stack)
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
+- [Key Features](#key-features)
+- [API Documentation](#api-documentation)
+- [Database Schema](#database-schema)
+- [Authentication & Authorization](#authentication--authorization)
+- [Development](#development)
+- [Deployment](#deployment)
+- [Scripts](#scripts)
+- [Environment Variables](#environment-variables)
 
-## 项目结构
+## Overview
+
+Zedge Backend is a comprehensive cloud desktop management platform built with TypeScript, Express.js, and Prisma ORM. It provides a robust API for managing cloud desktop instances, virtual private clouds, storage, networking, and user access control in a multi-tenant environment.
+
+**Key Statistics:**
+- **17,384+ lines** of TypeScript code
+- **60+ source files** organized by domain
+- **40+ database models** with comprehensive relationships
+- **20+ domain services** for business logic
+- **80+ API endpoints** across 13 route modules
+
+## Technology Stack
+
+### Core Technologies
+- **Runtime:** Node.js 18+ LTS
+- **Language:** TypeScript 5.3.3
+- **Web Framework:** Express.js 4.18.2
+- **Database:** PostgreSQL 14+
+- **ORM:** Prisma 6.18.0
+
+### Security & Authentication
+- **JWT:** jsonwebtoken 9.0.2
+- **Password Hashing:** bcrypt 5.1.1
+- **HTTP Security:** helmet 7.1.0
+- **CORS:** cors 2.8.5
+
+### Development Tools
+- **Build:** TypeScript Compiler
+- **Dev Server:** ts-node-dev 2.0.0 (hot reload)
+- **Testing:** Jest 29.7.0 with ts-jest
+- **Code Quality:** ESLint 8.56.0, Prettier 3.1.1
+- **Logging:** winston 3.11.0
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js >= 18.0.0
+- npm >= 9.0.0
+- PostgreSQL >= 14
+- Git
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd zedge/backend
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+4. **Set up the database:**
+   ```bash
+   # Generate Prisma client
+   npm run prisma:generate
+
+   # Run database migrations
+   npm run prisma:migrate
+   ```
+
+5. **Initialize default data:**
+   ```bash
+   # Initialize RBAC permissions
+   npm run init-permissions
+
+   # Create admin user (optional)
+   npm run create-admin
+   ```
+
+6. **Start development server:**
+   ```bash
+   npm run dev
+   ```
+
+The server will start on `http://localhost:3000` (or the port specified in `.env`).
+
+## Project Structure
 
 ```
 backend/
 ├── prisma/
-│   └── schema.prisma          # Prisma 数据库模型定义
+│   └── schema.prisma              # Database schema (1,093 lines)
 ├── src/
-│   ├── middleware/            # Express 中间件
-│   │   ├── auth.middleware.ts       # JWT 认证中间件
-│   │   └── permission.middleware.ts # 权限验证中间件
-│   ├── services/              # 业务逻辑层
-│   │   ├── auth/              # 认证服务
-│   │   ├── tenant/            # 租户管理
-│   │   │   ├── tenant.service.ts
-│   │   │   └── tenant.controller.ts
-│   │   ├── user/              # 用户管理
-│   │   │   ├── user.service.ts
-│   │   │   └── user.controller.ts
-│   │   └── permission/        # 权限服务
-│   │       └── permission.service.ts
-│   ├── routes/                # API 路由
+│   ├── index.ts                   # Express app entry point
+│   ├── middleware/
+│   │   ├── auth.middleware.ts     # JWT authentication
+│   │   └── permission.middleware.ts # RBAC enforcement
+│   ├── routes/                    # API route handlers (13 modules)
 │   │   ├── auth.routes.ts
 │   │   ├── tenant.routes.ts
-│   │   └── user.routes.ts
-│   ├── types/                 # TypeScript 类型定义
-│   │   └── express.d.ts
-│   └── utils/                 # 工具函数
-│       └── prisma.client.ts
-└── scripts/                   # 脚本文件
-    └── init-permissions.ts    # 初始化权限数据
+│   │   ├── user.routes.ts
+│   │   ├── instance.routes.ts
+│   │   ├── instance-set.routes.ts
+│   │   ├── vpc.routes.ts
+│   │   ├── subnet.routes.ts
+│   │   ├── place.routes.ts
+│   │   ├── image.routes.ts
+│   │   ├── template.routes.ts
+│   │   ├── cloud-box.routes.ts
+│   │   └── private-data-disk.routes.ts
+│   ├── services/                  # Business logic (20 domains)
+│   │   ├── auth/
+│   │   ├── user/
+│   │   ├── tenant/
+│   │   ├── permission/
+│   │   ├── instance/
+│   │   ├── instance-set/
+│   │   ├── vpc/
+│   │   ├── subnet/
+│   │   ├── place/
+│   │   ├── image/
+│   │   ├── template/
+│   │   ├── cloud-box/
+│   │   ├── private-data-disk/
+│   │   ├── compute-machine/
+│   │   ├── virtual-machine/
+│   │   ├── resource-pool/
+│   │   ├── ip-address/
+│   │   ├── ip-address-pool/
+│   │   └── hypervisor/            # Multi-hypervisor abstraction
+│   ├── types/
+│   │   └── express.d.ts           # Express type extensions
+│   └── utils/
+│       └── prisma.client.ts       # Prisma singleton
+├── scripts/
+│   ├── init-permissions.ts        # Initialize default permissions
+│   └── create-admin.ts            # Create default admin user
+├── package.json
+├── tsconfig.json
+└── .env.example
 ```
 
-## 快速开始
+## Key Features
 
-### 1. 安装依赖
+### 1. Cloud Desktop Management
+- Complete instance lifecycle management (create, start, stop, delete)
+- Resource allocation and tracking (CPU, memory, storage, GPU)
+- Instance templates for quick provisioning
+- Batch instance creation and management
+- Instance sets for organizing related instances
+- Support for multiple rental modes (EXCLUSIVE, SHARED)
 
-```bash
-npm install
+### 2. Multi-Tenancy Support
+- Complete tenant isolation at database level
+- Tenant quota management and tracking
+- Tenant-scoped resource access control
+- Hierarchical user groups per tenant
+- Flexible tenant status management
+
+### 3. Storage Management
+- Private data disks with versioning
+- Disk attachment/detachment to instances
+- Mount mode control (read-write/read-only)
+- Share modes (EXCLUSIVE/SHARED)
+- RBD backend support
+- Image management with versioning
+- Image tagging system
+- Resource requirement validation
+
+### 4. Networking
+- VPC (Virtual Private Cloud) for network isolation
+- Subnet management with CIDR blocks
+- IP address pooling and allocation
+- VLAN support
+- Multi-zone availability
+- Gateway configuration
+- Place-based network organization
+
+### 5. Role-Based Access Control (RBAC)
+- Four user roles: ADMIN, TENANT_ADMIN, OPERATOR, USER
+- Fine-grained permissions (resource + action based)
+- Permission middleware for route protection
+- Resource ownership validation
+- Tenant-scoped access control
+
+### 6. Infrastructure Flexibility
+- Multi-hypervisor support (KVM, VMware, Hyper-V)
+- Edge data center management
+- Resource pool abstraction
+- Compute machine tracking
+- Virtual machine lifecycle management
+- Cloud box (thin client) device management
+
+### 7. Security Features
+- JWT-based authentication (access + refresh tokens)
+- Bcrypt password hashing
+- HTTP security headers (Helmet)
+- CORS protection
+- Input validation
+- Comprehensive audit logging
+- User status management (active/inactive/suspended)
+
+## API Documentation
+
+### Base URL
+```
+/api/v1
 ```
 
-需要安装的主要依赖：
+### Authentication Endpoints
 
-```bash
-npm install express cors helmet
-npm install prisma @prisma/client
-npm install jsonwebtoken bcrypt
-npm install dotenv
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/auth/login` | User login | No |
+| POST | `/auth/refresh` | Refresh access token | No |
+| POST | `/auth/logout` | User logout | Yes |
 
-# 开发依赖
-npm install -D typescript ts-node ts-node-dev
-npm install -D @types/node @types/express @types/jsonwebtoken @types/bcrypt
-```
+### Tenant Management
 
-### 2. 配置环境变量
+| Method | Endpoint | Description | Required Role |
+|--------|----------|-------------|---------------|
+| POST | `/tenants` | Create tenant | ADMIN |
+| GET | `/tenants` | List tenants | Any |
+| GET | `/tenants/:tenant_id` | Get tenant details | Any |
+| PATCH | `/tenants/:tenant_id` | Update tenant | ADMIN |
+| DELETE | `/tenants/:tenant_id` | Delete tenant | ADMIN |
+| PATCH | `/tenants/:tenant_id/status` | Update tenant status | ADMIN |
+| GET | `/tenants/:tenant_id/quota` | Get quota usage | TENANT_ADMIN |
 
-创建 `.env` 文件：
+### User Management
 
-```env
-# 数据库配置
-DATABASE_URL="postgresql://user:password@localhost:5432/zedge"
+| Method | Endpoint | Description | Required Role |
+|--------|----------|-------------|---------------|
+| GET | `/users/me` | Get current user info | Any |
+| GET | `/users/me/instance-sets` | Get user's instance sets | Any |
+| POST | `/users` | Create user | TENANT_ADMIN |
+| GET | `/users` | List users | TENANT_ADMIN |
+| GET | `/users/:user_id` | Get user details | TENANT_ADMIN |
+| PATCH | `/users/:user_id` | Update user | TENANT_ADMIN |
+| DELETE | `/users/:user_id` | Delete user | TENANT_ADMIN |
+| POST | `/users/:user_id/change-password` | Change password | User/ADMIN |
+| POST | `/users/:user_id/reset-password` | Reset password | TENANT_ADMIN |
 
-# JWT 配置
-JWT_SECRET="your-super-secret-key-change-in-production"
-JWT_EXPIRES_IN="24h"
-JWT_REFRESH_SECRET="your-refresh-secret-key"
-JWT_REFRESH_EXPIRES_IN="7d"
+### Instance Management
 
-# 应用配置
-NODE_ENV="development"
-PORT="3000"
-```
+| Method | Endpoint | Description | Permission |
+|--------|----------|-------------|------------|
+| POST | `/instances` | Create instance | CREATE_INSTANCE |
+| POST | `/instances/from-template/:template_id` | Create from template | CREATE_INSTANCE |
+| GET | `/instances` | List instances | READ_INSTANCE |
+| GET | `/instances/:instance_id` | Get instance details | READ_INSTANCE |
+| PATCH | `/instances/:instance_id` | Update instance | UPDATE_INSTANCE |
+| DELETE | `/instances/:instance_id` | Delete instance | DELETE_INSTANCE |
+| POST | `/instances/:instance_id/start` | Start instance | EXECUTE_INSTANCE |
+| POST | `/instances/:instance_id/stop` | Stop instance | EXECUTE_INSTANCE |
+| GET | `/instances/:instance_id/private-data-disks` | List attached disks | READ_INSTANCE |
+| POST | `/instances/:instance_id/private-data-disks/:disk_id/attach` | Attach disk | UPDATE_INSTANCE |
+| POST | `/instances/:instance_id/private-data-disks/:disk_id/detach` | Detach disk | UPDATE_INSTANCE |
 
-### 3. 初始化数据库
+### Instance Set Management
 
-```bash
-# 生成 Prisma Client
-npx prisma generate
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/instance-sets` | Create instance set |
+| GET | `/instance-sets` | List instance sets |
+| GET | `/instance-sets/:id` | Get instance set details |
+| PATCH | `/instance-sets/:id` | Update instance set |
+| DELETE | `/instance-sets/:id` | Delete instance set |
+| POST | `/instance-sets/:id/members` | Add instance to set |
+| DELETE | `/instance-sets/:id/members/:instance_id` | Remove instance from set |
+| POST | `/instance-sets/:id/batch-create-instances` | Batch create instances |
 
-# 创建数据库并运行迁移
-npx prisma migrate dev --name init_rbac
+### VPC & Networking
 
-# 初始化权限数据
-npx ts-node scripts/init-permissions.ts
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/vpcs` | Create VPC |
+| GET | `/vpcs` | List VPCs |
+| GET | `/vpcs/:vpc_id` | Get VPC details |
+| PATCH | `/vpcs/:vpc_id` | Update VPC |
+| DELETE | `/vpcs/:vpc_id` | Delete VPC |
+| PATCH | `/vpcs/:vpc_id/status` | Update VPC status |
+| POST | `/subnets` | Create subnet |
+| GET | `/subnets` | List subnets |
+| GET | `/subnets/:subnet_id` | Get subnet details |
+| PATCH | `/subnets/:subnet_id` | Update subnet |
+| DELETE | `/subnets/:subnet_id` | Delete subnet |
+| POST | `/places` | Create place |
+| GET | `/places` | List places |
+| GET | `/places/:place_id` | Get place details |
+| PATCH | `/places/:place_id` | Update place |
+| DELETE | `/places/:place_id` | Delete place |
 
-### 4. 创建初始管理员
+### Storage & Images
 
-```bash
-npx ts-node scripts/create-admin.ts
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/private-data-disks` | Create private data disk |
+| GET | `/private-data-disks` | List private data disks |
+| GET | `/private-data-disks/:disk_id` | Get disk details |
+| PATCH | `/private-data-disks/:disk_id` | Update disk |
+| DELETE | `/private-data-disks/:disk_id` | Delete disk |
+| POST | `/images` | Create image |
+| GET | `/images` | List images |
+| GET | `/images/:image_id` | Get image details |
+| PATCH | `/images/:image_id` | Update image |
+| DELETE | `/images/:image_id` | Delete image |
+| POST | `/images/:image_id/versions` | Create image version |
+| GET | `/images/:image_id/versions` | List image versions |
+| POST | `/images/:image_id/tags` | Create image tag |
+| GET | `/images/:image_id/tags` | List image tags |
 
-### 5. 启动开发服务器
+### Templates
 
-```bash
-npm run dev
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/templates` | Create template |
+| GET | `/templates` | List templates |
+| GET | `/templates/:template_id` | Get template details |
+| PATCH | `/templates/:template_id` | Update template |
+| DELETE | `/templates/:template_id` | Delete template |
 
-服务器将在 `http://localhost:3000` 启动。
+### Cloud Boxes
 
-## API 端点
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/cloud-boxes/instances` | Get user instances | Yes |
+| POST | `/cloud-boxes` | Create cloud box | Yes |
+| GET | `/cloud-boxes/:box_id` | Get cloud box details | Yes |
+| POST | `/cloud-boxes/:box_id/bind-instance` | Bind instance | Yes |
+| DELETE | `/cloud-boxes/:box_id/unbind-instance` | Unbind instance | Yes |
+| GET | `/cloud-boxes/:box_id/startup-check` | Startup check | No |
 
-### 认证 API
+## Database Schema
 
-```
-POST   /api/v1/auth/login          # 用户登录
-POST   /api/v1/auth/refresh        # 刷新 Token
-POST   /api/v1/auth/logout         # 用户登出
-```
+### Core Models (40+ total)
 
-### 租户管理 API
+#### Authentication & Multi-Tenancy
+- **Tenant** - Organization unit with quota management
+- **User** - System users with role-based access
+- **UserGroup** - Hierarchical user organization
+- **UserGroupMember** - Group membership mapping
+- **Permission** - Fine-grained permission definitions
+- **RolePermission** - Role-to-permission mapping
 
-```
-POST   /api/v1/tenants             # 创建租户 (仅 admin)
-GET    /api/v1/tenants             # 获取租户列表
-GET    /api/v1/tenants/:id         # 获取租户详情
-PATCH  /api/v1/tenants/:id         # 更新租户 (仅 admin)
-DELETE /api/v1/tenants/:id         # 删除租户 (仅 admin)
-GET    /api/v1/tenants/:id/quota   # 获取租户配额
-```
+#### Compute & Instances
+- **Instance** - Cloud desktop instances
+- **Template** - Instance templates for provisioning
+- **TemplateVersion** - Template version control
+- **ComputeMachine** - Physical/virtual compute hosts
+- **VirtualMachine** - VM instances on hypervisors
+- **ResourcePool** - Resource allocation tracking
+- **InstanceSet** - Instance collections
+- **InstanceSetMember** - Instance set membership
 
-### 用户管理 API
+#### Storage
+- **PrivateDataDisk** - Persistent storage volumes
+- **InstancePrivateDataDiskAttachment** - Disk-instance mapping
+- **Image** - System/application images
+- **ImageVersion** - Image versioning
+- **ImageTag** - Image tagging system
 
-```
-GET    /api/v1/users/me                    # 获取当前用户信息
-POST   /api/v1/users                       # 创建用户 (admin/tenant_admin)
-GET    /api/v1/users                       # 获取用户列表
-GET    /api/v1/users/:id                   # 获取用户详情
-PATCH  /api/v1/users/:id                   # 更新用户
-DELETE /api/v1/users/:id                   # 删除用户
-POST   /api/v1/users/:id/change-password   # 修改密码
-POST   /api/v1/users/:id/reset-password    # 重置密码 (仅管理员)
-```
+#### Networking
+- **Vpc** - Virtual Private Cloud
+- **Subnet** - Network subnets
+- **Place** - Network locations/regions
+- **IpAddress** - IP address tracking
+- **IpAddressPool** - IP pool management
 
-## 数据库模型
+#### Infrastructure
+- **EdgeDataCenter** - Data center sites
+- **CloudBox** - Cloud desktop devices
 
-### 核心表
+#### Auditing
+- **AuditLog** - Operation audit trail
 
-- **tenants** - 租户表
-- **users** - 用户表
-- **user_groups** - 用户组表
-- **user_group_members** - 用户组成员关系表
-- **permissions** - 权限表
-- **role_permissions** - 角色权限关联表
-- **instances** - 实例表 (示例)
-- **private_data_disks** - 私有数据盘表 (示例)
-- **audit_logs** - 审计日志表
+For detailed schema documentation, see [prisma/schema.prisma](prisma/schema.prisma).
 
-详见 [prisma/schema.prisma](prisma/schema.prisma)
+## Authentication & Authorization
 
-## 角色权限矩阵
+### Authentication Flow
 
-| 资源类型 | admin | tenant_admin | operator | user |
-|---------|-------|--------------|----------|------|
-| 租户管理 | ✅ 全部 | ❌ 只读 | ❌ | ❌ |
-| 用户管理 | ✅ 全部 | ✅ 租户内 | ❌ | ❌ |
-| 实例管理 | ✅ 全部 | ✅ 租户内 | ✅ 自己的 | ✅ 自己的 |
-| 存储管理 | ✅ 全部 | ✅ 租户内 | ✅ 自己的 | ✅ 自己的 |
-| 镜像管理 | ✅ 全部 | ✅ 查看+创建 | ✅ 查看 | ✅ 查看 |
+1. **Login:**
+   ```http
+   POST /api/v1/auth/login
+   Content-Type: application/json
 
-## 开发指南
+   {
+     "username": "user@example.com",
+     "password": "password123"
+   }
+   ```
 
-### 添加新的 API 端点
+   Response:
+   ```json
+   {
+     "code": 200,
+     "message": "Login successful",
+     "data": {
+       "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+       "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+       "user": {
+         "id": "user_id",
+         "username": "user@example.com",
+         "role": "USER"
+       }
+     }
+   }
+   ```
 
-1. 在 `src/services/` 中创建 Service 和 Controller
-2. 在 `src/routes/` 中创建路由文件
-3. 应用认证和权限中间件
-4. 在主应用中注册路由
+2. **Authenticated Requests:**
+   ```http
+   GET /api/v1/instances
+   Authorization: Bearer <accessToken>
+   ```
 
-示例：
+3. **Refresh Token:**
+   ```http
+   POST /api/v1/auth/refresh
+   Content-Type: application/json
+
+   {
+     "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+   }
+   ```
+
+### User Roles
+
+| Role | Description | Scope |
+|------|-------------|-------|
+| **ADMIN** | System administrator | Full system access |
+| **TENANT_ADMIN** | Tenant administrator | Tenant-scoped management |
+| **OPERATOR** | Operations personnel | Limited operational access |
+| **USER** | Regular user | Own resources only |
+
+### Permission Model
+
+Permissions are defined by:
+- **Resource Type:** TENANT, USER, INSTANCE, STORAGE, NETWORK, IMAGE, etc.
+- **Action:** CREATE, READ, UPDATE, DELETE, MANAGE, EXECUTE
+
+Example permissions:
+- `instance:create` - Create instances
+- `instance:read` - View instances
+- `instance:execute` - Start/stop instances
+- `storage:manage` - Full storage management
+- `tenant:manage` - Tenant administration
+
+### Middleware Usage
 
 ```typescript
-// src/routes/resource.routes.ts
-import express from 'express';
-import { authenticateToken } from '../middleware/auth.middleware';
-import { requireRole } from '../middleware/permission.middleware';
-import { UserRole } from '@prisma/client';
+// Require authentication
+router.get('/instances', authenticateToken, listInstances);
 
-const router = express.Router();
+// Require specific role
+router.post('/tenants', authenticateToken, requireAdmin, createTenant);
 
-router.post(
-  '/',
-  authenticateToken,
-  requireRole(UserRole.ADMIN),
-  resourceController.create
-);
+// Require permission
+router.post('/instances', authenticateToken, requirePermission('instance', 'create'), createInstance);
 
-export default router;
+// Require tenant access
+router.get('/users', authenticateToken, requireTenantAccess, listUsers);
 ```
 
-### 运行测试
+## Development
+
+### Available Scripts
 
 ```bash
-npm test
+# Development
+npm run dev              # Start with hot reload
+npm run build           # Compile TypeScript
+npm start               # Run production build
+
+# Database
+npm run prisma:generate # Generate Prisma client
+npm run prisma:migrate  # Run migrations (dev)
+npm run prisma:deploy   # Deploy migrations (prod)
+npm run prisma:studio   # Open Prisma Studio UI
+
+# Setup
+npm run init-permissions # Initialize RBAC permissions
+npm run create-admin     # Create admin user
+
+# Testing & Quality
+npm test                # Run Jest tests
+npm run lint            # ESLint checks
+npm run format          # Prettier formatting
+npm run type-check      # TypeScript validation
 ```
 
-### 代码格式化
+### Development Workflow
+
+1. **Create a feature branch:**
+   ```bash
+   git checkout -b feature/my-feature
+   ```
+
+2. **Make changes and test:**
+   ```bash
+   npm run dev
+   # Test your changes
+   ```
+
+3. **Run quality checks:**
+   ```bash
+   npm run lint
+   npm run type-check
+   npm run format
+   npm test
+   ```
+
+4. **Database changes:**
+   ```bash
+   # Edit prisma/schema.prisma
+   npm run prisma:migrate
+   npm run prisma:generate
+   ```
+
+5. **Commit and push:**
+   ```bash
+   git add .
+   git commit -m "feat: add new feature"
+   git push origin feature/my-feature
+   ```
+
+### Code Style
+
+- **TypeScript:** Strict mode enabled
+- **Formatting:** Prettier with 2-space indentation
+- **Linting:** ESLint with TypeScript rules
+- **Naming:**
+  - Files: `kebab-case.ts`
+  - Classes: `PascalCase`
+  - Functions/variables: `camelCase`
+  - Constants: `UPPER_SNAKE_CASE`
+
+### Architecture Patterns
+
+1. **MVC-Like Pattern:**
+   - Routes (HTTP) → Controllers (request handling) → Services (business logic)
+
+2. **Middleware Chain:**
+   - Helmet → CORS → JSON Parser → Auth → Permissions → Route Handler
+
+3. **Multi-Tenancy:**
+   - Database-level isolation via `tenantId`
+   - Automatic tenant filtering in queries
+
+4. **RBAC:**
+   - Permission middleware validates access
+   - Resource ownership validation
+   - Tenant-scoped operations
+
+5. **Adapter Pattern:**
+   - Hypervisor abstraction (KVM, VMware, Hyper-V)
+   - Factory pattern for adapter creation
+
+## Deployment
+
+### Production Checklist
+
+- [ ] Set strong `JWT_SECRET` and `JWT_REFRESH_SECRET`
+- [ ] Configure production `DATABASE_URL`
+- [ ] Set `NODE_ENV=production`
+- [ ] Configure `CORS_ORIGINS` for your frontend
+- [ ] Set appropriate `LOG_LEVEL` (info/warn/error)
+- [ ] Increase `BCRYPT_ROUNDS` for better security (12-14)
+- [ ] Configure rate limiting appropriately
+- [ ] Set up database backups
+- [ ] Configure monitoring and logging
+- [ ] Use environment variables for all secrets
+- [ ] Enable HTTPS/TLS
+- [ ] Review security headers in Helmet configuration
+
+### Production Build
 
 ```bash
-npm run format
+# Install dependencies
+npm ci --production
+
+# Generate Prisma client
+npm run prisma:generate
+
+# Build TypeScript
+npm run build
+
+# Run migrations
+npm run prisma:deploy
+
+# Initialize permissions (first deploy only)
+npm run init-permissions
+
+# Start production server
+npm start
 ```
 
-### 类型检查
+### Docker Deployment
 
-```bash
-npm run type-check
-```
-
-## 部署
-
-### 使用 Docker
-
+Example `Dockerfile`:
 ```dockerfile
 FROM node:18-alpine
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --production
+
+COPY prisma ./prisma
+RUN npx prisma generate
 
 COPY . .
-RUN npx prisma generate
 RUN npm run build
 
 EXPOSE 3000
@@ -240,67 +636,173 @@ EXPOSE 3000
 CMD ["npm", "start"]
 ```
 
-### 环境变量检查清单
+### Environment Variables for Production
 
-- ✅ `DATABASE_URL` 设置为生产数据库
-- ✅ `JWT_SECRET` 使用强随机字符串
-- ✅ `NODE_ENV=production`
-- ✅ 启用 HTTPS
-- ✅ 配置 CORS 白名单
+See [Environment Variables](#environment-variables) section below.
 
-## 安全建议
+## Scripts
 
-1. **JWT Secret**: 使用长度至少 32 字符的随机字符串
-2. **密码策略**: 最小长度 8 位，包含大小写字母、数字、特殊字符
-3. **HTTPS**: 生产环境必须使用 HTTPS
-4. **Rate Limiting**: 实现登录接口的速率限制
-5. **审计日志**: 记录所有敏感操作
-6. **输入验证**: 使用 Joi 或 Zod 验证所有输入
-7. **SQL 注入**: Prisma ORM 自动防护
-8. **XSS 防护**: 使用 helmet 中间件
+### Initialize Permissions
 
-## 性能优化
-
-1. **数据库索引**: 已在 Schema 中定义关键索引
-2. **连接池**: 使用 Prisma 连接池管理
-3. **查询优化**: 使用 `select` 只返回需要的字段
-4. **分页**: 所有列表接口支持分页
-5. **缓存**: 可使用 Redis 缓存用户权限
-
-## 故障排查
-
-### 数据库连接失败
+Creates all default RBAC permissions in the database:
 
 ```bash
-# 检查 PostgreSQL 服务
-sudo systemctl status postgresql
-
-# 测试连接
-psql postgresql://user:password@localhost:5432/zedge
+npm run init-permissions
 ```
 
-### Prisma 迁移失败
+This script creates permissions for all resource types and actions based on the role hierarchy.
+
+### Create Admin User
+
+Creates a default administrator account:
 
 ```bash
-# 重置数据库（开发环境）
-npx prisma migrate reset
-
-# 应用迁移
-npx prisma migrate deploy
+npm run create-admin
 ```
 
-### JWT Token 错误
+You'll be prompted for:
+- Username
+- Email
+- Password
 
-- 检查 `JWT_SECRET` 环境变量
-- 确认前后端使用相同的 Secret
-- 验证 Token 格式: `Bearer <token>`
+The user will be created with the `ADMIN` role.
 
-## 相关文档
+## Environment Variables
 
-- [RBAC 使用指南](../docs/RBAC_GUIDE.md)
-- [API 文档](../docs/API.md)
-- [领域模型](../domain_model.md)
+### Required Variables
+
+```bash
+# Database
+DATABASE_URL="postgresql://user:password@host:5432/database"
+
+# JWT Authentication
+JWT_SECRET="your-super-secret-jwt-key-change-in-production"
+JWT_REFRESH_SECRET="your-super-secret-refresh-key-change-in-production"
+```
+
+### Optional Variables
+
+```bash
+# JWT Configuration
+JWT_EXPIRES_IN="24h"                    # Access token expiration
+JWT_REFRESH_EXPIRES_IN="7d"             # Refresh token expiration
+
+# Application
+NODE_ENV="development"                  # development | production | test
+PORT="3000"                             # Server port
+
+# CORS
+CORS_ORIGINS="http://localhost:5173,http://localhost:3000"
+
+# Logging
+LOG_LEVEL="debug"                       # debug | info | warn | error
+
+# Security
+BCRYPT_ROUNDS="10"                      # Password hashing rounds (10-14)
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS="900000"           # 15 minutes
+RATE_LIMIT_MAX_REQUESTS="100"           # Max requests per window
+```
+
+### Optional Services
+
+```bash
+# Redis (for caching and sessions)
+REDIS_URL="redis://localhost:6379"
+
+# Email (for notifications)
+SMTP_HOST="smtp.example.com"
+SMTP_PORT="587"
+SMTP_USER="noreply@zedge.local"
+SMTP_PASSWORD="your-smtp-password"
+SMTP_FROM="Zedge Platform <noreply@zedge.local>"
+```
+
+## Documentation
+
+Additional documentation is available in the `docs/` directory:
+
+- **[RBAC Guide](../docs/system_design/rbac/README.md)** - Comprehensive RBAC documentation
+- **[Instance Management](../docs/system_design/instance_management/)** - Instance lifecycle documentation
+- **[Database Models](DOCUMENTATION_INDEX.md)** - Detailed model documentation
+- **[Quick Reference](DOCUMENTATION_INDEX.md)** - Developer quick reference
+
+## Testing
+
+### Run Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run with coverage
+npm test -- --coverage
+
+# Run specific test file
+npm test -- instance.service.test.ts
+
+# Run in watch mode
+npm test -- --watch
+```
+
+### Test Structure
+
+```
+backend/
+├── __tests__/
+│   ├── unit/
+│   │   ├── services/
+│   │   └── middleware/
+│   ├── integration/
+│   │   └── api/
+│   └── e2e/
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Database connection fails:**
+- Check `DATABASE_URL` is correct
+- Ensure PostgreSQL is running
+- Verify network connectivity
+
+**JWT token invalid:**
+- Check `JWT_SECRET` matches between requests
+- Verify token hasn't expired
+- Ensure proper Bearer token format
+
+**Permission denied errors:**
+- Verify user has correct role
+- Check RBAC permissions are initialized
+- Confirm tenant access is correct
+
+**Prisma client errors:**
+- Run `npm run prisma:generate`
+- Ensure migrations are up to date
+- Check database schema matches Prisma schema
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linting
+5. Submit a pull request
 
 ## License
 
 MIT
+
+## Support
+
+For questions and support:
+- Check the [documentation](../docs/)
+- Open an issue on GitHub
+- Contact the Zedge team
+
+---
+
+**Version:** 1.0.0
+**Last Updated:** 2025-01-05
