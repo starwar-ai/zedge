@@ -123,8 +123,8 @@ Configuration
 7. **Instance** - Cloud desktop instance
 8. **Template** - Instance template
 9. **TemplateVersion** - Template version history
-10. **ComputeMachine** - Compute host (physical/virtual)
-11. **VirtualMachine** - VM running on compute machine
+10. **Host** - Compute host (physical/virtual)
+11. **VirtualMachine** - VM running on host
 12. **ResourcePool** - Resource allocation unit
 13. **InstanceSet** - Collection of instances
 14. **InstanceSetMember** - Instance-set membership link
@@ -261,7 +261,7 @@ CREATING → STARTING → RUNNING → (STOPPING → STOPPED)
 
 ### 4. Resource Allocation
 ```
-ComputeMachine (physical host)
+Host (physical host)
     ↓
 ResourcePool (logical grouping)
     ↓
@@ -367,7 +367,7 @@ npm run type-check      # TypeScript check
    
 2. Start Instance (POST /instances/:id/start)
    → Allocate resources from ResourcePool
-   → Select ComputeMachine
+   → Select Host
    → Create VirtualMachine
    → Instance state: RUNNING
    

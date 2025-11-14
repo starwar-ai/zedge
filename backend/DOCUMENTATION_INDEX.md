@@ -293,7 +293,7 @@ CREATE → CREATING → STARTING → RUNNING
 ```
 EdgeDataCenter
     ├─ ResourcePool
-    │   └─ ComputeMachine (with allocation tracking)
+    │   └─ Host (with allocation tracking)
     │       └─ VirtualMachine
     │           └─ Instance (user's cloud desktop)
     │               ├─ IpAddress

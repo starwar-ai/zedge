@@ -224,7 +224,7 @@ model Instance {
   // 资源分配相关字段（仅在运行时使用）
   rentalMode      RentalMode? @map("rental_mode")
   resourcePoolId  String?  @map("resource_pool_id") @db.Uuid
-  computeMachineId String? @map("compute_machine_id") @db.Uuid
+  hostId String? @map("host_id") @db.Uuid
   virtualMachineId String? @unique @map("virtual_machine_id") @db.Uuid
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
@@ -234,7 +234,7 @@ model Instance {
   user            User     @relation(fields: [userId], references: [id])
   template        Template? @relation(fields: [templateId], references: [id])
   resourcePool    ResourcePool? @relation(fields: [resourcePoolId], references: [id])
-  computeMachine  ComputeMachine? @relation(fields: [computeMachineId], references: [id])
+  host  Host? @relation(fields: [hostId], references: [id])
   virtualMachine  VirtualMachine? @relation("InstanceVirtualMachine")
   temporaryCloudBoxes CloudBox[] @relation("CloudBoxTemporaryInstance")
   privateDataDiskAttachments InstancePrivateDataDiskAttachment[]
@@ -246,7 +246,7 @@ model Instance {
   @@index([status])
   @@index([templateId])
   @@index([resourcePoolId])
-  @@index([computeMachineId])
+  @@index([hostId])
   @@index([rentalMode])
 }
 
@@ -698,7 +698,7 @@ model EdgeDataCenter {
   
   // Relations
   resourcePools       ResourcePool[]
-  computeMachines     ComputeMachine[]
+  hosts     Host[]
   cloudBoxes          CloudBox[]
   vpcs                Vpc[]
   
@@ -742,7 +742,7 @@ model ResourcePool {
   // Relations
   edgeDataCenter      EdgeDataCenter @relation(fields: [edgeDataCenterId], references: [id], onDelete: Cascade)
   subnet              Subnet?  @relation(fields: [subnetId], references: [id], onDelete: SetNull)
-  computeMachines     ComputeMachine[]
+  hosts     Host[]
   instances           Instance[]
   ipAddresses         IpAddress[]
   
@@ -767,16 +767,16 @@ enum ResourcePoolStatus {
 }
 
 // ============================================================================
-// 算力机管理 (Compute Machine Management)
+// 算力机管理 (Host Management)
 // ============================================================================
 
-model ComputeMachine {
-  id                  String   @id @default(uuid()) @map("machine_id") @db.Uuid
+model Host {
+  id                  String   @id @default(uuid()) @map("host_id") @db.Uuid
   hostname            String   @db.VarChar(255)
   name                String   @db.VarChar(255)
   edgeDataCenterId   String   @map("edge_data_center_id") @db.Uuid
   resourcePoolId      String   @map("resource_pool_id") @db.Uuid
-  machineType         ComputeMachineType @default(CPU_SERVER) @map("machine_type")
+  hostType         HostType @default(CPU_SERVER) @map("host_type")
   rentalMode          RentalMode @default(SHARED) @map("rental_mode")
   hypervisorType      HypervisorType @map("hypervisor_type")
   // 硬件规格
@@ -794,7 +794,7 @@ model ComputeMachine {
   allocatedStorageGb  Int      @default(0) @map("allocated_storage_gb")
   allocatedGpuCount   Int      @default(0) @map("allocated_gpu_count")
   // 状态
-  status              ComputeMachineStatus @default(OFFLINE)
+  status              HostStatus @default(OFFLINE)
   healthStatus        HealthStatus @default(HEALTHY) @map("health_status")
   // 连接信息
   connectionConfig    Json?    @map("connection_config") @db.JsonB
@@ -812,15 +812,15 @@ model ComputeMachine {
   
   @@unique([edgeDataCenterId, managementIp])
   @@unique([edgeDataCenterId, businessIp])
-  @@map("compute_machines")
+  @@map("hosts")
   @@index([edgeDataCenterId])
   @@index([resourcePoolId])
   @@index([status])
   @@index([rentalMode])
-  @@index([machineType])
+  @@index([hostType])
 }
 
-enum ComputeMachineType {
+enum HostType {
   CPU_SERVER  @map("cpu_server")
   PC_FARM     @map("pc_farm")
   GPU_SERVER  @map("gpu_server")
@@ -837,7 +837,7 @@ enum HypervisorType {
   HYPER_V     @map("hyper_v")
 }
 
-enum ComputeMachineStatus {
+enum HostStatus {
   ACTIVE          @map("active")
   MAINTENANCE     @map("maintenance")
   OFFLINE         @map("offline")
@@ -856,7 +856,7 @@ enum HealthStatus {
 
 model VirtualMachine {
   id                  String   @id @default(uuid()) @map("vm_id") @db.Uuid
-  computeMachineId    String   @map("compute_machine_id") @db.Uuid
+  hostId    String   @map("host_id") @db.Uuid
   instanceId          String   @unique @map("instance_id") @db.Uuid
   vmUuid              String?  @unique @map("vm_uuid") @db.VarChar(255)
   vmName              String   @map("vm_name") @db.VarChar(255)
@@ -876,11 +876,11 @@ model VirtualMachine {
   updatedAt           DateTime @updatedAt @map("updated_at")
   
   // Relations
-  computeMachine      ComputeMachine @relation(fields: [computeMachineId], references: [id], onDelete: Restrict)
+  host      Host @relation(fields: [hostId], references: [id], onDelete: Restrict)
   instance            Instance @relation("InstanceVirtualMachine", fields: [instanceId], references: [id], onDelete: Cascade)
   
   @@map("virtual_machines")
-  @@index([computeMachineId])
+  @@index([hostId])
   @@index([instanceId])
   @@index([status])
 }

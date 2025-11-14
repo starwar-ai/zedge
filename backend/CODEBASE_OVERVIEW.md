@@ -122,8 +122,8 @@ The application is organized into the following domains:
 | **Instance** | Cloud desktop instance | id, name, tenantId, userId, templateId, status, rentalMode, resourcePoolId |
 | **Template** | Instance template | id, name, templateType, defaultCpuCores, defaultMemoryGb, defaultStorageGb |
 | **TemplateVersion** | Template version control | id, templateId, versionNumber, configSnapshot |
-| **ComputeMachine** | Physical/virtual compute host | id, hostname, resourcePoolId, machineType, cpuCores, memoryGb, status |
-| **VirtualMachine** | Actual VM instance | id, computeMachineId, instanceId, vmUuid, cpuCores, memoryGb, status |
+| **Host** | Physical/virtual compute host | id, hostname, resourcePoolId, hostType, cpuCores, memoryGb, status |
+| **VirtualMachine** | Actual VM instance | id, hostId, instanceId, vmUuid, cpuCores, memoryGb, status |
 | **ResourcePool** | Resource allocation pool | id, edgeDataCenterId, poolType, totalCpuCores, allocatedCpuCores |
 | **InstanceSet** | Collection of instances | id, name, ownerId, tenantId, setType, status |
 | **InstanceSetMember** | Instance set membership | id, setId, instanceId, role |

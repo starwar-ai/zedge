@@ -104,7 +104,7 @@ export class ResourcePoolService {
       where: { id: poolId },
       include: {
         edgeDataCenter: true,
-        computeMachines: {
+        hosts: {
           select: {
             id: true,
             name: true,
@@ -163,7 +163,7 @@ export class ResourcePoolService {
           },
           _count: {
             select: {
-              computeMachines: true,
+              hosts: true,
               instances: true,
             },
           },
@@ -228,7 +228,7 @@ export class ResourcePoolService {
       include: {
         _count: {
           select: {
-            computeMachines: true,
+            hosts: true,
             instances: true,
           },
         },
@@ -240,8 +240,8 @@ export class ResourcePoolService {
     }
 
     // 检查是否有关联的算力机
-    if (existing._count.computeMachines > 0) {
-      throw new Error('Cannot delete resource pool with associated compute machines');
+    if (existing._count.hosts > 0) {
+      throw new Error('Cannot delete resource pool with associated hosts');
     }
 
     // 检查是否有关联的实例
@@ -260,7 +260,7 @@ export class ResourcePoolService {
    */
   static async updateResourcePoolStatistics(poolId: string): Promise<void> {
     // 聚合算力机资源
-    const aggregate = await prisma.computeMachine.aggregate({
+    const aggregate = await prisma.host.aggregate({
       where: {
         resourcePoolId: poolId,
         status: {

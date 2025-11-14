@@ -298,7 +298,7 @@ role_permissions               -- 角色权限关联表
 -- 边缘机房资源表
 edge_data_centers             -- 边缘机房表
 servers                        -- 服务器表
-compute_machines               -- 算力机表
+hosts                         -- 算力机表
 cloud_boxes                    -- 云盒表
 
 -- 实例相关表

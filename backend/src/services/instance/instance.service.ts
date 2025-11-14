@@ -7,7 +7,7 @@ import { prisma } from '../../utils/prisma.client';
 import { Instance, Prisma, RentalMode } from '@prisma/client';
 import { TemplateService, TemplateConfig } from '../template/template.service';
 import { VirtualMachineService } from '../virtual-machine/virtual-machine.service';
-import { ComputeMachineService } from '../compute-machine/compute-machine.service';
+import { HostService } from '../compute-machine/compute-machine.service';
 import { ResourcePoolService } from '../resource-pool/resource-pool.service';
 import { PrivateDataDiskService } from '../private-data-disk/private-data-disk.service';
 
@@ -486,7 +486,7 @@ export class InstanceService {
         // 资源分配字段在启动时才会设置
         rentalMode: null,
         resourcePoolId: null,
-        computeMachineId: null,
+        hostId: null,
         virtualMachineId: null,
       },
     });
@@ -960,7 +960,7 @@ export class InstanceService {
     const instance = await prisma.instance.findUnique({
       where: { id: instanceId },
       include: {
-        computeMachine: true,
+        host: true,
         virtualMachine: true,
       },
     });
@@ -1007,7 +1007,7 @@ export class InstanceService {
     try {
       if (finalRentalMode === RentalMode.EXCLUSIVE) {
         // 独占模式：分配整个算力机
-        await this.allocateExclusiveComputeMachine(instanceId, finalResourcePoolId, config);
+        await this.allocateExclusiveHost(instanceId, finalResourcePoolId, config);
       } else {
         // 共享模式：创建虚拟机
         await this.createSharedVirtualMachine(instanceId, finalResourcePoolId, config);
@@ -1055,7 +1055,7 @@ export class InstanceService {
     const instance = await prisma.instance.findUnique({
       where: { id: instanceId },
       include: {
-        computeMachine: true,
+        host: true,
         virtualMachine: true,
       },
     });
@@ -1081,9 +1081,9 @@ export class InstanceService {
     });
 
     try {
-      if (instance.rentalMode === RentalMode.EXCLUSIVE && instance.computeMachineId) {
+      if (instance.rentalMode === RentalMode.EXCLUSIVE && instance.hostId) {
         // 独占模式：释放算力机
-        await this.releaseExclusiveComputeMachine(instanceId, instance.computeMachineId);
+        await this.releaseExclusiveHost(instanceId, instance.hostId);
       } else if (instance.virtualMachineId) {
         // 共享模式：删除虚拟机
         await VirtualMachineService.deleteVirtualMachine(instance.virtualMachineId);
@@ -1115,13 +1115,13 @@ export class InstanceService {
   /**
    * 分配独占算力机
    */
-  private static async allocateExclusiveComputeMachine(
+  private static async allocateExclusiveHost(
     instanceId: string,
     resourcePoolId: string,
     config: any
   ): Promise<void> {
     // 查找可用的独占模式算力机
-    const computeMachine = await prisma.computeMachine.findFirst({
+    const host = await prisma.host.findFirst({
       where: {
         resourcePoolId,
         rentalMode: RentalMode.EXCLUSIVE,
@@ -1141,8 +1141,8 @@ export class InstanceService {
       },
     });
 
-    if (!computeMachine) {
-      throw new Error('No available exclusive compute machine found in the resource pool');
+    if (!host) {
+      throw new Error('No available exclusive host found in the resource pool');
     }
 
     // 检查资源是否足够
@@ -1150,33 +1150,33 @@ export class InstanceService {
     const requiredMemory = config.memoryGb || 0;
     const requiredStorage = config.storageGb || 0;
 
-    if (computeMachine.cpuCores < requiredCpu ||
-        computeMachine.memoryGb < requiredMemory ||
-        computeMachine.storageGb < requiredStorage) {
-      throw new Error('Compute machine does not have sufficient resources');
+    if (host.cpuCores < requiredCpu ||
+        host.memoryGb < requiredMemory ||
+        host.storageGb < requiredStorage) {
+      throw new Error('Host does not have sufficient resources');
     }
 
     // 关联Instance到算力机
     await prisma.instance.update({
       where: { id: instanceId },
       data: {
-        computeMachineId: computeMachine.id,
+        hostId: host.id,
       },
     });
 
     // 更新算力机资源分配（独占模式，整个机器视为已分配）
-    await prisma.computeMachine.update({
-      where: { id: computeMachine.id },
+    await prisma.host.update({
+      where: { id: host.id },
       data: {
-        allocatedCpuCores: computeMachine.cpuCores,
-        allocatedMemoryGb: computeMachine.memoryGb,
-        allocatedStorageGb: computeMachine.storageGb,
+        allocatedCpuCores: host.cpuCores,
+        allocatedMemoryGb: host.memoryGb,
+        allocatedStorageGb: host.storageGb,
       },
     });
 
     // 更新算力池资源统计
-    await ResourcePoolService.updateResourcePoolStatistics(computeMachine.resourcePoolId);
-    await ComputeMachineService.updateEdgeDataCenterStatistics(computeMachine.edgeDataCenterId);
+    await ResourcePoolService.updateResourcePoolStatistics(host.resourcePoolId);
+    await HostService.updateEdgeDataCenterStatistics(host.edgeDataCenterId);
   }
 
   /**
@@ -1188,7 +1188,7 @@ export class InstanceService {
     config: any
   ): Promise<void> {
     // 查找可用的共享模式算力机
-    const computeMachines = await prisma.computeMachine.findMany({
+    const hosts = await prisma.host.findMany({
       where: {
         resourcePoolId,
         rentalMode: RentalMode.SHARED,
@@ -1201,8 +1201,8 @@ export class InstanceService {
       },
     });
 
-    if (computeMachines.length === 0) {
-      throw new Error('No available shared compute machine found in the resource pool');
+    if (hosts.length === 0) {
+      throw new Error('No available shared host found in the resource pool');
     }
 
     const requiredCpu = config.cpuCores || 0;
@@ -1210,28 +1210,28 @@ export class InstanceService {
     const requiredStorage = config.storageGb || 0;
 
     // 查找有足够资源的算力机
-    let selectedMachine = null;
-    for (const machine of computeMachines) {
-      const availableCpu = machine.cpuCores - machine.allocatedCpuCores;
-      const availableMemory = machine.memoryGb - machine.allocatedMemoryGb;
-      const availableStorage = machine.storageGb - machine.allocatedStorageGb;
+    let selectedHost = null;
+    for (const host of hosts) {
+      const availableCpu = host.cpuCores - host.allocatedCpuCores;
+      const availableMemory = host.memoryGb - host.allocatedMemoryGb;
+      const availableStorage = host.storageGb - host.allocatedStorageGb;
 
       if (availableCpu >= requiredCpu &&
           availableMemory >= requiredMemory &&
           availableStorage >= requiredStorage) {
-        selectedMachine = machine;
+        selectedHost = host;
         break;
       }
     }
 
-    if (!selectedMachine) {
-      throw new Error('No compute machine has sufficient resources in the resource pool');
+    if (!selectedHost) {
+      throw new Error('No host has sufficient resources in the resource pool');
     }
 
     // 创建虚拟机
     const virtualMachine = await VirtualMachineService.createVirtualMachine({
       instanceId,
-      computeMachineId: selectedMachine.id,
+      hostId: selectedHost.id,
       vmName: `${instanceId.substring(0, 8)}-vm`,
       cpuCores: requiredCpu,
       memoryGb: requiredMemory,
@@ -1255,26 +1255,26 @@ export class InstanceService {
   /**
    * 释放独占算力机
    */
-  private static async releaseExclusiveComputeMachine(
+  private static async releaseExclusiveHost(
     instanceId: string,
-    computeMachineId: string
+    hostId: string
   ): Promise<void> {
     // 解除Instance关联
     await prisma.instance.update({
       where: { id: instanceId },
       data: {
-        computeMachineId: null,
+        hostId: null,
       },
     });
 
     // 更新算力机资源分配（释放所有资源）
-    const computeMachine = await prisma.computeMachine.findUnique({
-      where: { id: computeMachineId },
+    const host = await prisma.host.findUnique({
+      where: { id: hostId },
     });
 
-    if (computeMachine) {
-      await prisma.computeMachine.update({
-        where: { id: computeMachineId },
+    if (host) {
+      await prisma.host.update({
+        where: { id: hostId },
         data: {
           allocatedCpuCores: 0,
           allocatedMemoryGb: 0,
@@ -1284,8 +1284,8 @@ export class InstanceService {
       });
 
       // 更新算力池和边缘机房资源统计
-      await ResourcePoolService.updateResourcePoolStatistics(computeMachine.resourcePoolId);
-      await ComputeMachineService.updateEdgeDataCenterStatistics(computeMachine.edgeDataCenterId);
+      await ResourcePoolService.updateResourcePoolStatistics(host.resourcePoolId);
+      await HostService.updateEdgeDataCenterStatistics(host.edgeDataCenterId);
     }
   }
 }

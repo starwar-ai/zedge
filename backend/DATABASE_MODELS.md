@@ -53,7 +53,7 @@
 │     │           │           │          │
 │     ▼           ▼           ▼          ▼
 │ ┌─────────┐ ┌──────────┐ ┌────────┐ ┌──────────┐
-│ │ResourcePool│ │ComputeMachine│ │CloudBox  │ │Vpc      │
+│ │ResourcePool│ │Host│ │CloudBox  │ │Vpc      │
 │ │ id       │ │ id       │ │ id     │ │ id      │
 │ │ name     │ │ hostname │ │ name   │ │ name    │
 │ │ poolType │ │ cpuCores │ │ status │ │ cidrBlock
@@ -357,7 +357,7 @@ status: String (CREATING, STARTING, RUNNING, STOPPING, STOPPED, ERROR)
 config: JSON (optional)
 rentalMode: RentalMode (EXCLUSIVE, SHARED, optional)
 resourcePoolId: UUID (FK to ResourcePool, optional)
-computeMachineId: UUID (FK to ComputeMachine, optional)
+hostId: UUID (FK to Host, optional)
 virtualMachineId: UUID (FK to VirtualMachine, UNIQUE, optional)
 createdAt: DateTime
 updatedAt: DateTime
@@ -367,7 +367,7 @@ Relations:
 - user: User (N:1)
 - template: Template (optional, N:1)
 - resourcePool: ResourcePool (optional, N:1)
-- computeMachine: ComputeMachine (optional, N:1)
+- host: Host (optional, N:1)
 - virtualMachine: VirtualMachine (optional, 1:1)
 - instanceSetMembers: InstanceSetMember[] (1:N)
 - privateDataDiskAttachments: InstancePrivateDataDiskAttachment[] (1:N)
@@ -452,14 +452,14 @@ Constraints:
 - UNIQUE(templateId, versionNumber)
 ```
 
-#### ComputeMachine
+#### Host
 ```typescript
 id: UUID (PK)
 hostname: String
 name: String
 edgeDataCenterId: UUID (FK to EdgeDataCenter)
 resourcePoolId: UUID (FK to ResourcePool)
-machineType: ComputeMachineType (CPU_SERVER, PC_FARM, GPU_SERVER)
+hostType: HostType (CPU_SERVER, PC_FARM, GPU_SERVER)
 rentalMode: RentalMode (EXCLUSIVE, SHARED)
 hypervisorType: HypervisorType (KVM, VMWARE, HYPER_V)
 cpuCores: Int
@@ -473,7 +473,7 @@ allocatedCpuCores: Int (default: 0)
 allocatedMemoryGb: Int (default: 0)
 allocatedStorageGb: Int (default: 0)
 allocatedGpuCount: Int (default: 0)
-status: ComputeMachineStatus (ACTIVE, MAINTENANCE, OFFLINE, DECOMMISSIONING)
+status: HostStatus (ACTIVE, MAINTENANCE, OFFLINE, DECOMMISSIONING)
 healthStatus: HealthStatus (HEALTHY, WARNING, CRITICAL)
 connectionConfig: JSON (optional)
 tags: JSON (optional)
@@ -487,7 +487,7 @@ Relations:
 - virtualMachines: VirtualMachine[] (1:N)
 - instances: Instance[] (1:N)
 
-ComputeMachineType Enum:
+HostType Enum:
 - CPU_SERVER
 - PC_FARM
 - GPU_SERVER
@@ -497,7 +497,7 @@ HypervisorType Enum:
 - VMWARE
 - HYPER_V
 
-ComputeMachineStatus Enum:
+HostStatus Enum:
 - ACTIVE
 - MAINTENANCE
 - OFFLINE
@@ -516,7 +516,7 @@ Constraints:
 #### VirtualMachine
 ```typescript
 id: UUID (PK)
-computeMachineId: UUID (FK to ComputeMachine)
+hostId: UUID (FK to Host)
 instanceId: UUID (FK to Instance, UNIQUE)
 vmUuid: String (optional, UNIQUE)
 vmName: String
@@ -532,7 +532,7 @@ createdAt: DateTime
 updatedAt: DateTime
 
 Relations:
-- computeMachine: ComputeMachine (N:1)
+- host: Host (N:1)
 - instance: Instance (1:1)
 
 VirtualMachineStatus Enum:
@@ -571,7 +571,7 @@ updatedAt: DateTime
 Relations:
 - edgeDataCenter: EdgeDataCenter (N:1)
 - subnet: Subnet (optional, 1:1)
-- computeMachines: ComputeMachine[] (1:N)
+- hosts: Host[] (1:N)
 - instances: Instance[] (1:N)
 - ipAddresses: IpAddress[] (1:N)
 
@@ -1024,7 +1024,7 @@ updatedAt: DateTime
 
 Relations:
 - resourcePools: ResourcePool[] (1:N)
-- computeMachines: ComputeMachine[] (1:N)
+- hosts: Host[] (1:N)
 - cloudBoxes: CloudBox[] (1:N)
 - vpcs: Vpc[] (1:N)
 
@@ -1077,14 +1077,14 @@ Relations:
 - UserGroup → UserGroupMember
 - UserGroup → UserGroup (self-referencing hierarchical)
 - EdgeDataCenter → ResourcePool
-- EdgeDataCenter → ComputeMachine
+- EdgeDataCenter → Host
 - EdgeDataCenter → CloudBox
 - EdgeDataCenter → Vpc
-- ResourcePool → ComputeMachine
+- ResourcePool → Host
 - ResourcePool → Instance
 - ResourcePool → IpAddress
-- ComputeMachine → VirtualMachine
-- ComputeMachine → Instance
+- Host → VirtualMachine
+- Host → Instance
 - Template → TemplateVersion
 - Template → Instance
 - Vpc → Subnet
@@ -1100,7 +1100,7 @@ Relations:
 
 ### One-to-One (1:1)
 - Instance ↔ VirtualMachine
-- ComputeMachine ↔ ... (through rentalMode)
+- Host ↔ ... (through rentalMode)
 - ResourcePool ↔ Subnet (optional)
 - Place ↔ Subnet (optional)
 - CloudBox ↔ Instance (temporary binding)

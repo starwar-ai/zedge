@@ -141,7 +141,7 @@ backend/
 │   │   ├── template/
 │   │   ├── cloud-box/
 │   │   ├── private-data-disk/
-│   │   ├── compute-machine/
+│   │   ├── host/
 │   │   ├── virtual-machine/
 │   │   ├── resource-pool/
 │   │   ├── ip-address/
@@ -366,7 +366,7 @@ backend/
 - **Instance** - Cloud desktop instances
 - **Template** - Instance templates for provisioning
 - **TemplateVersion** - Template version control
-- **ComputeMachine** - Physical/virtual compute hosts
+- **Host** - Physical/virtual compute hosts
 - **VirtualMachine** - VM instances on hypervisors
 - **ResourcePool** - Resource allocation tracking
 - **InstanceSet** - Instance collections

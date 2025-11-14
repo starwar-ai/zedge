@@ -109,13 +109,13 @@
 
 ---
 
-### 1.3 算力机 (Compute Machine)
+### 1.3 算力机 (Host)
 
 **功能**: 实际运行虚拟机的物理或虚拟宿主机
 
 **主要属性**:
 - `hostname`: 主机名
-- `machine_type`: 机器类型
+- `host_type`: 主机类型
   - `cpu_server`: CPU优化服务器
   - `pc_farm`: PC农场（个人计算资源）
   - `gpu_server`: GPU加速服务器
@@ -162,7 +162,7 @@
 **算力机与虚拟机的关系**:
 - 一个算力机可以创建多个虚拟机（仅在共享模式下）
 - 独占模式的算力机不创建虚拟机，直接分配给Instance
-- 虚拟机通过 `compute_machine_id` 关联到算力机
+- 虚拟机通过 `host_id` 关联到算力机
 - 虚拟机的资源分配会更新算力机的 `allocated_*` 字段
 
 **算力机与算力池的关系**:
@@ -179,7 +179,7 @@
 
 **主要属性**:
 - `vm_id`: 虚拟机唯一标识 (UUID)
-- `compute_machine_id`: 所属算力机ID（外键 → compute_machines.machine_id）
+- `host_id`: 所属算力机ID（外键 → hosts.host_id）
 - `instance_id`: 关联的Instance ID（外键 → instances.instance_id，一对一）
 - `vm_uuid`: 虚拟化平台中的UUID（虚拟化平台返回的唯一标识）
 - `vm_name`: 虚拟机名称
@@ -386,16 +386,16 @@
   - `description`: 实例描述
 - `rental_mode`: 租赁模式 (exclusive-独占, shared-共享，仅在运行时设置)
 - `resource_pool_id`: 分配的算力池ID（可选，外键 → resource_pools.pool_id，仅在运行时设置）
-- `compute_machine_id`: 分配的算力机ID（可选，外键 → compute_machines.machine_id，独占模式且运行时使用）
+- `host_id`: 分配的算力机ID（可选，外键 → hosts.host_id，独占模式且运行时使用）
 - `virtual_machine_id`: 关联的虚拟机ID（可选，外键 → virtual_machines.vm_id，共享模式且运行时使用）
 - `created_at`, `updated_at`: 时间戳
 
 **重要说明**:
-- Instance创建时：只创建记录，状态为 `stopped`，不分配资源（`resource_pool_id`、`compute_machine_id`、`virtual_machine_id` 均为 null）
+- Instance创建时：只创建记录，状态为 `stopped`，不分配资源（`resource_pool_id`、`host_id`、`virtual_machine_id` 均为 null）
 - Instance启动时：根据租赁模式分配资源
-  - **独占模式**：分配整个算力机，设置 `compute_machine_id`
+  - **独占模式**：分配整个算力机，设置 `host_id`
   - **共享模式**：创建虚拟机，设置 `virtual_machine_id`
-- Instance停止时：释放资源，清除 `compute_machine_id` 和 `virtual_machine_id`，但Instance记录保留
+- Instance停止时：释放资源，清除 `host_id` 和 `virtual_machine_id`，但Instance记录保留
 
 **实例与模板的关系** (多对一，可选):
 - 实例可以关联到一个模板（`template_id`）
@@ -417,7 +417,7 @@ Instance的资源分配是动态的，与Instance状态相关：
    - 只创建Instance记录（配置信息）
    - 状态为 `stopped`
    - **不分配算力机或创建虚拟机**
-   - `resource_pool_id`、`compute_machine_id`、`virtual_machine_id` 均为 null
+   - `resource_pool_id`、`host_id`、`virtual_machine_id` 均为 null
 
 2. **Instance启动时**（`POST /api/v1/instances/:id/start`）：
    - **独占模式（exclusive）**：
@@ -613,7 +613,7 @@ Instance的资源分配是动态的，与Instance状态相关：
 **定义**: 实例的操作系统和应用程序存储，由算力机本地存储提供
 
 **特性**:
-- **存储位置**: 算力机本地存储（`compute_machines.storage_gb`）
+- **存储位置**: 算力机本地存储（`hosts.storage_gb`）
 - **生命周期**: 与实例绑定，实例删除时系统盘随之删除
 - **容量来源**: 从算力机本地存储分配
 - **配额计算**: 计入用户的 `max_storage_gb` 配额
@@ -1025,7 +1025,7 @@ Instance的资源分配是动态的，与Instance状态相关：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `machine_id` | UUID | 算力机唯一标识 |
+| `host_id` | UUID | 算力机唯一标识 |
 | `resource_pool_id` | UUID | 所属算力池ID（外键 → resource_pools.pool_id） |
 | `edge_data_center_id` | UUID | 所属边缘机房ID（外键 → edge_data_centers.edge_data_center_id） |
 
@@ -2255,7 +2255,7 @@ ORDER BY iv.created_at DESC;
   - 状态设为 stopped（不分配资源）
   - 保存配置到 config 字段
   - template_id 为 null（直接创建）
-  - resource_pool_id, compute_machine_id, virtual_machine_id 均为 null
+  - resource_pool_id, host_id, virtual_machine_id 均为 null
   ↓
 实例已创建 (Instance Created)
   ↓
@@ -2333,7 +2333,7 @@ ORDER BY iv.created_at DESC;
   - 状态设为 stopped（不分配资源）
   - 保存最终配置到 config 字段
   - 设置 template_id 关联到模板
-  - resource_pool_id, compute_machine_id, virtual_machine_id 均为 null
+  - resource_pool_id, host_id, virtual_machine_id 均为 null
   ↓
 实例已创建 (Instance Created)
   ↓
@@ -2541,7 +2541,7 @@ ORDER BY iv.created_at DESC;
 **示例规则**:
 ```json
 {
-  "machine_type": "cpu_server",
+  "host_type": "cpu_server",
   "resource_type": "disk",
   "max_attachable": 10,
   "restrictions": {

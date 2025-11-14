@@ -92,7 +92,7 @@ export const listVirtualMachines = async (
 ): Promise<void> => {
   try {
     const {
-      compute_machine_id,
+      host_id,
       resource_pool_id,
       instance_id,
       status,
@@ -101,7 +101,7 @@ export const listVirtualMachines = async (
     } = req.query;
 
     const result = await VirtualMachineService.listVirtualMachines({
-      computeMachineId: compute_machine_id as string | undefined,
+      hostId: host_id as string | undefined,
       resourcePoolId: resource_pool_id as string | undefined,
       instanceId: instance_id as string | undefined,
       status: status as VirtualMachineStatus | undefined,

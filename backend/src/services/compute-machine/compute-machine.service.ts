@@ -1,13 +1,13 @@
 /**
- * 算力机服务层 (Compute Machine Service)
+ * 算力机服务层 (Host Service)
  * 提供算力机的注册、查询、更新、删除、转移算力池等操作
  */
 
 import { prisma } from '../../utils/prisma.client';
 import {
-  ComputeMachine,
-  ComputeMachineStatus,
-  ComputeMachineType,
+  Host,
+  HostStatus,
+  HostType,
   RentalMode,
   HypervisorType,
   HealthStatus,
@@ -18,12 +18,12 @@ import { ResourcePoolService } from '../resource-pool/resource-pool.service';
 /**
  * 创建算力机 DTO
  */
-export interface CreateComputeMachineDto {
+export interface CreateHostDto {
   hostname: string;
   name: string;
   edgeDataCenterId: string;
   resourcePoolId: string;
-  machineType?: ComputeMachineType;
+  hostType?: HostType;
   rentalMode?: RentalMode;
   hypervisorType: HypervisorType;
   cpuCores: number;
@@ -40,10 +40,10 @@ export interface CreateComputeMachineDto {
 /**
  * 更新算力机 DTO
  */
-export interface UpdateComputeMachineDto {
+export interface UpdateHostDto {
   hostname?: string;
   name?: string;
-  status?: ComputeMachineStatus;
+  status?: HostStatus;
   healthStatus?: HealthStatus;
   connectionConfig?: any;
   tags?: any;
@@ -59,12 +59,12 @@ export interface TransferResourcePoolDto {
 /**
  * 算力机列表查询参数
  */
-export interface ListComputeMachinesParams {
+export interface ListHostsParams {
   edgeDataCenterId?: string;
   resourcePoolId?: string;
-  machineType?: ComputeMachineType;
+  hostType?: HostType;
   rentalMode?: RentalMode;
-  status?: ComputeMachineStatus;
+  status?: HostStatus;
   page?: number;
   limit?: number;
 }
@@ -72,13 +72,13 @@ export interface ListComputeMachinesParams {
 /**
  * 算力机服务类
  */
-export class ComputeMachineService {
+export class HostService {
   /**
    * 注册算力机
    */
-  static async createComputeMachine(
-    data: CreateComputeMachineDto
-  ): Promise<ComputeMachine> {
+  static async createHost(
+    data: CreateHostDto
+  ): Promise<Host> {
     // 验证边缘机房存在
     const edgeDataCenter = await prisma.edgeDataCenter.findUnique({
       where: { id: data.edgeDataCenterId },
@@ -102,7 +102,7 @@ export class ComputeMachineService {
     }
 
     // 检查管理网IP是否在同一机房内唯一
-    const existingManagementIp = await prisma.computeMachine.findFirst({
+    const existingManagementIp = await prisma.host.findFirst({
       where: {
         edgeDataCenterId: data.edgeDataCenterId,
         managementIp: data.managementIp,
@@ -115,7 +115,7 @@ export class ComputeMachineService {
 
     // 如果提供了业务网IP，检查是否唯一
     if (data.businessIp) {
-      const existingBusinessIp = await prisma.computeMachine.findFirst({
+      const existingBusinessIp = await prisma.host.findFirst({
         where: {
           edgeDataCenterId: data.edgeDataCenterId,
           businessIp: data.businessIp,
@@ -128,13 +128,13 @@ export class ComputeMachineService {
     }
 
     // 创建算力机
-    const computeMachine = await prisma.computeMachine.create({
+    const host = await prisma.host.create({
       data: {
         hostname: data.hostname,
         name: data.name,
         edgeDataCenterId: data.edgeDataCenterId,
         resourcePoolId: data.resourcePoolId,
-        machineType: data.machineType || ComputeMachineType.CPU_SERVER,
+        hostType: data.hostType || HostType.CPU_SERVER,
         rentalMode: data.rentalMode || RentalMode.SHARED,
         hypervisorType: data.hypervisorType,
         cpuCores: data.cpuCores,
@@ -146,7 +146,7 @@ export class ComputeMachineService {
         businessIp: data.businessIp,
         connectionConfig: data.connectionConfig,
         tags: data.tags,
-        status: ComputeMachineStatus.OFFLINE,
+        status: HostStatus.OFFLINE,
         healthStatus: HealthStatus.HEALTHY,
         allocatedCpuCores: 0,
         allocatedMemoryGb: 0,
@@ -159,17 +159,17 @@ export class ComputeMachineService {
     await ResourcePoolService.updateResourcePoolStatistics(data.resourcePoolId);
     await this.updateEdgeDataCenterStatistics(data.edgeDataCenterId);
 
-    return computeMachine;
+    return host;
   }
 
   /**
    * 获取算力机详情
    */
-  static async getComputeMachineById(
-    machineId: string
-  ): Promise<ComputeMachine | null> {
-    return prisma.computeMachine.findUnique({
-      where: { id: machineId },
+  static async getHostById(
+    hostId: string
+  ): Promise<Host | null> {
+    return prisma.host.findUnique({
+      where: { id: hostId },
       include: {
         edgeDataCenter: {
           select: {
@@ -208,28 +208,28 @@ export class ComputeMachineService {
   /**
    * 获取算力机列表
    */
-  static async listComputeMachines(
-    params: ListComputeMachinesParams = {}
-  ): Promise<{ data: ComputeMachine[]; total: number }> {
+  static async listHosts(
+    params: ListHostsParams = {}
+  ): Promise<{ data: Host[]; total: number }> {
     const {
       edgeDataCenterId,
       resourcePoolId,
-      machineType,
+      hostType,
       rentalMode,
       status,
       page = 1,
       limit = 20,
     } = params;
 
-    const where: Prisma.ComputeMachineWhereInput = {};
+    const where: Prisma.HostWhereInput = {};
     if (edgeDataCenterId) {
       where.edgeDataCenterId = edgeDataCenterId;
     }
     if (resourcePoolId) {
       where.resourcePoolId = resourcePoolId;
     }
-    if (machineType) {
-      where.machineType = machineType;
+    if (hostType) {
+      where.hostType = hostType;
     }
     if (rentalMode) {
       where.rentalMode = rentalMode;
@@ -239,7 +239,7 @@ export class ComputeMachineService {
     }
 
     const [data, total] = await Promise.all([
-      prisma.computeMachine.findMany({
+      prisma.host.findMany({
         where,
         skip: (page - 1) * limit,
         take: limit,
@@ -265,7 +265,7 @@ export class ComputeMachineService {
           },
         },
       }),
-      prisma.computeMachine.count({ where }),
+      prisma.host.count({ where }),
     ]);
 
     return { data, total };
@@ -274,22 +274,22 @@ export class ComputeMachineService {
   /**
    * 更新算力机
    */
-  static async updateComputeMachine(
-    machineId: string,
-    data: UpdateComputeMachineDto
-  ): Promise<ComputeMachine> {
+  static async updateHost(
+    hostId: string,
+    data: UpdateHostDto
+  ): Promise<Host> {
     // 检查算力机是否存在
-    const existing = await prisma.computeMachine.findUnique({
-      where: { id: machineId },
+    const existing = await prisma.host.findUnique({
+      where: { id: hostId },
     });
 
     if (!existing) {
-      throw new Error('Compute machine not found');
+      throw new Error('Host not found');
     }
 
     // 更新算力机
-    return prisma.computeMachine.update({
-      where: { id: machineId },
+    return prisma.host.update({
+      where: { id: hostId },
       data: {
         hostname: data.hostname,
         name: data.name,
@@ -305,12 +305,12 @@ export class ComputeMachineService {
    * 转移算力机到另一个算力池
    */
   static async transferToResourcePool(
-    machineId: string,
+    hostId: string,
     data: TransferResourcePoolDto
-  ): Promise<ComputeMachine> {
+  ): Promise<Host> {
     // 检查算力机是否存在
-    const computeMachine = await prisma.computeMachine.findUnique({
-      where: { id: machineId },
+    const host = await prisma.host.findUnique({
+      where: { id: hostId },
       include: {
         _count: {
           select: {
@@ -331,17 +331,17 @@ export class ComputeMachineService {
       },
     });
 
-    if (!computeMachine) {
-      throw new Error('Compute machine not found');
+    if (!host) {
+      throw new Error('Host not found');
     }
 
     // 检查是否有运行中的虚拟机或实例
-    if (computeMachine._count.virtualMachines > 0) {
-      throw new Error('Cannot transfer compute machine with running virtual machines');
+    if (host._count.virtualMachines > 0) {
+      throw new Error('Cannot transfer host with running virtual machines');
     }
 
-    if (computeMachine._count.instances > 0) {
-      throw new Error('Cannot transfer compute machine with running instances');
+    if (host._count.instances > 0) {
+      throw new Error('Cannot transfer host with running instances');
     }
 
     // 验证目标算力池存在且属于同一个边缘机房
@@ -353,15 +353,15 @@ export class ComputeMachineService {
       throw new Error('Target resource pool not found');
     }
 
-    if (targetPool.edgeDataCenterId !== computeMachine.edgeDataCenterId) {
+    if (targetPool.edgeDataCenterId !== host.edgeDataCenterId) {
       throw new Error('Target resource pool does not belong to the same edge data center');
     }
 
-    const oldResourcePoolId = computeMachine.resourcePoolId;
+    const oldResourcePoolId = host.resourcePoolId;
 
     // 转移算力机
-    const updated = await prisma.computeMachine.update({
-      where: { id: machineId },
+    const updated = await prisma.host.update({
+      where: { id: hostId },
       data: {
         resourcePoolId: data.targetResourcePoolId,
       },
@@ -377,10 +377,10 @@ export class ComputeMachineService {
   /**
    * 删除算力机
    */
-  static async deleteComputeMachine(machineId: string): Promise<void> {
+  static async deleteHost(hostId: string): Promise<void> {
     // 检查算力机是否存在
-    const computeMachine = await prisma.computeMachine.findUnique({
-      where: { id: machineId },
+    const host = await prisma.host.findUnique({
+      where: { id: hostId },
       include: {
         _count: {
           select: {
@@ -401,25 +401,25 @@ export class ComputeMachineService {
       },
     });
 
-    if (!computeMachine) {
-      throw new Error('Compute machine not found');
+    if (!host) {
+      throw new Error('Host not found');
     }
 
     // 检查是否有运行中的虚拟机或实例
-    if (computeMachine._count.virtualMachines > 0) {
-      throw new Error('Cannot delete compute machine with active virtual machines');
+    if (host._count.virtualMachines > 0) {
+      throw new Error('Cannot delete host with active virtual machines');
     }
 
-    if (computeMachine._count.instances > 0) {
-      throw new Error('Cannot delete compute machine with running instances');
+    if (host._count.instances > 0) {
+      throw new Error('Cannot delete host with running instances');
     }
 
-    const resourcePoolId = computeMachine.resourcePoolId;
-    const edgeDataCenterId = computeMachine.edgeDataCenterId;
+    const resourcePoolId = host.resourcePoolId;
+    const edgeDataCenterId = host.edgeDataCenterId;
 
     // 删除算力机
-    await prisma.computeMachine.delete({
-      where: { id: machineId },
+    await prisma.host.delete({
+      where: { id: hostId },
     });
 
     // 更新资源统计
@@ -434,7 +434,7 @@ export class ComputeMachineService {
     edgeDataCenterId: string
   ): Promise<void> {
     // 聚合算力机资源
-    const aggregate = await prisma.computeMachine.aggregate({
+    const aggregate = await prisma.host.aggregate({
       where: {
         edgeDataCenterId,
         status: {

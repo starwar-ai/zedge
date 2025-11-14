@@ -4,7 +4,7 @@
 
 实例管理模块负责云电脑实例的全生命周期管理，包括创建、启动、停止、删除和配置管理。
 
-**相关实体**: Instance, VirtualMachine, ComputeMachine, Template, Image
+**相关实体**: Instance, VirtualMachine, Host, Template, Image
 **主要服务**: InstanceService
 **API路由**: `/api/v1/instances`
 
@@ -80,7 +80,7 @@
   },
   "rentalMode": null,
   "resourcePoolId": null,
-  "computeMachineId": null,
+  "hostId": null,
   "virtualMachineId": null,
   "createdAt": "2025-01-15T10:00:00Z"
 }
@@ -147,7 +147,7 @@
    **独占模式 (exclusive)**:
    - 在算力池中查找可用的独占模式算力机
    - 验证算力机资源满足实例需求
-   - 直接关联实例到算力机（设置compute_machine_id）
+   - 直接关联实例到算力机（设置host_id）
    - 标记算力机整机资源为已分配
 
    **共享模式 (shared)**:
@@ -194,7 +194,7 @@
   "rentalMode": "shared",
   "resourcePoolId": "pool-uuid",
   "virtualMachineId": "vm-uuid",
-  "computeMachineId": null,
+  "hostId": null,
   "ipAddress": "10.0.1.100",
   "connectionInfo": {
     "protocol": "rdp",
@@ -230,7 +230,7 @@
 
    **独占模式**:
    - 解除实例与算力机的关联
-   - 清除实例的compute_machine_id
+   - 清除实例的host_id
    - 释放算力机的已分配资源标记
 
    **共享模式**:
@@ -379,8 +379,8 @@
     "resourcePoolId": "pool-uuid",
     "resourcePoolName": "高性能GPU池",
     "virtualMachineId": "vm-uuid",
-    "computeMachineId": null,
-    "machineName": "gpu-server-01"
+    "hostId": null,
+    "hostName": "gpu-server-01"
   },
   "network": {
     "ipAddress": "10.0.1.100",
@@ -617,7 +617,7 @@
 - 只创建Instance记录
 - 状态为stopped
 - 不分配算力机或虚拟机
-- `resource_pool_id`、`compute_machine_id`、`virtual_machine_id` 均为 null
+- `resource_pool_id`、`host_id`、`virtual_machine_id` 均为 null
 
 ### 启动时
 根据租赁模式分配资源：
@@ -626,7 +626,7 @@
 ```
 1. 在指定算力池中选择可用的独占模式算力机
 2. 验证整机资源满足实例需求
-3. 直接关联Instance到ComputeMachine (设置compute_machine_id)
+3. 直接关联Instance到Host (设置host_id)
 4. 标记整机资源为已分配
 5. 不创建虚拟机
 ```
@@ -645,8 +645,8 @@
 
 **独占模式**:
 ```
-1. 解除Instance与ComputeMachine的关联
-2. 清除compute_machine_id
+1. 解除Instance与Host的关联
+2. 清除host_id
 3. 释放算力机的已分配资源标记
 4. Instance记录保留
 ```

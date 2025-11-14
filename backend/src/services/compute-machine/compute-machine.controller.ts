@@ -1,24 +1,24 @@
 /**
- * 算力机控制器 (Compute Machine Controller)
+ * 算力机控制器 (Host Controller)
  * 处理算力机相关的 HTTP 请求
  */
 
 import { Request, Response } from 'express';
-import { ComputeMachineService } from './compute-machine.service';
+import { HostService } from './compute-machine.service';
 import {
-  ComputeMachineType,
+  HostType,
   RentalMode,
   HypervisorType,
-  ComputeMachineStatus,
+  HostStatus,
   HealthStatus,
 } from '@prisma/client';
 import { prisma } from '../../utils/prisma.client';
 
 /**
  * 注册算力机
- * POST /api/v1/compute-machines
+ * POST /api/v1/hosts
  */
-export const createComputeMachine = async (
+export const createHost = async (
   req: Request,
   res: Response
 ): Promise<void> => {
@@ -28,7 +28,7 @@ export const createComputeMachine = async (
       name,
       edge_data_center_id,
       resource_pool_id,
-      machine_type,
+      host_type,
       rental_mode,
       hypervisor_type,
       cpu_cores,
@@ -52,12 +52,12 @@ export const createComputeMachine = async (
       return;
     }
 
-    const computeMachine = await ComputeMachineService.createComputeMachine({
+    const host = await HostService.createHost({
       hostname,
       name,
       edgeDataCenterId: edge_data_center_id,
       resourcePoolId: resource_pool_id,
-      machineType: machine_type as ComputeMachineType | undefined,
+      hostType: host_type as HostType | undefined,
       rentalMode: rental_mode as RentalMode | undefined,
       hypervisorType: hypervisor_type as HypervisorType,
       cpuCores: parseInt(cpu_cores, 10),
@@ -73,14 +73,14 @@ export const createComputeMachine = async (
 
     res.status(201).json({
       code: 201,
-      message: 'Compute machine created successfully',
-      data: computeMachine,
+      message: 'Host created successfully',
+      data: host,
     });
   } catch (error) {
-    console.error('Error creating compute machine:', error);
+    console.error('Error creating host:', error);
     res.status(500).json({
       code: 500,
-      message: error instanceof Error ? error.message : 'Failed to create compute machine',
+      message: error instanceof Error ? error.message : 'Failed to create host',
       data: null,
     });
   }
@@ -88,21 +88,21 @@ export const createComputeMachine = async (
 
 /**
  * 获取算力机详情
- * GET /api/v1/compute-machines/:id
+ * GET /api/v1/hosts/:id
  */
-export const getComputeMachineDetails = async (
+export const getHostDetails = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
     const { id } = req.params;
 
-    const computeMachine = await ComputeMachineService.getComputeMachineById(id);
+    const host = await HostService.getHostById(id);
 
-    if (!computeMachine) {
+    if (!host) {
       res.status(404).json({
         code: 404,
-        message: 'Compute machine not found',
+        message: 'Host not found',
         data: null,
       });
       return;
@@ -110,14 +110,14 @@ export const getComputeMachineDetails = async (
 
     res.status(200).json({
       code: 200,
-      message: 'Compute machine retrieved successfully',
-      data: computeMachine,
+      message: 'Host retrieved successfully',
+      data: host,
     });
   } catch (error) {
-    console.error('Error getting compute machine details:', error);
+    console.error('Error getting host details:', error);
     res.status(500).json({
       code: 500,
-      message: error instanceof Error ? error.message : 'Failed to get compute machine details',
+      message: error instanceof Error ? error.message : 'Failed to get host details',
       data: null,
     });
   }
@@ -125,9 +125,9 @@ export const getComputeMachineDetails = async (
 
 /**
  * 获取算力机列表
- * GET /api/v1/compute-machines
+ * GET /api/v1/hosts
  */
-export const listComputeMachines = async (
+export const listHosts = async (
   req: Request,
   res: Response
 ): Promise<void> => {
@@ -135,26 +135,26 @@ export const listComputeMachines = async (
     const {
       edge_data_center_id,
       resource_pool_id,
-      machine_type,
+      host_type,
       rental_mode,
       status,
       page,
       limit,
     } = req.query;
 
-    const result = await ComputeMachineService.listComputeMachines({
+    const result = await HostService.listHosts({
       edgeDataCenterId: edge_data_center_id as string | undefined,
       resourcePoolId: resource_pool_id as string | undefined,
-      machineType: machine_type as ComputeMachineType | undefined,
+      hostType: host_type as HostType | undefined,
       rentalMode: rental_mode as RentalMode | undefined,
-      status: status as ComputeMachineStatus | undefined,
+      status: status as HostStatus | undefined,
       page: page ? parseInt(page as string, 10) : undefined,
       limit: limit ? parseInt(limit as string, 10) : undefined,
     });
 
     res.status(200).json({
       code: 200,
-      message: 'Compute machines retrieved successfully',
+      message: 'Hosts retrieved successfully',
       data: result.data,
       meta: {
         total: result.total,
@@ -163,10 +163,10 @@ export const listComputeMachines = async (
       },
     });
   } catch (error) {
-    console.error('Error listing compute machines:', error);
+    console.error('Error listing hosts:', error);
     res.status(500).json({
       code: 500,
-      message: error instanceof Error ? error.message : 'Failed to list compute machines',
+      message: error instanceof Error ? error.message : 'Failed to list hosts',
       data: null,
     });
   }
@@ -174,9 +174,9 @@ export const listComputeMachines = async (
 
 /**
  * 更新算力机
- * PUT /api/v1/compute-machines/:id
+ * PUT /api/v1/hosts/:id
  */
-export const updateComputeMachine = async (
+export const updateHost = async (
   req: Request,
   res: Response
 ): Promise<void> => {
@@ -191,10 +191,10 @@ export const updateComputeMachine = async (
       tags,
     } = req.body;
 
-    const computeMachine = await ComputeMachineService.updateComputeMachine(id, {
+    const host = await HostService.updateHost(id, {
       hostname,
       name,
-      status: status as ComputeMachineStatus | undefined,
+      status: status as HostStatus | undefined,
       healthStatus: health_status as HealthStatus | undefined,
       connectionConfig: connection_config,
       tags: tags,
@@ -202,15 +202,15 @@ export const updateComputeMachine = async (
 
     res.status(200).json({
       code: 200,
-      message: 'Compute machine updated successfully',
-      data: computeMachine,
+      message: 'Host updated successfully',
+      data: host,
     });
   } catch (error) {
-    console.error('Error updating compute machine:', error);
+    console.error('Error updating host:', error);
     const statusCode = error instanceof Error && error.message.includes('not found') ? 404 : 500;
     res.status(statusCode).json({
       code: statusCode,
-      message: error instanceof Error ? error.message : 'Failed to update compute machine',
+      message: error instanceof Error ? error.message : 'Failed to update host',
       data: null,
     });
   }
@@ -218,9 +218,9 @@ export const updateComputeMachine = async (
 
 /**
  * 转移算力机到另一个算力池
- * PUT /api/v1/compute-machines/:id/transfer
+ * PUT /api/v1/hosts/:id/transfer
  */
-export const transferComputeMachine = async (
+export const transferHost = async (
   req: Request,
   res: Response
 ): Promise<void> => {
@@ -237,21 +237,21 @@ export const transferComputeMachine = async (
       return;
     }
 
-    const computeMachine = await ComputeMachineService.transferToResourcePool(id, {
+    const host = await HostService.transferToResourcePool(id, {
       targetResourcePoolId: target_resource_pool_id,
     });
 
     res.status(200).json({
       code: 200,
-      message: 'Compute machine transferred successfully',
-      data: computeMachine,
+      message: 'Host transferred successfully',
+      data: host,
     });
   } catch (error) {
-    console.error('Error transferring compute machine:', error);
+    console.error('Error transferring host:', error);
     const statusCode = error instanceof Error && error.message.includes('not found') ? 404 : 400;
     res.status(statusCode).json({
       code: statusCode,
-      message: error instanceof Error ? error.message : 'Failed to transfer compute machine',
+      message: error instanceof Error ? error.message : 'Failed to transfer host',
       data: null,
     });
   }
@@ -259,28 +259,28 @@ export const transferComputeMachine = async (
 
 /**
  * 删除算力机
- * DELETE /api/v1/compute-machines/:id
+ * DELETE /api/v1/hosts/:id
  */
-export const deleteComputeMachine = async (
+export const deleteHost = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
     const { id } = req.params;
 
-    await ComputeMachineService.deleteComputeMachine(id);
+    await HostService.deleteHost(id);
 
     res.status(200).json({
       code: 200,
-      message: 'Compute machine deleted successfully',
+      message: 'Host deleted successfully',
       data: null,
     });
   } catch (error) {
-    console.error('Error deleting compute machine:', error);
+    console.error('Error deleting host:', error);
     const statusCode = error instanceof Error && error.message.includes('not found') ? 404 : 400;
     res.status(statusCode).json({
       code: statusCode,
-      message: error instanceof Error ? error.message : 'Failed to delete compute machine',
+      message: error instanceof Error ? error.message : 'Failed to delete host',
       data: null,
     });
   }
@@ -288,21 +288,21 @@ export const deleteComputeMachine = async (
 
 /**
  * 获取算力机下的虚拟机列表
- * GET /api/v1/compute-machines/:id/virtual-machines
+ * GET /api/v1/hosts/:id/virtual-machines
  */
-export const getComputeMachineVirtualMachines = async (
+export const getHostVirtualMachines = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
     const { id } = req.params;
 
-    const computeMachine = await ComputeMachineService.getComputeMachineById(id);
+    const host = await HostService.getHostById(id);
 
-    if (!computeMachine) {
+    if (!host) {
       res.status(404).json({
         code: 404,
-        message: 'Compute machine not found',
+        message: 'Host not found',
         data: null,
       });
       return;
@@ -310,7 +310,7 @@ export const getComputeMachineVirtualMachines = async (
 
     // 获取虚拟机的完整信息
     const virtualMachines = await prisma.virtualMachine.findMany({
-      where: { computeMachineId: id },
+      where: { hostId: id },
       include: {
         instance: {
           select: {

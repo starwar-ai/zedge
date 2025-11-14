@@ -7,11 +7,11 @@ import { prisma } from '../../utils/prisma.client';
 import {
   VirtualMachine,
   VirtualMachineStatus,
-  ComputeMachine,
+  Host,
   RentalMode,
   Prisma,
 } from '@prisma/client';
-import { ComputeMachineService } from '../compute-machine/compute-machine.service';
+import { HostService } from '../compute-machine/compute-machine.service';
 import { ResourcePoolService } from '../resource-pool/resource-pool.service';
 
 /**
@@ -19,7 +19,7 @@ import { ResourcePoolService } from '../resource-pool/resource-pool.service';
  */
 export interface CreateVirtualMachineDto {
   instanceId: string;
-  computeMachineId: string;
+  hostId: string;
   vmName: string;
   cpuCores: number;
   memoryGb: number;
@@ -35,7 +35,7 @@ export interface CreateVirtualMachineDto {
  * 虚拟机列表查询参数
  */
 export interface ListVirtualMachinesParams {
-  computeMachineId?: string;
+  hostId?: string;
   resourcePoolId?: string;
   instanceId?: string;
   status?: VirtualMachineStatus;
@@ -57,7 +57,7 @@ export class VirtualMachineService {
     const instance = await prisma.instance.findUnique({
       where: { id: data.instanceId },
       include: {
-        computeMachine: true,
+        host: true,
         virtualMachine: true,
       },
     });
@@ -72,22 +72,22 @@ export class VirtualMachineService {
     }
 
     // 验证算力机存在且是共享模式
-    const computeMachine = await prisma.computeMachine.findUnique({
-      where: { id: data.computeMachineId },
+    const host = await prisma.host.findUnique({
+      where: { id: data.hostId },
     });
 
-    if (!computeMachine) {
-      throw new Error('Compute machine not found');
+    if (!host) {
+      throw new Error('Host not found');
     }
 
-    if (computeMachine.rentalMode !== RentalMode.SHARED) {
-      throw new Error('Compute machine must be in shared mode to create virtual machines');
+    if (host.rentalMode !== RentalMode.SHARED) {
+      throw new Error('Host must be in shared mode to create virtual machines');
     }
 
     // 检查算力机资源是否足够
-    const availableCpu = computeMachine.cpuCores - computeMachine.allocatedCpuCores;
-    const availableMemory = computeMachine.memoryGb - computeMachine.allocatedMemoryGb;
-    const availableStorage = computeMachine.storageGb - computeMachine.allocatedStorageGb;
+    const availableCpu = host.cpuCores - host.allocatedCpuCores;
+    const availableMemory = host.memoryGb - host.allocatedMemoryGb;
+    const availableStorage = host.storageGb - host.allocatedStorageGb;
 
     if (data.cpuCores > availableCpu) {
       throw new Error(`Insufficient CPU cores: available ${availableCpu}, required ${data.cpuCores}`);
@@ -104,7 +104,7 @@ export class VirtualMachineService {
     // 创建虚拟机记录
     const virtualMachine = await prisma.virtualMachine.create({
       data: {
-        computeMachineId: data.computeMachineId,
+        hostId: data.hostId,
         instanceId: data.instanceId,
         vmName: data.vmName,
         cpuCores: data.cpuCores,
@@ -122,8 +122,8 @@ export class VirtualMachineService {
     });
 
     // 更新算力机资源分配
-    await prisma.computeMachine.update({
-      where: { id: data.computeMachineId },
+    await prisma.host.update({
+      where: { id: data.hostId },
       data: {
         allocatedCpuCores: {
           increment: data.cpuCores,
@@ -141,7 +141,7 @@ export class VirtualMachineService {
     });
 
     // 更新算力池资源统计
-    await ResourcePoolService.updateResourcePoolStatistics(computeMachine.resourcePoolId);
+    await ResourcePoolService.updateResourcePoolStatistics(host.resourcePoolId);
 
     // TODO: 异步调用虚拟化平台API创建实际的虚拟机
     // 这里应该调用HypervisorAdapter来创建虚拟机
@@ -158,7 +158,7 @@ export class VirtualMachineService {
     return prisma.virtualMachine.findUnique({
       where: { id: vmId },
       include: {
-        computeMachine: {
+        host: {
           include: {
             resourcePool: {
               select: {
@@ -196,7 +196,7 @@ export class VirtualMachineService {
     return prisma.virtualMachine.findUnique({
       where: { instanceId },
       include: {
-        computeMachine: true,
+        host: true,
       },
     });
   }
@@ -208,7 +208,7 @@ export class VirtualMachineService {
     params: ListVirtualMachinesParams = {}
   ): Promise<{ data: VirtualMachine[]; total: number }> {
     const {
-      computeMachineId,
+      hostId,
       resourcePoolId,
       instanceId,
       status,
@@ -217,11 +217,11 @@ export class VirtualMachineService {
     } = params;
 
     const where: Prisma.VirtualMachineWhereInput = {};
-    if (computeMachineId) {
-      where.computeMachineId = computeMachineId;
+    if (hostId) {
+      where.hostId = hostId;
     }
     if (resourcePoolId) {
-      where.computeMachine = {
+      where.host = {
         resourcePoolId: resourcePoolId,
       };
     }
@@ -239,7 +239,7 @@ export class VirtualMachineService {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          computeMachine: {
+          host: {
             select: {
               id: true,
               name: true,
@@ -289,7 +289,7 @@ export class VirtualMachineService {
     const virtualMachine = await prisma.virtualMachine.findUnique({
       where: { id: vmId },
       include: {
-        computeMachine: true,
+        host: true,
       },
     });
 
@@ -297,8 +297,8 @@ export class VirtualMachineService {
       throw new Error('Virtual machine not found');
     }
 
-    const computeMachineId = virtualMachine.computeMachineId;
-    const resourcePoolId = virtualMachine.computeMachine.resourcePoolId;
+    const hostId = virtualMachine.hostId;
+    const resourcePoolId = virtualMachine.host.resourcePoolId;
 
     // 删除虚拟机记录
     await prisma.virtualMachine.delete({
@@ -306,8 +306,8 @@ export class VirtualMachineService {
     });
 
     // 更新算力机资源分配（释放资源）
-    await prisma.computeMachine.update({
-      where: { id: computeMachineId },
+    await prisma.host.update({
+      where: { id: hostId },
       data: {
         allocatedCpuCores: {
           decrement: virtualMachine.cpuCores,

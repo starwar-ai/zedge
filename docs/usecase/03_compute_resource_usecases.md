@@ -4,9 +4,9 @@
 
 算力资源管理模块负责边缘机房、算力池、算力机和虚拟机的全生命周期管理。
 
-**相关实体**: EdgeDataCenter, ResourcePool, ComputeMachine, VirtualMachine
-**主要服务**: EdgeDataCenterService, ResourcePoolService, ComputeMachineService, VirtualMachineService
-**API路由**: `/api/v1/edge-data-centers`, `/api/v1/resource-pools`, `/api/v1/compute-machines`, `/api/v1/virtual-machines`
+**相关实体**: EdgeDataCenter, ResourcePool, Host, VirtualMachine
+**主要服务**: EdgeDataCenterService, ResourcePoolService, HostService, VirtualMachineService
+**API路由**: `/api/v1/edge-data-centers`, `/api/v1/resource-pools`, `/api/v1/hosts`, `/api/v1/virtual-machines`
 
 ---
 
@@ -88,7 +88,7 @@
   "totalStorageGb": 100000,
   "stats": {
     "resourcePools": 5,
-    "computeMachines": 50,
+    "hosts": 50,
     "runningInstances": 120,
     "usedCpuCores": 800,
     "usedMemoryGb": 1600,
@@ -237,7 +237,7 @@
   "status": "active",
   "machines": [
     {
-      "machineId": "machine-uuid",
+      "hostId": "host-uuid",
       "hostname": "gpu-server-01",
       "status": "active",
       "rentalMode": "shared",
@@ -293,7 +293,7 @@
 ### UC-COMPUTE-020: 注册算力机
 **参与者**: 系统管理员
 **前置条件**:
-- 拥有`computeMachines:create`权限
+- 拥有`hosts:create`权限
 - 算力池已存在
 
 **主要流程**:
@@ -309,7 +309,7 @@
 - 算力机已注册
 - 算力机可用于创建实例或虚拟机
 
-**API端点**: `POST /api/v1/compute-machines`
+**API端点**: `POST /api/v1/hosts`
 
 **请求示例**:
 ```json
@@ -335,7 +335,7 @@
 ### UC-COMPUTE-021: 查询算力机列表
 **参与者**: 系统管理员
 **前置条件**:
-- 拥有`computeMachines:read`权限
+- 拥有`hosts:read`权限
 
 **主要流程**:
 1. 系统管理员请求算力机列表
@@ -343,11 +343,11 @@
 3. 系统应用筛选条件（池、类型、状态）
 4. 系统返回算力机列表
 
-**API端点**: `GET /api/v1/compute-machines`
+**API端点**: `GET /api/v1/hosts`
 
 **查询参数**:
 - `resourcePoolId`: 算力池筛选
-- `machineType`: 机器类型筛选
+- `hostType`: 主机类型筛选
 - `rentalMode`: 租赁模式筛选
 - `status`: 状态筛选
 
@@ -356,7 +356,7 @@
 ### UC-COMPUTE-022: 查询算力机详情
 **参与者**: 系统管理员
 **前置条件**:
-- 拥有`computeMachines:read`权限
+- 拥有`hosts:read`权限
 
 **主要流程**:
 1. 系统管理员请求算力机详细信息
@@ -366,14 +366,14 @@
 5. 系统查询健康状态指标
 6. 系统返回详细信息
 
-**API端点**: `GET /api/v1/compute-machines/:machineId`
+**API端点**: `GET /api/v1/hosts/:hostId`
 
 **响应示例**:
 ```json
 {
-  "machineId": "machine-uuid",
+  "hostId": "host-uuid",
   "hostname": "gpu-server-01",
-  "machineType": "gpu_server",
+  "hostType": "gpu_server",
   "rentalMode": "shared",
   "status": "active",
   "healthStatus": "healthy",
@@ -418,7 +418,7 @@
 ### UC-COMPUTE-023: 更新算力机配置
 **参与者**: 系统管理员
 **前置条件**:
-- 拥有`computeMachines:update`权限
+- 拥有`hosts:update`权限
 
 **主要流程**:
 1. 系统管理员提交更新信息
@@ -430,14 +430,14 @@
 **异常流程**:
 - E1: 新资源量低于已分配量 → 返回400错误
 
-**API端点**: `PATCH /api/v1/compute-machines/:machineId`
+**API端点**: `PATCH /api/v1/hosts/:hostId`
 
 ---
 
 ### UC-COMPUTE-024: 设置算力机维护模式
 **参与者**: 系统管理员
 **前置条件**:
-- 拥有`computeMachines:update`权限
+- 拥有`hosts:update`权限
 
 **主要流程**:
 1. 系统管理员请求设置维护模式
@@ -451,14 +451,14 @@
 - 算力机状态为maintenance
 - 不接受新的资源分配
 
-**API端点**: `POST /api/v1/compute-machines/:machineId/maintenance`
+**API端点**: `POST /api/v1/hosts/:hostId/maintenance`
 
 ---
 
 ### UC-COMPUTE-025: 下线算力机
 **参与者**: 系统管理员
 **前置条件**:
-- 拥有`computeMachines:delete`权限
+- 拥有`hosts:delete`权限
 - 算力机没有运行中的虚拟机或实例
 
 **主要流程**:
@@ -478,14 +478,14 @@
 - E1: 有运行中的虚拟机 → 返回400错误
 - E2: 有独占模式的实例 → 返回400错误
 
-**API端点**: `POST /api/v1/compute-machines/:machineId/decommission`
+**API端点**: `POST /api/v1/hosts/:hostId/decommission`
 
 ---
 
 ### UC-COMPUTE-026: 查询算力机可用资源
 **参与者**: 系统、实例调度器
 **前置条件**:
-- 系统内部调用或拥有`computeMachines:read`权限
+- 系统内部调用或拥有`hosts:read`权限
 
 **主要流程**:
 1. 调度器请求查询可用资源
@@ -497,7 +497,7 @@
 **后置条件**:
 - 调度器获得资源可用性信息
 
-**API端点**: `GET /api/v1/compute-machines/:machineId/availability`
+**API端点**: `GET /api/v1/hosts/:hostId/availability`
 
 ---
 
@@ -534,7 +534,7 @@
 ```json
 {
   "vmName": "vm-instance-01",
-  "computeMachineId": "machine-uuid",
+  "hostId": "host-uuid",
   "instanceId": "instance-uuid",
   "cpuCores": 8,
   "memoryGb": 16,
@@ -688,7 +688,7 @@
 ```
 1. 查找可用的独占模式算力机
 2. 验证整机资源满足实例需求
-3. 直接关联Instance到ComputeMachine
+3. 直接关联Instance到Host
 4. 标记整机资源为已分配
 ```
 
