@@ -201,7 +201,6 @@ export const getInstanceList = async (
           limit: limit ? parseInt(limit as string) : undefined,
           status: status as string,
           search: search as string,
-          instanceSetId: instance_set_id as string,
         }
       );
 

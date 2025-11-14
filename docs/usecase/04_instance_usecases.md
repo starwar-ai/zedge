@@ -701,5 +701,4 @@
 ## 相关文档
 - [算力资源管理用例](03_compute_resource_usecases.md)
 - [存储管理用例](06_storage_usecases.md)
-- [实例集管理用例](05_instance_set_usecases.md)
 - [领域模型 - 实例管理](../domain_model.md#2-实例管理)

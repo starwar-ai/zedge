@@ -297,9 +297,8 @@ npx prisma migrate deploy
 
 ## 相关文档
 
-- [RBAC 使用指南](../docs/RBAC_GUIDE.md)
-- [API 文档](../docs/API.md)
-- [领域模型](../domain_model.md)
+- [RBAC 使用指南](RBAC_GUIDE.md)
+- [领域模型](../../domain_model/domain_model.md)
 
 ## License
 

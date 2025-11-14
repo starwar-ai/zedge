@@ -20,13 +20,12 @@
 | [02_tenant_usecases.md](02_tenant_usecases.md) | 租户管理 | 12个 | 多租户隔离、配额管理、网络隔离 |
 | [03_compute_resource_usecases.md](03_compute_resource_usecases.md) | 算力资源管理 | 36个 | 机房、算力池、算力机、虚拟机管理 |
 | [04_instance_usecases.md](04_instance_usecases.md) | 实例管理 | 14个 | 实例生命周期、资源分配、配置管理 |
-| [05_instance_set_usecases.md](05_instance_set_usecases.md) | 实例集管理 | 11个 | 批量创建、教学场景、集合操作 |
 | [06_storage_usecases.md](06_storage_usecases.md) | 存储管理 | 6个 | 私有数据盘、Ceph RBD、快照克隆 |
 | [07_network_usecases.md](07_network_usecases.md) | 网络管理 | 6个 | VPC、子网、IP地址、安全组 |
 | [08_image_template_usecases.md](08_image_template_usecases.md) | 镜像与模板管理 | 10个 | 镜像版本、实例模板、快速部署 |
 | [09_cloudbox_usecases.md](09_cloudbox_usecases.md) | 云盒管理 | 11个 | 设备管理、临时绑定、教学场景 |
 
-**总计**: 9个模块，121个核心用例
+**总计**: 8个模块，110个核心用例
 
 ---
 
@@ -49,7 +48,6 @@
 - 资源使用统计
 
 #### 老师/教师
-- 实例集管理（创建实训课程）
 - 批量创建学生实例
 - 云盒临时绑定（上课前绑定）
 - 批量启动/停止实例
@@ -59,7 +57,6 @@
 - 账号管理（登录、修改密码、更新资料）
 - 实例管理（创建、启动、停止、删除自己的实例）
 - 私有数据盘管理（创建、挂载、扩容）
-- 查看所属实例集
 - 连接云电脑
 
 ---
@@ -68,27 +65,22 @@
 
 ### 1. 教学场景完整流程
 
-**涉及用例**: UC-INSTANCESET-001, UC-INSTANCESET-002, UC-CLOUDBOX-002, UC-INSTANCE-003, UC-CLOUDBOX-004
+**涉及用例**: UC-CLOUDBOX-002, UC-INSTANCE-003, UC-CLOUDBOX-004
 
 **流程步骤**:
 ```
 课前准备:
-1. 老师创建实例集 (UC-INSTANCESET-001)
-2. 老师批量创建学生实例 (UC-INSTANCESET-002)
-3. 管理员批量绑定云盒到学生实例 (UC-CLOUDBOX-002, UC-CLOUDBOX-005)
+1. 管理员批量绑定云盒到学生实例 (UC-CLOUDBOX-002, UC-CLOUDBOX-005)
 
 上课时:
-4. 学生云盒启动，自动检查临时绑定 (UC-CLOUDBOX-003)
-5. 云盒直接连接实例，学生无需登录
-6. 老师批量启动所有学生实例（可选）(UC-INSTANCESET-007)
+2. 学生云盒启动，自动检查临时绑定 (UC-CLOUDBOX-003)
+3. 云盒直接连接实例，学生无需登录
 
 下课后:
-7. 老师批量停止学生实例 (UC-INSTANCESET-008)
-8. 管理员批量解除云盒临时绑定 (UC-CLOUDBOX-006)
-9. 课程结束后归档实例集 (UC-INSTANCESET-010)
+4. 管理员批量解除云盒临时绑定 (UC-CLOUDBOX-006)
 ```
 
-**详细文档**: [实例集管理用例](05_instance_set_usecases.md), [云盒管理用例](09_cloudbox_usecases.md)
+**详细文档**: [云盒管理用例](09_cloudbox_usecases.md)
 
 ---
 
@@ -152,7 +144,6 @@
 | UC-TENANT | 租户管理 | UC-TENANT-001 |
 | UC-COMPUTE | 算力资源 | UC-COMPUTE-001 |
 | UC-INSTANCE | 实例管理 | UC-INSTANCE-001 |
-| UC-INSTANCESET | 实例集管理 | UC-INSTANCESET-001 |
 | UC-STORAGE | 存储管理 | UC-STORAGE-001 |
 | UC-NETWORK | 网络管理 | UC-NETWORK-001 |
 | UC-IMAGE | 镜像管理 | UC-IMAGE-001 |
@@ -220,7 +211,7 @@ stopped → initializing → running ←→ suspended
 | super_admin | 超级管理员 | 所有权限 |
 | tenant_admin | 租户管理员 | 租户内所有资源 |
 | user | 普通用户 | 自己的资源 |
-| teacher | 教师 | 实例集管理权限 |
+| teacher | 教师 | 实例管理权限 |
 
 ### 权限操作
 
@@ -252,9 +243,6 @@ stopped → initializing → running ←→ suspended
 - `POST /api/v1/instances/:instanceId/stop` - 停止实例
 - `GET /api/v1/instances` - 查询实例列表
 
-### 实例集管理
-- `POST /api/v1/instance-sets` - 创建实例集
-- `POST /api/v1/instance-sets/:setId/batch-create-instances` - 批量创建实例
 
 ### 云盒管理
 - `POST /api/v1/cloud-boxes/:boxId/bind-instance` - 临时绑定实例
@@ -267,7 +255,7 @@ stopped → initializing → running ←→ suspended
 ## 相关文档
 
 ### 领域设计
-- [领域模型文档](../domain_model.md) - 完整的领域设计和实体关系
+- [领域模型文档](../domain_model/domain_model.md) - 完整的领域设计和实体关系
 
 ### 技术架构
 - [代码库概览](../../backend/CODEBASE_OVERVIEW.md) - 技术栈和架构设计

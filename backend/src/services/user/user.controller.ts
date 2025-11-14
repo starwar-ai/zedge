@@ -6,7 +6,6 @@
 import { Request, Response } from 'express';
 import { UserService } from './user.service';
 import { UserRole, UserStatus } from '@prisma/client';
-import { InstanceSetService } from '../instance-set/instance-set.service';
 import { InstanceService } from '../instance/instance.service';
 
 /**
@@ -266,82 +265,3 @@ export const resetPassword = async (
   }
 };
 
-/**
- * 获取当前用户的实例集列表
- * GET /api/v1/users/me/instance-sets
- */
-export const getCurrentUserInstanceSets = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    const { set_type, status } = req.query;
-    const userId = req.user!.user_id;
-    const tenantId = req.user!.tenant_id || '';
-
-    // 获取用户可访问的实例集
-    const instanceSetsResult = await InstanceSetService.getUserAccessibleInstanceSets(
-      userId,
-      req.user!.role as UserRole,
-      tenantId,
-      {
-        setType: set_type as any,
-        status: status as any,
-      }
-    );
-
-    // 为每个实例集获取用户在该集中的实例
-    const instanceSetsWithInstances = await Promise.all(
-      instanceSetsResult.instanceSets.map(async (instanceSet: any) => {
-        // 获取该实例集中用户拥有的实例
-        const instancesResult = await InstanceService.getUserAccessibleInstances(
-          userId,
-          req.user!.role,
-          tenantId,
-          {
-            instanceSetId: instanceSet.id,
-          }
-        );
-
-        return {
-          id: instanceSet.id,
-          name: instanceSet.name,
-          description: instanceSet.description,
-          set_type: instanceSet.setType,
-          status: instanceSet.status,
-          created_at: instanceSet.createdAt,
-          my_instances: instancesResult.instances.map((inst: any) => {
-            // 找到实例在该实例集中的角色
-            const member = inst.instanceSetMembers.find(
-              (m: any) => m.setId === instanceSet.id
-            );
-            return {
-              instance_id: inst.id,
-              instance_name: inst.name,
-              role: member?.role || 'member',
-              status: inst.status,
-            };
-          }),
-        };
-      })
-    );
-
-    res.status(200).json({
-      code: 200,
-      message: 'Success',
-      data: {
-        instance_sets: instanceSetsWithInstances,
-        total: instanceSetsResult.total,
-        page: instanceSetsResult.page,
-        limit: instanceSetsResult.limit,
-      },
-    });
-  } catch (error) {
-    console.error('Error getting user instance sets:', error);
-    res.status(500).json({
-      code: 500,
-      message: error instanceof Error ? error.message : 'Failed to get user instance sets',
-      data: null,
-    });
-  }
-};

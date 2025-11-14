@@ -18,8 +18,6 @@ const router = express.Router();
 // 获取当前用户信息
 router.get('/me', authenticateToken, userController.getCurrentUser);
 
-// 获取当前用户的实例集列表
-router.get('/me/instance-sets', authenticateToken, userController.getCurrentUserInstanceSets);
 
 // 创建用户 - admin 和 tenant_admin 可以创建
 router.post(

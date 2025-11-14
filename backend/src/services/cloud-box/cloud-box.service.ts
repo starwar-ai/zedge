@@ -113,19 +113,6 @@ export class CloudBoxService {
             name: true,
             status: true,
             config: true,
-            instanceSetMembers: {
-              select: {
-                setId: true,
-                role: true,
-                instanceSet: {
-                  select: {
-                    id: true,
-                    name: true,
-                    setType: true,
-                  },
-                },
-              },
-            },
           },
         },
         assignedUser: {
@@ -223,19 +210,6 @@ export class CloudBoxService {
             name: true,
             status: true,
             config: true,
-            instanceSetMembers: {
-              select: {
-                setId: true,
-                role: true,
-                instanceSet: {
-                  select: {
-                    id: true,
-                    name: true,
-                    setType: true,
-                  },
-                },
-              },
-            },
           },
         },
       },
@@ -273,8 +247,6 @@ export class CloudBoxService {
         id: cloudBox.temporaryInstance.id,
         name: cloudBox.temporaryInstance.name,
         status: cloudBox.temporaryInstance.status,
-        instance_set: cloudBox.temporaryInstance.instanceSetMembers?.[0]?.instanceSet,
-        role: cloudBox.temporaryInstance.instanceSetMembers?.[0]?.role,
         // TODO: 生成连接URL（需要根据实际协议实现）
         connect_url: null, // 后续实现
       },
@@ -298,19 +270,6 @@ export class CloudBoxService {
             name: true,
             status: true,
             config: true,
-            instanceSetMembers: {
-              select: {
-                setId: true,
-                role: true,
-                instanceSet: {
-                  select: {
-                    id: true,
-                    name: true,
-                    setType: true,
-                  },
-                },
-              },
-            },
           },
         },
       },
@@ -333,8 +292,6 @@ export class CloudBoxService {
         id: cloudBox.temporaryInstance.id,
         name: cloudBox.temporaryInstance.name,
         status: cloudBox.temporaryInstance.status,
-        instance_set: cloudBox.temporaryInstance.instanceSetMembers?.[0]?.instanceSet,
-        role: cloudBox.temporaryInstance.instanceSetMembers?.[0]?.role,
       },
       expiresAt: cloudBox.temporaryBindExpiresAt,
     };

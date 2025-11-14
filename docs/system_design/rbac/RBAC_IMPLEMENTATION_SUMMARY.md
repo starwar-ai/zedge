@@ -522,11 +522,11 @@ describe('Auth Flow', () => {
 
 ### 内部文档
 
-- [完整的 RBAC 使用指南](docs/RBAC_GUIDE.md)
-- [后端项目文档](backend/README.md)
+- [完整的 RBAC 使用指南](RBAC_GUIDE.md)
+- [后端项目文档](../../backend/README.md)
 - [快速入门指南](QUICK_START.md)
-- [领域模型设计](domain_model.md)
-- [系统架构设计](design/system_architecture.md)
+- [领域模型设计](../../domain_model/domain_model.md)
+- [系统架构设计](../system_architecture.md)
 
 ### 外部资源
 

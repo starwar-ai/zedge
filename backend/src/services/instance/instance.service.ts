@@ -77,7 +77,6 @@ export interface InstanceListQuery {
   userId?: string;
   status?: string;
   search?: string;
-  instanceSetId?: string;
 }
 
 /**
@@ -547,14 +546,6 @@ export class InstanceService {
       where.status = query.status;
     }
 
-    // 按实例集过滤
-    if (query.instanceSetId) {
-      where.instanceSetMembers = {
-        some: {
-          setId: query.instanceSetId,
-        },
-      };
-    }
 
     if (query.search) {
       where.OR = [
@@ -586,18 +577,6 @@ export class InstanceService {
               id: true,
               username: true,
               email: true,
-            },
-          },
-          instanceSetMembers: {
-            select: {
-              setId: true,
-              role: true,
-              instanceSet: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
             },
           },
         },
@@ -651,13 +630,6 @@ export class InstanceService {
           { name: { contains: query.search, mode: 'insensitive' } },
         ];
       }
-      if (query?.instanceSetId) {
-        where.instanceSetMembers = {
-          some: {
-            setId: query.instanceSetId,
-          },
-        };
-      }
 
       const [instances, total] = await Promise.all([
         prisma.instance.findMany({
@@ -679,19 +651,6 @@ export class InstanceService {
                 email: true,
               },
             },
-            instanceSetMembers: {
-              select: {
-                setId: true,
-                role: true,
-                instanceSet: {
-                  select: {
-                    id: true,
-                    name: true,
-                    setType: true,
-                  },
-                },
-              },
-            },
           },
         }),
         prisma.instance.count({ where }),
@@ -705,45 +664,8 @@ export class InstanceService {
       };
     }
 
-    // 普通用户只能看到：
-    // 1. 自己创建的实例
-    // 2. 自己所属用户组关联的实例集中的实例
-    const userGroups = await prisma.userGroupMember.findMany({
-      where: { userId },
-      select: { groupId: true },
-    });
-
-    const userGroupIds = userGroups.map((ug) => ug.groupId);
-
-    // 查询用户有权限访问的实例集
-    const accessibleInstanceSets = await prisma.instanceSet.findMany({
-      where: {
-        tenantId,
-        OR: [
-          { ownerId: userId },
-          ...(userGroupIds.length > 0 ? [{ userGroupId: { in: userGroupIds } }] : []),
-        ],
-      },
-      select: { id: true },
-    });
-
-    const accessibleInstanceSetIds = accessibleInstanceSets.map((set) => set.id);
-
-    // 构建查询条件
-    where.OR = [
-      { userId }, // 用户自己创建的实例
-      ...(accessibleInstanceSetIds.length > 0
-        ? [
-            {
-              instanceSetMembers: {
-                some: {
-                  setId: { in: accessibleInstanceSetIds },
-                },
-              },
-            },
-          ]
-        : []),
-    ];
+    // 普通用户只能看到自己创建的实例
+    where.userId = userId;
 
     // 应用其他查询条件
     if (query?.status) {
@@ -757,24 +679,6 @@ export class InstanceService {
         },
       ];
       delete where.OR;
-    }
-    if (query?.instanceSetId) {
-      // 确保用户有权限访问该实例集
-      if (accessibleInstanceSetIds.includes(query.instanceSetId)) {
-        where.instanceSetMembers = {
-          some: {
-            setId: query.instanceSetId,
-          },
-        };
-      } else {
-        // 如果没有权限，返回空结果
-        return {
-          instances: [],
-          total: 0,
-          page,
-          limit,
-        };
-      }
     }
 
     const [instances, total] = await Promise.all([
@@ -795,19 +699,6 @@ export class InstanceService {
               id: true,
               username: true,
               email: true,
-            },
-          },
-          instanceSetMembers: {
-            select: {
-              setId: true,
-              role: true,
-              instanceSet: {
-                select: {
-                  id: true,
-                  name: true,
-                  setType: true,
-                },
-              },
             },
           },
         },

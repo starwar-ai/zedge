@@ -1,4 +1,10 @@
 import React from 'react'
+import { FigmaButtonShowcase } from './components/features/buttons/FigmaButtons'
+import { PageComponentShowcase } from './components/features/page-components'
+import { TableShowcase } from './components/features/table'
+import { FormShowcase } from './components/features/form'
+import { IconShowcase } from './components/ui'
+import { TabListShowcase } from './components/features/page-components/TabListShowcase'
 
 function App() {
   return (
@@ -9,6 +15,46 @@ function App() {
           <p className="page-description">
             Multi-tenant cloud desktop management with RBAC
           </p>
+        </div>
+
+        {/* Figma Form Components */}
+        <div className="mb-8">
+          <div className="card">
+            <FormShowcase />
+          </div>
+        </div>
+
+        {/* Figma Icon Library */}
+        <div className="mb-8">
+          <div className="card">
+            <IconShowcase />
+          </div>
+        </div>
+
+        {/* Figma Table Component Implementations */}
+        <div className="mb-8">
+          <div className="card">
+            <TableShowcase />
+          </div>
+        </div>
+
+        {/* Figma Page Component Implementations */}
+        <div className="mb-8">
+          <div className="card">
+            <PageComponentShowcase />
+          </div>
+        </div>
+
+        {/* Figma TabList Component */}
+        <div className="mb-8">
+          <TabListShowcase />
+        </div>
+
+        {/* Figma Button Implementations */}
+        <div className="mb-8">
+          <div className="card">
+            <FigmaButtonShowcase />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -79,7 +125,7 @@ function App() {
           {/* Button examples */}
           <div className="card">
             <div className="card-header">
-              <h3 className="card-title">Button Variants</h3>
+              <h3 className="card-title">Design System Buttons</h3>
             </div>
             <div className="card-body">
               <div className="space-y-3">
@@ -98,13 +144,13 @@ function App() {
 
         <div className="mt-8 p-6 bg-primary-50 border border-primary-200 rounded-lg">
           <h2 className="text-xl font-semibold text-primary-900 mb-2">
-            Design System Ready
+            Figma Design Implementation Complete
           </h2>
           <p className="text-primary-700">
-            Your Tailwind CSS design tokens are configured. Start building components using the predefined color palette, typography, spacing, and component classes.
+            The button components from Figma DeskPro (node-id=97-1632) have been successfully implemented using our Tailwind CSS design tokens.
           </p>
           <p className="text-sm text-primary-600 mt-2">
-            Check <code className="bg-primary-100 px-2 py-1 rounded">tailwind.config.js</code> for all available design tokens.
+            Check <code className="bg-primary-100 px-2 py-1 rounded">src/components/features/buttons/FigmaButtons.tsx</code> for the implementation.
           </p>
         </div>
       </div>

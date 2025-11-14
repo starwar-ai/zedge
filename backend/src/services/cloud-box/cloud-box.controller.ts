@@ -293,7 +293,7 @@ export const getCloudBoxUserInstances = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { instance_set_id, status, role } = req.query;
+    const { status } = req.query;
     const userId = req.user!.user_id;
     const tenantId = req.user!.tenant_id || '';
 
@@ -303,59 +303,17 @@ export const getCloudBoxUserInstances = async (
       req.user!.role,
       tenantId,
       {
-        instanceSetId: instance_set_id as string,
         status: status as string,
       }
     );
 
-    // 如果指定了角色过滤，过滤实例集成员角色
-    let instances = result.instances;
-    if (role) {
-      instances = instances.filter((inst: any) => {
-        const member = inst.instanceSetMembers?.find(
-          (m: any) => m.role === role
-        );
-        return member !== undefined;
-      });
-    }
-
-    // 按实例集分组统计
-    const instanceSetMap = new Map();
-    instances.forEach((inst: any) => {
-      inst.instanceSetMembers?.forEach((member: any) => {
-        const setId = member.instanceSet.id;
-        if (!instanceSetMap.has(setId)) {
-          instanceSetMap.set(setId, {
-            id: member.instanceSet.id,
-            name: member.instanceSet.name,
-            set_type: member.instanceSet.setType,
-            instance_count: 0,
-            running_count: 0,
-          });
-        }
-        const setInfo = instanceSetMap.get(setId);
-        setInfo.instance_count++;
-        if (inst.status === 'running') {
-          setInfo.running_count++;
-        }
-      });
-    });
-
     // 格式化返回数据
-    const formattedInstances = instances.map((inst: any) => {
-      // 获取实例的主要实例集（取第一个）
-      const primaryMember = inst.instanceSetMembers?.[0];
+    const formattedInstances = result.instances.map((inst: any) => {
       return {
         id: inst.id,
         name: inst.name,
         status: inst.status,
         config: inst.config,
-        instance_set: primaryMember ? {
-          id: primaryMember.instanceSet.id,
-          name: primaryMember.instanceSet.name,
-          set_type: primaryMember.instanceSet.setType,
-          role: primaryMember.role,
-        } : null,
         can_access: true,
         // TODO: 生成连接URL（需要根据实际协议实现）
         connect_url: inst.status === 'running' ? null : null, // 后续实现
@@ -368,7 +326,6 @@ export const getCloudBoxUserInstances = async (
       data: {
         instances: formattedInstances,
         total: formattedInstances.length,
-        instance_sets: Array.from(instanceSetMap.values()),
       },
     });
   } catch (error) {

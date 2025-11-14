@@ -52,12 +52,6 @@ const ROLE_PERMISSIONS: Record<UserRole, PermissionDefinition[]> = {
     { resourceType: ResourceType.INSTANCE, action: PermissionAction.MANAGE, permissionName: 'instance:manage', description: '管理实例' },
     { resourceType: ResourceType.INSTANCE, action: PermissionAction.EXECUTE, permissionName: 'instance:execute', description: '执行实例操作' },
 
-    // 实例集管理
-    { resourceType: ResourceType.INSTANCE_SET, action: PermissionAction.CREATE, permissionName: 'instance_set:create', description: '创建实例集' },
-    { resourceType: ResourceType.INSTANCE_SET, action: PermissionAction.READ, permissionName: 'instance_set:read', description: '查看实例集' },
-    { resourceType: ResourceType.INSTANCE_SET, action: PermissionAction.UPDATE, permissionName: 'instance_set:update', description: '更新实例集' },
-    { resourceType: ResourceType.INSTANCE_SET, action: PermissionAction.DELETE, permissionName: 'instance_set:delete', description: '删除实例集' },
-    { resourceType: ResourceType.INSTANCE_SET, action: PermissionAction.MANAGE, permissionName: 'instance_set:manage', description: '管理实例集' },
 
     // 存储管理
     { resourceType: ResourceType.STORAGE, action: PermissionAction.CREATE, permissionName: 'storage:create', description: '创建存储' },

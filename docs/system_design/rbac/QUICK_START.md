@@ -232,10 +232,9 @@ npm run type-check
 
 恭喜！你已经成功启动了 RBAC 系统。接下来可以：
 
-1. 📖 阅读 [完整的 RBAC 使用指南](docs/RBAC_GUIDE.md)
-2. 🔧 查看 [API 文档](docs/API.md)
-3. 💻 探索 [前端集成示例](frontend/README.md)
-4. 🏗️ 了解 [系统架构](design/system_architecture.md)
+1. 📖 阅读 [完整的 RBAC 使用指南](RBAC_GUIDE.md)
+2. 💻 探索 [前端集成示例](../../../frontend/README.md)
+3. 🏗️ 了解 [系统架构](../system_architecture.md)
 
 ---
 

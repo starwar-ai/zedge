@@ -220,12 +220,12 @@ POST   /api/v1/users/:id/reset-password    # 重置密码
 - **内容**: 环境配置、安装步骤、基本使用
 - **适合**: 新手开发者快速上手
 
-### [RBAC_GUIDE.md](docs/RBAC_GUIDE.md)
+### [RBAC_GUIDE.md](RBAC_GUIDE.md)
 - **用途**: 完整的RBAC使用指南
 - **内容**: 系统概述、API使用、前后端集成、最佳实践
 - **适合**: 深入了解系统细节
 
-### [backend/README.md](backend/README.md)
+### [backend/README.md](../../backend/README.md)
 - **用途**: 后端项目文档
 - **内容**: 技术栈、项目结构、开发指南
 - **适合**: 后端开发者
@@ -257,10 +257,10 @@ npm run dev
 
 ## 🔗 相关链接
 
-- 📚 [完整使用指南](docs/RBAC_GUIDE.md)
+- 📚 [完整使用指南](RBAC_GUIDE.md)
 - 🚀 [快速入门](QUICK_START.md)
 - 📋 [实现总结](RBAC_IMPLEMENTATION_SUMMARY.md)
-- 💻 [后端文档](backend/README.md)
+- 💻 [后端文档](../../backend/README.md)
 
 ---
 

@@ -216,11 +216,9 @@
 | 类型 | 说明 | 用途 |
 |-----|------|------|
 | instance | 单实例模板 | 快速创建标准实例 |
-| instance_set | 实例集模板 | 批量创建实例集 |
 
 ---
 
 ## 相关文档
 - [实例管理用例](04_instance_usecases.md)
-- [实例集管理用例](05_instance_set_usecases.md)
 - [领域模型 - 镜像库](../domain_model.md#镜像库)
