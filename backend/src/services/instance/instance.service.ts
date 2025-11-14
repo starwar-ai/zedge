@@ -6,7 +6,6 @@
 import { prisma } from '../../utils/prisma.client';
 import { Instance, Prisma, RentalMode } from '@prisma/client';
 import { TemplateService, TemplateConfig } from '../template/template.service';
-import { VirtualMachineService } from '../virtual-machine/virtual-machine.service';
 import { HostService } from '../compute-machine/compute-machine.service';
 import { ResourcePoolService } from '../resource-pool/resource-pool.service';
 import { PrivateDataDiskService } from '../private-data-disk/private-data-disk.service';
@@ -487,7 +486,6 @@ export class InstanceService {
         rentalMode: null,
         resourcePoolId: null,
         hostId: null,
-        virtualMachineId: null,
       },
     });
 
@@ -961,7 +959,6 @@ export class InstanceService {
       where: { id: instanceId },
       include: {
         host: true,
-        virtualMachine: true,
       },
     });
 
@@ -1005,13 +1002,8 @@ export class InstanceService {
     });
 
     try {
-      if (finalRentalMode === RentalMode.EXCLUSIVE) {
-        // 独占模式：分配整个算力机
-        await this.allocateExclusiveHost(instanceId, finalResourcePoolId, config);
-      } else {
-        // 共享模式：创建虚拟机
-        await this.createSharedVirtualMachine(instanceId, finalResourcePoolId, config);
-      }
+      // 分配算力机（统一处理，不再区分独占/共享模式）
+      await this.allocateHost(instanceId, finalResourcePoolId, config, finalRentalMode);
 
       // 更新Instance状态为running
       const updatedInstance = await prisma.instance.update({
@@ -1041,7 +1033,6 @@ export class InstanceService {
         data: {
           status: InstanceStatus.STOPPED,
           computeMachineId: null,
-          virtualMachineId: null,
         },
       });
       throw error;
@@ -1056,7 +1047,6 @@ export class InstanceService {
       where: { id: instanceId },
       include: {
         host: true,
-        virtualMachine: true,
       },
     });
 
@@ -1095,7 +1085,6 @@ export class InstanceService {
         data: {
           status: InstanceStatus.STOPPED,
           computeMachineId: null,
-          virtualMachineId: null,
         },
       });
 
@@ -1113,47 +1102,88 @@ export class InstanceService {
   }
 
   /**
-   * 分配独占算力机
+   * 分配算力机
    */
-  private static async allocateExclusiveHost(
+  private static async allocateHost(
     instanceId: string,
     resourcePoolId: string,
-    config: any
+    config: any,
+    rentalMode: RentalMode
   ): Promise<void> {
-    // 查找可用的独占模式算力机
-    const host = await prisma.host.findFirst({
-      where: {
-        resourcePoolId,
-        rentalMode: RentalMode.EXCLUSIVE,
-        status: {
-          in: ['ACTIVE', 'MAINTENANCE'],
-        },
-        // 确保没有其他Instance在使用
-        instances: {
-          none: {
-            status: 'running',
-            id: { not: instanceId },
-          },
-        },
-      },
-      orderBy: {
-        allocatedCpuCores: 'asc', // 优先选择负载较低的
-      },
-    });
-
-    if (!host) {
-      throw new Error('No available exclusive host found in the resource pool');
-    }
-
-    // 检查资源是否足够
     const requiredCpu = config.cpuCores || 0;
     const requiredMemory = config.memoryGb || 0;
     const requiredStorage = config.storageGb || 0;
 
-    if (host.cpuCores < requiredCpu ||
-        host.memoryGb < requiredMemory ||
-        host.storageGb < requiredStorage) {
-      throw new Error('Host does not have sufficient resources');
+    let host = null;
+
+    if (rentalMode === RentalMode.EXCLUSIVE) {
+      // 独占模式：查找可用的独占模式算力机
+      host = await prisma.host.findFirst({
+        where: {
+          resourcePoolId,
+          rentalMode: RentalMode.EXCLUSIVE,
+          status: {
+            in: ['ACTIVE', 'MAINTENANCE'],
+          },
+          // 确保没有其他Instance在使用
+          instances: {
+            none: {
+              status: 'running',
+              id: { not: instanceId },
+            },
+          },
+        },
+        orderBy: {
+          allocatedCpuCores: 'asc',
+        },
+      });
+
+      if (!host) {
+        throw new Error('No available exclusive host found in the resource pool');
+      }
+
+      // 独占模式需要整机资源
+      if (host.cpuCores < requiredCpu ||
+          host.memoryGb < requiredMemory ||
+          host.storageGb < requiredStorage) {
+        throw new Error('Host does not have sufficient resources');
+      }
+    } else {
+      // 共享模式：查找有足够剩余资源的算力机
+      const hosts = await prisma.host.findMany({
+        where: {
+          resourcePoolId,
+          rentalMode: RentalMode.SHARED,
+          status: {
+            in: ['ACTIVE', 'MAINTENANCE'],
+          },
+        },
+        orderBy: {
+          allocatedCpuCores: 'asc',
+        },
+      });
+
+      if (hosts.length === 0) {
+        throw new Error('No available shared host found in the resource pool');
+      }
+
+      // 查找有足够资源的算力机
+      for (const h of hosts) {
+        const availableCpu = h.cpuCores - h.allocatedCpuCores;
+        const availableMemory = h.memoryGb - h.allocatedMemoryGb;
+        const availableStorage = h.storageGb - h.allocatedStorageGb;
+
+        if (availableCpu >= requiredCpu &&
+            availableMemory >= requiredMemory &&
+            availableStorage >= requiredStorage) {
+          host = h;
+          break;
+        }
+      }
+
+      if (!host) {
+        throw new Error('No host has sufficient resources in the resource pool');
+      }
     }
 
     // 关联Instance到算力机
@@ -1164,100 +1194,43 @@ export class InstanceService {
       },
     });
 
-    // 更新算力机资源分配（独占模式，整个机器视为已分配）
-    await prisma.host.update({
-      where: { id: host.id },
-      data: {
-        allocatedCpuCores: host.cpuCores,
-        allocatedMemoryGb: host.memoryGb,
-        allocatedStorageGb: host.storageGb,
-      },
-    });
+    // 更新算力机资源分配
+    if (rentalMode === RentalMode.EXCLUSIVE) {
+      // 独占模式：整机资源视为已分配
+      await prisma.host.update({
+        where: { id: host.id },
+        data: {
+          allocatedCpuCores: host.cpuCores,
+          allocatedMemoryGb: host.memoryGb,
+          allocatedStorageGb: host.storageGb,
+          allocatedGpuCount: host.gpuCount || 0,
+        },
+      });
+    } else {
+      // 共享模式：按需分配资源
+      await prisma.host.update({
+        where: { id: host.id },
+        data: {
+          allocatedCpuCores: { increment: requiredCpu },
+          allocatedMemoryGb: { increment: requiredMemory },
+          allocatedStorageGb: { increment: requiredStorage },
+          allocatedGpuCount: { increment: config.gpuCount || 0 },
+        },
+      });
+    }
 
-    // 更新算力池资源统计
+    // 更新算力池和边缘机房资源统计
     await ResourcePoolService.updateResourcePoolStatistics(host.resourcePoolId);
     await HostService.updateEdgeDataCenterStatistics(host.edgeDataCenterId);
   }
 
   /**
-   * 创建共享模式虚拟机
+   * 释放算力机
    */
-  private static async createSharedVirtualMachine(
+  private static async releaseHost(
     instanceId: string,
-    resourcePoolId: string,
-    config: any
-  ): Promise<void> {
-    // 查找可用的共享模式算力机
-    const hosts = await prisma.host.findMany({
-      where: {
-        resourcePoolId,
-        rentalMode: RentalMode.SHARED,
-        status: {
-          in: ['ACTIVE', 'MAINTENANCE'],
-        },
-      },
-      orderBy: {
-        allocatedCpuCores: 'asc', // 优先选择负载较低的
-      },
-    });
-
-    if (hosts.length === 0) {
-      throw new Error('No available shared host found in the resource pool');
-    }
-
-    const requiredCpu = config.cpuCores || 0;
-    const requiredMemory = config.memoryGb || 0;
-    const requiredStorage = config.storageGb || 0;
-
-    // 查找有足够资源的算力机
-    let selectedHost = null;
-    for (const host of hosts) {
-      const availableCpu = host.cpuCores - host.allocatedCpuCores;
-      const availableMemory = host.memoryGb - host.allocatedMemoryGb;
-      const availableStorage = host.storageGb - host.allocatedStorageGb;
-
-      if (availableCpu >= requiredCpu &&
-          availableMemory >= requiredMemory &&
-          availableStorage >= requiredStorage) {
-        selectedHost = host;
-        break;
-      }
-    }
-
-    if (!selectedHost) {
-      throw new Error('No host has sufficient resources in the resource pool');
-    }
-
-    // 创建虚拟机
-    const virtualMachine = await VirtualMachineService.createVirtualMachine({
-      instanceId,
-      hostId: selectedHost.id,
-      vmName: `${instanceId.substring(0, 8)}-vm`,
-      cpuCores: requiredCpu,
-      memoryGb: requiredMemory,
-      storageGb: requiredStorage,
-      gpuCount: config.gpuCount || 0,
-      imageId: config.imageId,
-      imageVersionId: config.imageVersionId,
-      networkConfig: config.networkConfig,
-      userData: config.userData,
-    });
-
-    // 关联Instance到虚拟机
-    await prisma.instance.update({
-      where: { id: instanceId },
-      data: {
-        virtualMachineId: virtualMachine.id,
-      },
-    });
-  }
-
-  /**
-   * 释放独占算力机
-   */
-  private static async releaseExclusiveHost(
-    instanceId: string,
-    hostId: string
+    hostId: string,
+    rentalMode: RentalMode
   ): Promise<void> {
     // 解除Instance关联
     await prisma.instance.update({
@@ -1267,21 +1240,45 @@ export class InstanceService {
       },
     });
 
-    // 更新算力机资源分配（释放所有资源）
+    // 获取实例配置以计算需要释放的资源
+    const instance = await prisma.instance.findUnique({
+      where: { id: instanceId },
+    });
+
     const host = await prisma.host.findUnique({
       where: { id: hostId },
     });
 
     if (host) {
-      await prisma.host.update({
-        where: { id: hostId },
-        data: {
-          allocatedCpuCores: 0,
-          allocatedMemoryGb: 0,
-          allocatedStorageGb: 0,
-          allocatedGpuCount: 0,
-        },
-      });
+      if (rentalMode === RentalMode.EXCLUSIVE) {
+        // 独占模式：释放所有资源
+        await prisma.host.update({
+          where: { id: hostId },
+          data: {
+            allocatedCpuCores: 0,
+            allocatedMemoryGb: 0,
+            allocatedStorageGb: 0,
+            allocatedGpuCount: 0,
+          },
+        });
+      } else {
+        // 共享模式：释放实例占用的资源
+        const config = (instance?.config as any) || {};
+        const cpuCores = config.cpuCores || 0;
+        const memoryGb = config.memoryGb || 0;
+        const storageGb = config.storageGb || 0;
+        const gpuCount = config.gpuCount || 0;
+
+        await prisma.host.update({
+          where: { id: hostId },
+          data: {
+            allocatedCpuCores: { decrement: cpuCores },
+            allocatedMemoryGb: { decrement: memoryGb },
+            allocatedStorageGb: { decrement: storageGb },
+            allocatedGpuCount: { decrement: gpuCount },
+          },
+        });
+      }
 
       // 更新算力池和边缘机房资源统计
       await ResourcePoolService.updateResourcePoolStatistics(host.resourcePoolId);

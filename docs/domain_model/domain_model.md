@@ -5,7 +5,7 @@
 云电脑业务管理系统是一个完整的虚拟桌面基础设施(VDI)管理平台，用于管理云端计算资源、用户访问、实例生命周期和存储资源。
 
 **核心职责**:
-- 管理分布式计算资源和虚拟机实例
+- 管理分布式计算资源和实例
 - 控制用户访问和权限
 - 处理数据存储和磁盘管理
 - 监控资源利用率和健康状态
@@ -111,7 +111,7 @@
 
 ### 1.3 算力机 (Host)
 
-**功能**: 实际运行虚拟机的物理或虚拟宿主机
+**功能**: 实际运行实例的物理或虚拟宿主机
 
 **主要属性**:
 - `hostname`: 主机名
@@ -138,7 +138,7 @@
 | 租赁方式 | 说明 | 资源分配 | 适用场景 |
 |---------|------|---------|---------|
 | **独占方式** (exclusive) | 整个物理机独占给单个用户使用 | 使用实机（物理机），整台机器资源完全分配给用户 | 高性能计算、数据密集型应用、需要完全资源控制 |
-| **共享方式** (shared) | 物理机可被多个用户共享使用 | 使用虚拟机，在共享物理机上创建虚拟机实例 | 普通应用、开发测试、资源利用率优化 |
+| **共享方式** (shared) | 物理机可被多个用户共享使用 | 在共享物理机上运行多个实例，按需分配资源 | 普通应用、开发测试、资源利用率优化 |
 
 **独占方式特性**:
 - 整台物理机资源完全分配给单个用户
@@ -147,7 +147,7 @@
 - 资源利用率较低，但用户获得完全控制权
 
 **共享方式特性**:
-- 物理机资源被多个虚拟机共享
+- 物理机资源被多个实例共享
 - 通过虚拟化技术实现资源隔离
 - 资源利用率高，成本相对较低
 - 适合大多数常规应用场景
@@ -157,81 +157,20 @@
 - 通过数据库触发器自动维护
 - 支持快速容量检查，无需聚合查询
 - 独占模式下，整台机器资源视为已分配
-- 共享模式下，按虚拟机实例分配的资源累计计算
+- 共享模式下，按实例分配的资源累计计算
 
-**算力机与虚拟机的关系**:
-- 一个算力机可以创建多个虚拟机（仅在共享模式下）
-- 独占模式的算力机不创建虚拟机，直接分配给Instance
-- 虚拟机通过 `host_id` 关联到算力机
-- 虚拟机的资源分配会更新算力机的 `allocated_*` 字段
+**算力机与实例的关系**:
+- 一个算力机可以运行多个实例
+- 独占模式的算力机整机分配给单个实例
+- 共享模式的算力机可以运行多个实例，按需分配资源
+- 实例通过 `host_id` 关联到算力机
+- 实例的资源分配会更新算力机的 `allocated_*` 字段
 
 **算力机与算力池的关系**:
 - 一个算力机只能属于一个算力池（一对多关系）
 - 通过 `resource_pool_id` 外键直接关联
 - 算力机注册时必须指定算力池
 - 算力机可以转移至另一个算力池（需确保没有运行中的虚拟机或实例）
-
----
-
-### 1.5 虚拟机 (Virtual Machine)
-
-**定义**: 在算力机上使用虚拟化技术（KVM、VMware、Hyper-V）创建的虚拟机实例
-
-**主要属性**:
-- `vm_id`: 虚拟机唯一标识 (UUID)
-- `host_id`: 所属算力机ID（外键 → hosts.host_id）
-- `instance_id`: 关联的Instance ID（外键 → instances.instance_id，一对一）
-- `vm_uuid`: 虚拟化平台中的UUID（虚拟化平台返回的唯一标识）
-- `vm_name`: 虚拟机名称
-- `cpu_cores`: CPU核心数
-- `memory_gb`: 内存大小（GB）
-- `storage_gb`: 存储大小（GB）
-- `gpu_count`: GPU数量（可选）
-- `status`: 虚拟机状态 (creating, starting, running, stopping, stopped, restarting, error, deleted)
-- `ip_address`: IP地址（可选）
-- `mac_address`: MAC地址（可选）
-- `config`: 虚拟机配置信息（JSON格式）
-  - imageId: 使用的镜像ID
-  - imageVersionId: 镜像版本ID
-  - networkConfig: 网络配置
-  - userData: 初始化脚本
-- `created_at`, `updated_at`: 时间戳
-
-**生命周期状态**:
-```
-创建中 (creating)        ← Instance启动时创建虚拟机
-  ↓
-启动中 (starting)
-  ↓
-运行中 (running)
-  ↓
-停止中 (stopping)        ← Instance停止时删除虚拟机
-  ↓
-已删除 (deleted)
-```
-
-**虚拟机与Instance的关系**:
-- 一对一关系：一个Instance对应一个虚拟机（仅在共享模式且运行时）
-- Instance创建时：不创建虚拟机
-- Instance启动时（共享模式）：创建虚拟机并关联
-- Instance停止时：删除虚拟机，但Instance记录保留
-- Instance删除时：如果虚拟机存在，先删除虚拟机
-
-**虚拟机与算力机的关系**:
-- 多对一关系：多个虚拟机可以运行在一个算力机上
-- 仅在共享模式的算力机上创建虚拟机
-- 虚拟机的资源分配会累加到算力机的已分配资源中
-- 虚拟机删除时，会释放算力机的资源
-
-**虚拟化平台支持**:
-- KVM: 使用libvirt或virsh命令管理
-- VMware: 使用vSphere API或vCenter API
-- Hyper-V: 使用PowerShell或WMI
-
-**资源分配**:
-- 虚拟机创建时，从算力机分配资源（CPU、内存、存储）
-- 虚拟机删除时，资源归还到算力机
-- 算力机的 `allocated_*` 字段实时跟踪虚拟机的资源使用
 
 ---
 
@@ -356,10 +295,10 @@
 ```
 
 **资源分配时机**:
-- **创建时**：只创建Instance记录，状态为 `stopped`，不分配算力机或虚拟机
+- **创建时**：只创建Instance记录，状态为 `stopped`，不分配算力机
 - **启动时**：根据租赁模式分配资源
   - 独占模式：分配整个算力机
-  - 共享模式：创建虚拟机
+  - 共享模式：在算力机上分配资源
 - **停止时**：释放资源，但保留Instance记录
 
 **关键属性**:
@@ -387,15 +326,14 @@
 - `rental_mode`: 租赁模式 (exclusive-独占, shared-共享，仅在运行时设置)
 - `resource_pool_id`: 分配的算力池ID（可选，外键 → resource_pools.pool_id，仅在运行时设置）
 - `host_id`: 分配的算力机ID（可选，外键 → hosts.host_id，独占模式且运行时使用）
-- `virtual_machine_id`: 关联的虚拟机ID（可选，外键 → virtual_machines.vm_id，共享模式且运行时使用）
 - `created_at`, `updated_at`: 时间戳
 
 **重要说明**:
-- Instance创建时：只创建记录，状态为 `stopped`，不分配资源（`resource_pool_id`、`host_id`、`virtual_machine_id` 均为 null）
+- Instance创建时：只创建记录，状态为 `stopped`，不分配资源（`resource_pool_id`、`host_id` 均为 null）
 - Instance启动时：根据租赁模式分配资源
   - **独占模式**：分配整个算力机，设置 `host_id`
-  - **共享模式**：创建虚拟机，设置 `virtual_machine_id`
-- Instance停止时：释放资源，清除 `host_id` 和 `virtual_machine_id`，但Instance记录保留
+  - **共享模式**：在算力机上分配资源，设置 `host_id`
+- Instance停止时：释放资源，清除 `host_id`，但Instance记录保留
 
 **实例与模板的关系** (多对一，可选):
 - 实例可以关联到一个模板（`template_id`）
@@ -409,40 +347,33 @@
 1. **直接创建**: 用户直接指定所有配置参数创建实例
 2. **从模板创建**: 用户选择模板，系统应用模板默认配置，用户可选择性覆盖部分参数
 
-**Instance与算力机、虚拟机的关系**:
+**Instance与算力机的关系**:
 
 Instance的资源分配是动态的，与Instance状态相关：
 
 1. **Instance创建时**：
    - 只创建Instance记录（配置信息）
    - 状态为 `stopped`
-   - **不分配算力机或创建虚拟机**
-   - `resource_pool_id`、`host_id`、`virtual_machine_id` 均为 null
+   - **不分配算力机**
+   - `resource_pool_id`、`host_id` 均为 null
 
 2. **Instance启动时**（`POST /api/v1/instances/:id/start`）：
-   - **独占模式（exclusive）**：
-     - 在指定算力池中选择可用的独占模式算力机
-     - 将Instance直接关联到算力机（`compute_machine_id`）
-     - 整台算力机资源视为已分配
-     - 关系：`Instance -> ComputeMachine`（直接关联）
-   
-   - **共享模式（shared）**：
-     - 在指定算力池中选择可用的共享模式算力机
-     - 在算力机上创建虚拟机
-     - 将Instance通过虚拟机关联到算力机（`virtual_machine_id`）
-     - 关系：`Instance -> VirtualMachine -> ComputeMachine`（通过虚拟机关联）
+   - 在指定算力池中选择可用的算力机
+   - 根据租赁模式分配资源：
+     - **独占模式（exclusive）**：整台算力机资源视为已分配
+     - **共享模式（shared）**：按实例需求分配资源
+   - 将Instance直接关联到算力机（`host_id`）
+   - 关系：`Instance -> Host`（直接关联）
 
 3. **Instance停止时**（`POST /api/v1/instances/:id/stop`）：
-   - **独占模式**：释放算力机（解除关联，但Instance记录保留）
-   - **共享模式**：删除虚拟机（但Instance记录保留）
-   - 清除 `compute_machine_id` 和 `virtual_machine_id`
+   - 释放算力机资源（解除关联，但Instance记录保留）
+   - 清除 `host_id`
    - 状态变为 `stopped`
    - 算力机资源可以重新分配给其他Instance
 
 **关系约束**:
-- Instance与VirtualMachine是一对一关系（仅在运行时）
-- Instance停止时，虚拟机关联会被清空
-- 独占模式下Instance不创建虚拟机，直接关联算力机（仅在运行时）
+- Instance直接关联到Host（不再通过虚拟机）
+- Instance停止时，Host关联会被清空
 - Instance启动时必须指定算力池ID（`resource_pool_id`）
 - Instance可以指定租赁模式（`rental_mode`），如果不指定则默认为共享模式
 
@@ -799,7 +730,7 @@ Instance的资源分配是动态的，与Instance状态相关：
 |-----|------|---------|---------|
 | 创建私有数据盘 | 新建存储资源 | 用户配额、Ceph存储池容量 | 在Ceph存储池中创建RBD image |
 | 挂载私有数据盘 | 绑定到实例 | 实例运行中、类型兼容、规则约束、共享模式只读 | 通过虚拟化管理接口挂载RBD设备 |
-| 卸载私有数据盘 | 解除绑定 | 实例允许卸载 | 从虚拟机卸载RBD设备 |
+| 卸载私有数据盘 | 解除绑定 | 实例允许卸载 | 从实例卸载RBD设备 |
 | 快照 | 创建点备份 | 当前状态快照 | 使用Ceph RBD snapshot |
 | 克隆 | 从快照复制整个私有数据盘 | 足够存储空间、需要先创建快照 | 使用Ceph RBD clone功能 |
 | 扩容 | 增加容量（在线扩容） | Ceph存储池容量充足 | 使用Ceph RBD resize命令 |
@@ -1325,7 +1256,7 @@ Instance的资源分配是动态的，与Instance状态相关：
 
 ### 6.4 镜像 (Image)
 
-**功能**: 虚拟机的基础操作系统和应用镜像
+**功能**: 实例的基础操作系统和应用镜像
 
 **共享特性**: 镜像是平台级共享资源，存储在文件服务器的镜像库中，可被多个用户和实例重复使用，显著节省存储空间。
 
@@ -2255,7 +2186,7 @@ ORDER BY iv.created_at DESC;
   - 状态设为 stopped（不分配资源）
   - 保存配置到 config 字段
   - template_id 为 null（直接创建）
-  - resource_pool_id, host_id, virtual_machine_id 均为 null
+  - resource_pool_id, host_id 均为 null
   ↓
 实例已创建 (Instance Created)
   ↓
@@ -2271,12 +2202,10 @@ ORDER BY iv.created_at DESC;
   - 关联Instance到算力机
   - 更新算力机资源分配统计
   ↓
-[共享模式] 创建虚拟机 (Shared Mode: Create Virtual Machine)
+[共享模式] 分配算力机资源 (Shared Mode: Allocate Host Resources)
   - 在指定算力池中选择可用共享算力机
-  - 检查算力机资源是否足够
-  - 创建虚拟机记录
-  - 调用虚拟化平台API创建实际虚拟机
-  - 关联Instance到虚拟机
+  - 检查算力机剩余资源是否足够
+  - 关联Instance到算力机
   - 更新算力机资源分配统计
   ↓
 实例运行 (Instance Running)
@@ -2333,7 +2262,7 @@ ORDER BY iv.created_at DESC;
   - 状态设为 stopped（不分配资源）
   - 保存最终配置到 config 字段
   - 设置 template_id 关联到模板
-  - resource_pool_id, host_id, virtual_machine_id 均为 null
+  - resource_pool_id, host_id 均为 null
   ↓
 实例已创建 (Instance Created)
   ↓
@@ -2349,12 +2278,10 @@ ORDER BY iv.created_at DESC;
   - 关联Instance到算力机
   - 更新算力机资源分配统计
   ↓
-[共享模式] 创建虚拟机 (Shared Mode: Create Virtual Machine)
+[共享模式] 分配算力机资源 (Shared Mode: Allocate Host Resources)
   - 在指定算力池中选择可用共享算力机
-  - 检查算力机资源是否足够
-  - 创建虚拟机记录
-  - 调用虚拟化平台API创建实际虚拟机
-  - 关联Instance到虚拟机
+  - 检查算力机剩余资源是否足够
+  - 关联Instance到算力机
   - 更新算力机资源分配统计
   ↓
 实例运行 (Instance Running)
@@ -2428,7 +2355,7 @@ ORDER BY iv.created_at DESC;
   ↓
 分配算力资源 (Allocate Compute Resources)
   ↓
-创建/启动虚拟机 (Create/Start Virtual Machine)
+启动实例 (Start Instance)
   ↓
 实例状态更新为 running
   ↓
@@ -2458,14 +2385,14 @@ ORDER BY iv.created_at DESC;
 ```
 边缘机房 (Edge Data Center)
   ├─ 算力池 (Resource Pools - Compute Pool)
-  │    ├─ 算力机1 (Compute Machine 1)
-  │    │    ├─ 虚拟机1 (Virtual Machine 1) → Instance A (共享模式)
-  │    │    ├─ 虚拟机2 (Virtual Machine 2) → Instance B (共享模式)
-  │    │    └─ Instance C (独占模式，直接关联)
-  │    ├─ 算力机2 (Compute Machine 2)
-  │    │    └─ 虚拟机3 (Virtual Machine 3) → Instance D (共享模式)
-  │    └─ 算力机3 (Compute Machine 3) [独占模式]
-  │         └─ Instance E (独占模式，直接关联)
+  │    ├─ 算力机1 (Host 1) [共享模式]
+  │    │    ├─ Instance A
+  │    │    ├─ Instance B
+  │    │    └─ Instance C
+  │    ├─ 算力机2 (Host 2) [共享模式]
+  │    │    └─ Instance D
+  │    └─ 算力机3 (Host 3) [独占模式]
+  │         └─ Instance E
   ├─ 存储池 (Resource Pools - Storage Pool)
   │    ├─ Ceph 集群 (Ceph Cluster)
   │    │    ├─ RBD 存储池 (RBD Pools)
@@ -2496,8 +2423,7 @@ ORDER BY iv.created_at DESC;
   │    │    │    ├─ 网络带宽配额
   │    │    │    └─ 订阅 (Subscriptions)
   │    │    └─ 实例 (Instances)
-  │    │         ├─ 独占模式 → 直接关联算力机
-  │    │         └─ 共享模式 → 通过虚拟机关联算力机
+  │    │         └─ 直接关联算力机
   │    └─ 用户组 (User Groups)
   │         ├─ 成员 (Members)
   │         └─ 组配额 (Group Quotas)
@@ -2520,9 +2446,8 @@ ORDER BY iv.created_at DESC;
 **资源关系说明**:
 - **边缘机房** → **算力池** (1:N)：一个机房可以有多个算力池
 - **算力池** → **算力机** (1:N)：一个算力池可以包含多个算力机，一个算力机只能属于一个算力池
-- **算力机** → **虚拟机** (1:N)：一个算力机可以创建多个虚拟机（共享模式）
-- **Instance** → **算力机** (N:1，可选，独占模式)：Instance可以直接关联到算力机
-- **Instance** → **虚拟机** (1:1，可选，共享模式)：Instance通过虚拟机关联到算力机
+- **算力机** → **Instance** (1:N)：一个算力机可以运行多个实例
+- **Instance** → **算力机** (N:1，可选)：Instance直接关联到算力机
 - **Instance** → **算力池** (N:1，可选)：Instance记录分配的算力池
 
 ---

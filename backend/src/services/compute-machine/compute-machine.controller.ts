@@ -287,10 +287,10 @@ export const deleteHost = async (
 };
 
 /**
- * 获取算力机下的虚拟机列表
- * GET /api/v1/hosts/:id/virtual-machines
+ * 获取算力机下的实例列表
+ * GET /api/v1/hosts/:id/instances
  */
-export const getHostVirtualMachines = async (
+export const getHostInstances = async (
   req: Request,
   res: Response
 ): Promise<void> => {
@@ -308,16 +308,21 @@ export const getHostVirtualMachines = async (
       return;
     }
 
-    // 获取虚拟机的完整信息
-    const virtualMachines = await prisma.virtualMachine.findMany({
+    // 获取实例的完整信息
+    const instances = await prisma.instance.findMany({
       where: { hostId: id },
       include: {
-        instance: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+          },
+        },
+        tenant: {
           select: {
             id: true,
             name: true,
-            status: true,
-            userId: true,
           },
         },
       },
@@ -326,14 +331,14 @@ export const getHostVirtualMachines = async (
 
     res.status(200).json({
       code: 200,
-      message: 'Virtual machines retrieved successfully',
-      data: virtualMachines,
+      message: 'Instances retrieved successfully',
+      data: instances,
     });
   } catch (error) {
-    console.error('Error getting virtual machines:', error);
+    console.error('Error getting instances:', error);
     res.status(500).json({
       code: 500,
-      message: error instanceof Error ? error.message : 'Failed to get virtual machines',
+      message: error instanceof Error ? error.message : 'Failed to get instances',
       data: null,
     });
   }

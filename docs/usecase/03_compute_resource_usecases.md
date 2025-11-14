@@ -2,11 +2,11 @@
 
 ## 模块概述
 
-算力资源管理模块负责边缘机房、算力池、算力机和虚拟机的全生命周期管理。
+算力资源管理模块负责边缘机房、算力池、算力机的全生命周期管理。
 
-**相关实体**: EdgeDataCenter, ResourcePool, Host, VirtualMachine
-**主要服务**: EdgeDataCenterService, ResourcePoolService, HostService, VirtualMachineService
-**API路由**: `/api/v1/edge-data-centers`, `/api/v1/resource-pools`, `/api/v1/hosts`, `/api/v1/virtual-machines`
+**相关实体**: EdgeDataCenter, ResourcePool, Host
+**主要服务**: EdgeDataCenterService, ResourcePoolService, HostService
+**API路由**: `/api/v1/edge-data-centers`, `/api/v1/resource-pools`, `/api/v1/hosts`
 
 ---
 
@@ -307,7 +307,7 @@
 
 **后置条件**:
 - 算力机已注册
-- 算力机可用于创建实例或虚拟机
+- 算力机可用于运行实例
 
 **API端点**: `POST /api/v1/hosts`
 
@@ -361,7 +361,7 @@
 **主要流程**:
 1. 系统管理员请求算力机详细信息
 2. 系统查询算力机基本信息
-3. 系统查询虚拟机列表（如果是共享模式）
+3. 系统查询实例列表（如果有）
 4. 系统查询关联的实例（如果是独占模式）
 5. 系统查询健康状态指标
 6. 系统返回详细信息
@@ -392,11 +392,10 @@
     "allocatedGpuCount": 4,
     "availableGpuCount": 4
   },
-  "virtualMachines": [
+  "instances": [
     {
-      "vmId": "vm-uuid",
-      "vmName": "vm-instance-01",
       "instanceId": "instance-uuid",
+      "instanceName": "instance-01",
       "status": "running",
       "cpuCores": 8,
       "memoryGb": 16
@@ -444,7 +443,7 @@
 2. 系统验证权限
 3. 系统更新算力机状态为maintenance
 4. 系统停止新的实例分配到该机器
-5. 系统可选地迁移现有实例/虚拟机
+5. 系统可选地迁移现有实例
 6. 系统返回成功响应
 
 **后置条件**:
@@ -459,12 +458,12 @@
 **参与者**: 系统管理员
 **前置条件**:
 - 拥有`hosts:delete`权限
-- 算力机没有运行中的虚拟机或实例
+- 算力机没有运行中的实例
 
 **主要流程**:
 1. 系统管理员请求下线算力机
 2. 系统验证权限
-3. 系统检查是否有运行中的虚拟机
+3. 系统检查是否有运行中的实例
 4. 系统检查是否有独占模式的实例
 5. 系统更新算力机状态为offline
 6. 系统可选地从算力池移除
@@ -475,7 +474,7 @@
 - 算力机资源不可用
 
 **异常流程**:
-- E1: 有运行中的虚拟机 → 返回400错误
+- E1: 有运行中的实例 → 返回400错误
 - E2: 有独占模式的实例 → 返回400错误
 
 **API端点**: `POST /api/v1/hosts/:hostId/decommission`
@@ -501,176 +500,6 @@
 
 ---
 
-## 虚拟机管理用例
-
-### UC-COMPUTE-030: 创建虚拟机
-**参与者**: 实例服务（内部调用）
-**前置条件**:
-- 算力机处于共享模式
-- 算力机有足够的可用资源
-- 实例已创建且处于启动状态
-
-**主要流程**:
-1. 实例服务请求创建虚拟机
-2. 系统验证算力机可用性
-3. 系统验证资源充足性
-4. 系统生成虚拟机UUID
-5. 系统通过虚拟化API创建虚拟机
-6. 系统创建虚拟机记录（状态: creating）
-7. 系统更新算力机的allocated资源
-8. 虚拟化平台返回虚拟机UUID
-9. 系统更新虚拟机状态为running
-10. 系统关联虚拟机到实例
-11. 系统返回虚拟机信息
-
-**后置条件**:
-- 虚拟机已创建并运行
-- 算力机资源已分配
-- 实例关联到虚拟机
-
-**API端点**: `POST /api/v1/virtual-machines`
-
-**请求示例**:
-```json
-{
-  "vmName": "vm-instance-01",
-  "hostId": "host-uuid",
-  "instanceId": "instance-uuid",
-  "cpuCores": 8,
-  "memoryGb": 16,
-  "storageGb": 100,
-  "gpuCount": 1,
-  "config": {
-    "imageId": "image-uuid",
-    "networkConfig": {
-      "vpcId": "vpc-uuid",
-      "subnetId": "subnet-uuid"
-    }
-  }
-}
-```
-
----
-
-### UC-COMPUTE-031: 查询虚拟机列表
-**参与者**: 系统管理员
-**前置条件**:
-- 拥有`virtualMachines:read`权限
-
-**主要流程**:
-1. 系统管理员请求虚拟机列表
-2. 系统验证权限
-3. 系统应用筛选条件
-4. 系统返回虚拟机列表
-
-**API端点**: `GET /api/v1/virtual-machines`
-
----
-
-### UC-COMPUTE-032: 查询虚拟机详情
-**参与者**: 系统管理员
-**前置条件**:
-- 拥有`virtualMachines:read`权限
-
-**主要流程**:
-1. 系统管理员请求虚拟机详细信息
-2. 系统查询虚拟机基本信息
-3. 系统查询关联的实例信息
-4. 系统查询算力机信息
-5. 系统从虚拟化平台获取运行状态
-6. 系统返回详细信息
-
-**API端点**: `GET /api/v1/virtual-machines/:vmId`
-
----
-
-### UC-COMPUTE-033: 启动虚拟机
-**参与者**: 实例服务（内部调用）
-**前置条件**:
-- 虚拟机状态为stopped
-
-**主要流程**:
-1. 实例服务请求启动虚拟机
-2. 系统验证虚拟机存在
-3. 系统验证算力机状态
-4. 系统更新虚拟机状态为starting
-5. 系统通过虚拟化API启动虚拟机
-6. 系统等待虚拟机启动完成
-7. 系统更新虚拟机状态为running
-8. 系统返回成功响应
-
-**后置条件**:
-- 虚拟机正在运行
-
-**API端点**: `POST /api/v1/virtual-machines/:vmId/start`
-
----
-
-### UC-COMPUTE-034: 停止虚拟机
-**参与者**: 实例服务（内部调用）
-**前置条件**:
-- 虚拟机状态为running
-
-**主要流程**:
-1. 实例服务请求停止虚拟机
-2. 系统验证虚拟机存在
-3. 系统更新虚拟机状态为stopping
-4. 系统通过虚拟化API停止虚拟机
-5. 系统等待虚拟机停止完成
-6. 系统更新虚拟机状态为stopped
-7. 系统返回成功响应
-
-**后置条件**:
-- 虚拟机已停止
-
-**API端点**: `POST /api/v1/virtual-machines/:vmId/stop`
-
----
-
-### UC-COMPUTE-035: 删除虚拟机
-**参与者**: 实例服务（内部调用）
-**前置条件**:
-- 虚拟机状态为stopped或error
-- 关联的实例正在停止或删除
-
-**主要流程**:
-1. 实例服务请求删除虚拟机
-2. 系统验证虚拟机状态
-3. 系统通过虚拟化API删除虚拟机
-4. 系统更新虚拟机状态为deleted
-5. 系统释放算力机资源（更新allocated_*字段）
-6. 系统解除与实例的关联
-7. 系统返回成功响应
-
-**后置条件**:
-- 虚拟机已删除
-- 算力机资源已释放
-- 实例的virtual_machine_id清空
-
-**API端点**: `DELETE /api/v1/virtual-machines/:vmId`
-
----
-
-### UC-COMPUTE-036: 重启虚拟机
-**参与者**: 实例服务（内部调用）
-**前置条件**:
-- 虚拟机状态为running
-
-**主要流程**:
-1. 实例服务请求重启虚拟机
-2. 系统验证虚拟机存在
-3. 系统更新虚拟机状态为restarting
-4. 系统通过虚拟化API重启虚拟机
-5. 系统等待虚拟机重启完成
-6. 系统更新虚拟机状态为running
-7. 系统返回成功响应
-
-**后置条件**:
-- 虚拟机已重启并运行
-
-**API端点**: `POST /api/v1/virtual-machines/:vmId/restart`
-
----
 
 ## 资源分配策略
 
@@ -695,30 +524,10 @@
 ### 共享模式资源分配
 ```
 1. 查找可用的共享模式算力机
-2. 验证剩余资源满足虚拟机需求
-3. 在算力机上创建虚拟机
-4. 关联Instance到VirtualMachine
+2. 验证剩余资源满足实例需求
+3. 在算力机上分配资源
+4. 关联Instance到Host
 5. 更新算力机已分配资源统计
-```
-
----
-
-## 虚拟机生命周期状态图
-
-```
-创建中 (creating)
-  ↓
-启动中 (starting)
-  ↓
-运行中 (running) ←→ 暂停 (suspended)
-  ↓               ↓
-停止中 (stopping) ←
-  ↓
-已停止 (stopped)
-  ↓
-删除中 (deleting)
-  ↓
-已删除 (deleted)
 ```
 
 ---
@@ -734,8 +543,6 @@
 | UC-COMPUTE-011 查询算力池 | ✓ | ✓ | ✗ | ✓ |
 | UC-COMPUTE-020 注册算力机 | ✓ | ✗ | ✗ | ✗ |
 | UC-COMPUTE-021 查询算力机 | ✓ | ✗ | ✗ | ✓ |
-| UC-COMPUTE-030 创建虚拟机 | ✓ | ✗ | ✗ | ✓ (内部) |
-| UC-COMPUTE-035 删除虚拟机 | ✓ | ✗ | ✗ | ✓ (内部) |
 
 ---
 

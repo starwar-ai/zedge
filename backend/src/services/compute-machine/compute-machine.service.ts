@@ -185,20 +185,9 @@ export class HostService {
             poolType: true,
           },
         },
-        virtualMachines: {
-          select: {
-            id: true,
-            vmName: true,
-            status: true,
-            cpuCores: true,
-            memoryGb: true,
-            storageGb: true,
-          },
-        },
         _count: {
           select: {
             instances: true,
-            virtualMachines: true,
           },
         },
       },
@@ -259,7 +248,6 @@ export class HostService {
           },
           _count: {
             select: {
-              virtualMachines: true,
               instances: true,
             },
           },
@@ -314,13 +302,6 @@ export class HostService {
       include: {
         _count: {
           select: {
-            virtualMachines: {
-              where: {
-                status: {
-                  in: ['RUNNING', 'STARTING', 'CREATING'],
-                },
-              },
-            },
             instances: {
               where: {
                 status: 'running',
@@ -335,11 +316,7 @@ export class HostService {
       throw new Error('Host not found');
     }
 
-    // 检查是否有运行中的虚拟机或实例
-    if (host._count.virtualMachines > 0) {
-      throw new Error('Cannot transfer host with running virtual machines');
-    }
-
+    // 检查是否有运行中的实例
     if (host._count.instances > 0) {
       throw new Error('Cannot transfer host with running instances');
     }

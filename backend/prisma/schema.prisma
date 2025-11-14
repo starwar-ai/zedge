@@ -225,7 +225,6 @@ model Instance {
   rentalMode      RentalMode? @map("rental_mode")
   resourcePoolId  String?  @map("resource_pool_id") @db.Uuid
   hostId String? @map("host_id") @db.Uuid
-  virtualMachineId String? @unique @map("virtual_machine_id") @db.Uuid
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -235,7 +234,6 @@ model Instance {
   template        Template? @relation(fields: [templateId], references: [id])
   resourcePool    ResourcePool? @relation(fields: [resourcePoolId], references: [id])
   host  Host? @relation(fields: [hostId], references: [id])
-  virtualMachine  VirtualMachine? @relation("InstanceVirtualMachine")
   temporaryCloudBoxes CloudBox[] @relation("CloudBoxTemporaryInstance")
   privateDataDiskAttachments InstancePrivateDataDiskAttachment[]
   ipAddresses IpAddress[]
@@ -807,7 +805,6 @@ model Host {
   // Relations
   edgeDataCenter      EdgeDataCenter @relation(fields: [edgeDataCenterId], references: [id], onDelete: Cascade)
   resourcePool        ResourcePool @relation(fields: [resourcePoolId], references: [id], onDelete: Restrict)
-  virtualMachines     VirtualMachine[]
   instances           Instance[]
   
   @@unique([edgeDataCenterId, managementIp])
@@ -848,52 +845,6 @@ enum HealthStatus {
   HEALTHY     @map("healthy")
   WARNING     @map("warning")
   CRITICAL    @map("critical")
-}
-
-// ============================================================================
-// 虚拟机管理 (Virtual Machine Management)
-// ============================================================================
-
-model VirtualMachine {
-  id                  String   @id @default(uuid()) @map("vm_id") @db.Uuid
-  hostId    String   @map("host_id") @db.Uuid
-  instanceId          String   @unique @map("instance_id") @db.Uuid
-  vmUuid              String?  @unique @map("vm_uuid") @db.VarChar(255)
-  vmName              String   @map("vm_name") @db.VarChar(255)
-  // 资源分配
-  cpuCores            Int      @map("cpu_cores")
-  memoryGb            Int      @map("memory_gb")
-  storageGb           Int      @map("storage_gb")
-  gpuCount            Int?     @default(0) @map("gpu_count")
-  // 状态
-  status              VirtualMachineStatus @default(CREATING)
-  // 网络配置
-  ipAddress           String?  @map("ip_address") @db.VarChar(50)
-  macAddress          String?  @map("mac_address") @db.VarChar(50)
-  // 元数据
-  config              Json?    @db.JsonB
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
-  
-  // Relations
-  host      Host @relation(fields: [hostId], references: [id], onDelete: Restrict)
-  instance            Instance @relation("InstanceVirtualMachine", fields: [instanceId], references: [id], onDelete: Cascade)
-  
-  @@map("virtual_machines")
-  @@index([hostId])
-  @@index([instanceId])
-  @@index([status])
-}
-
-enum VirtualMachineStatus {
-  CREATING    @map("creating")
-  STARTING   @map("starting")
-  RUNNING    @map("running")
-  STOPPING   @map("stopping")
-  STOPPED    @map("stopped")
-  RESTARTING @map("restarting")
-  ERROR      @map("error")
-  DELETED    @map("deleted")
 }
 
 // ============================================================================
