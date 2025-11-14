@@ -4,7 +4,7 @@
  */
 
 import { Request, Response } from 'express';
-import { HostService } from './compute-machine.service';
+import { HostService } from './host.service';
 import {
   HostType,
   RentalMode,

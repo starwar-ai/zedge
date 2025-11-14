@@ -6,7 +6,7 @@
 import { prisma } from '../../utils/prisma.client';
 import { Instance, Prisma, RentalMode } from '@prisma/client';
 import { TemplateService, TemplateConfig } from '../template/template.service';
-import { HostService } from '../compute-machine/compute-machine.service';
+import { HostService } from '../host/host.service';
 import { ResourcePoolService } from '../resource-pool/resource-pool.service';
 import { PrivateDataDiskService } from '../private-data-disk/private-data-disk.service';
 
