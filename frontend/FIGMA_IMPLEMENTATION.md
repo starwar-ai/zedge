@@ -1446,6 +1446,87 @@ Same as other components:
 
 ---
 
+### Pagination Component (node-id: 413-647)
+
+Complete pagination control with page size selector, navigation buttons, and "go to page" functionality.
+
+**Figma Source**: https://www.figma.com/design/s3szBzWOPmpdq0EZg9PwKj/DeskPro?node-id=413-647
+
+#### Component Features
+
+- ✅ **Page Size Selector**: Dropdown to choose items per page (10, 20, 50)
+- ✅ **First/Last Navigation**: Quick jump to first or last page
+- ✅ **Previous/Next Navigation**: Navigate one page at a time
+- ✅ **Page Number Buttons**: Direct page selection
+- ✅ **Smart Ellipsis**: Shows ellipsis (...) for large page counts
+- ✅ **Go to Page Input**: Jump to specific page by number
+- ✅ **Active Page Highlighting**: Dark background (#030213) for current page
+- ✅ **Disabled States**: First/Previous disabled on page 1, Next/Last disabled on last page
+- ✅ **Accessibility**: Full keyboard navigation and ARIA support
+
+#### Design Specifications
+
+```css
+/* Container */
+width: 539px (auto);
+height: 36px;
+display: flex;
+justify-content: space-between;
+
+/* Navigation Buttons */
+size: 30px × 30px;
+border-radius: 8px;
+border: 1px solid rgba(0, 0, 0, 0.1);
+background: white;
+gap: 4px;
+
+/* Active Page Button */
+background: #030213;
+color: white;
+font-size: 12.5px;
+font-weight: 500 (Medium);
+line-height: 20px;
+letter-spacing: -0.1504px;
+
+/* Page Size Selector */
+width: 55px;
+height: 28px;
+border: 1px solid #ececf0;
+border-radius: 4px;
+font-size: 14px;
+color: #717182;
+
+/* Go to Page Input */
+width: 42px;
+height: 28px;
+text-align: center;
+```
+
+#### Usage
+
+```tsx
+import { Pagination } from '@/components/ui/Pagination'
+
+<Pagination
+  currentPage={currentPage}
+  totalPages={totalPages}
+  pageSize={pageSize}
+  pageSizeOptions={[10, 20, 50]}
+  showPageSize={true}
+  showGoto={true}
+  onPageChange={setCurrentPage}
+  onPageSizeChange={setPageSize}
+/>
+```
+
+#### Files Created
+
+- `src/components/ui/Pagination.tsx` - Main Pagination component
+- `src/components/features/pagination/PaginationShowcase.tsx` - Demo with examples
+- `src/assets/icons/pagination-*.svg` - Navigation icons
+
+---
+
 ## References
 
 - Figma Design: https://www.figma.com/design/s3szBzWOPmpdq0EZg9PwKj/DeskPro?node-id=97-1632

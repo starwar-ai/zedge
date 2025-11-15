@@ -1,14 +1,18 @@
-import React from 'react'
 import { FigmaButtonShowcase } from './components/features/buttons/FigmaButtons'
 import { PageComponentShowcase } from './components/features/page-components'
 import { TableShowcase } from './components/features/table'
 import { FormShowcase } from './components/features/form'
 import { IconShowcase } from './components/ui'
 import { TabListShowcase } from './components/features/page-components/TabListShowcase'
+import { PaginationShowcase } from './components/features/pagination/PaginationShowcase'
+import { ImageManagement } from './components/features/image-management'
 
 function App() {
   return (
     <div className="min-h-screen bg-neutral-50">
+      {/* Image Management Page - Full Figma Implementation */}
+      <ImageManagement />
+
       <div className="container-custom py-12">
         <div className="page-header">
           <h1 className="page-title">Zedge Cloud Desktop Platform</h1>
@@ -48,6 +52,11 @@ function App() {
         {/* Figma TabList Component */}
         <div className="mb-8">
           <TabListShowcase />
+        </div>
+
+        {/* Figma Pagination Component */}
+        <div className="mb-8">
+          <PaginationShowcase />
         </div>
 
         {/* Figma Button Implementations */}
