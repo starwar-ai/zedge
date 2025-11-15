@@ -665,9 +665,124 @@ Instance的资源分配是动态的，与Instance状态相关：
   - `max_private_data_disk_gb`: 最大私有数据盘容量
   - `max_ip_addresses`: 最大IP地址数
   - `max_bandwidth_gbps`: 最大网络带宽（Gbps）
+  - `semester_points`: 学期积分（学校租户专用，学期末作废）
+  - `enterprise_config`: 企业租户专用配置（企业租户专用，JSON格式）
+    - `contract_type`: 合同类型 (monthly, quarterly, yearly)
+    - `credit_limit`: 信用额度（元）
+    - `payment_terms`: 付款条件 (net30, net60, net90)
+    - `billing_contact`: 财务联系人邮箱
+    - `sla_level`: SLA级别 (standard, premium, enterprise)
+    - `resource_reservation`: 是否支持资源预留 (boolean)
+    - `sso_enabled`: 是否启用SSO (boolean)
+    - `sso_provider`: SSO提供商 (saml, oidc, ldap)
+    - `ip_whitelist`: IP白名单（CIDR格式数组）
+    - `compliance_requirements`: 合规要求数组 (gdpr, iso27001等)
+    - `data_retention_days`: 数据保留天数（默认365天）
+- `tenant_type`: 租户类型（可选，用于区分不同类型的租户）
+  - `general`: 普通租户（默认）
+  - `school`: 学校租户（支持排课自动化、积分计费等特殊功能）
+  - `enterprise`: 企业租户（支持合同制计费、部门管理、审批流程等特殊功能）
 - `created_at`: 创建时间
 - `updated_at`: 更新时间
 - `created_by`: 创建者用户ID（外键 → users.user_id，超级管理员）
+
+**租户类型与功能关联**:
+- **普通租户** (`general`):
+  - 使用基础功能
+  - 仅支持通用角色（admin, tenant_admin, operator, user）
+  - 不支持场景特定功能
+
+- **学校租户** (`school`):
+  - 支持学校场景特殊功能（排课自动化、积分计费等）
+  - 支持学校场景角色（teacher, student, academic_affairs, it_staff）
+  - 支持院校-专业-年级-班级四级用户组结构
+  - 不支持企业场景功能
+
+- **企业租户** (`enterprise`):
+  - 支持企业场景特殊功能（合同制计费、部门管理等）
+  - 支持企业场景角色（enterprise_admin, department_manager等）
+  - 支持企业-部门-项目组-团队四级用户组结构
+  - 不支持学校场景功能
+
+**功能模块可见性配置**:
+
+| 功能模块 | general | school | enterprise | 说明 |
+|---------|---------|--------|------------|------|
+| **基础功能模块** |
+| 租户管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 用户管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 用户组管理 | ✅ | ✅ | ✅ | 所有租户类型都支持（层级结构不同） |
+| 边缘机房管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 算力机管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 实例管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 实例集管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 私有数据盘管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 镜像管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 模板管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| VPC管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 子网管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| IP地址管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 安全组管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 资源池管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 云盒管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 配额管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 订阅管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 使用计量 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 账单管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 支付管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 操作日志 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 监控指标 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| **学校场景功能模块** |
+| 排课自动化 | ❌ | ✅ | ❌ | 仅学校租户 |
+| 课表导入 | ❌ | ✅ | ❌ | 仅学校租户 |
+| 自动创建实例 | ❌ | ✅ | ❌ | 仅学校租户（排课场景） |
+| 积分计费 | ❌ | ✅ | ❌ | 仅学校租户 |
+| 学期积分管理 | ❌ | ✅ | ❌ | 仅学校租户 |
+| 免费积分管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| GPU比例分配 | ❌ | ✅ | ❌ | 仅学校租户（1:8:32约束） |
+| 数据盘自动挂载（学校） | ❌ | ✅ | ❌ | 仅学校租户（个人盘+公共盘） |
+| 资源申请与审批（学校） | ❌ | ✅ | ❌ | 仅学校租户（课程资源审批） |
+| 场所管理 | ❌ | ✅ | ❌ | 仅学校租户（上课场所） |
+| **企业场景功能模块** |
+| 企业组织结构管理 | ❌ | ❌ | ✅ | 仅企业租户 |
+| 成本中心管理 | ❌ | ❌ | ✅ | 仅企业租户 |
+| 预算管理 | ❌ | ❌ | ✅ | 仅企业租户 |
+| 合同制计费 | ❌ | ❌ | ✅ | 仅企业租户 |
+| 企业合同管理 | ❌ | ❌ | ✅ | 仅企业租户 |
+| 信用额度管理 | ❌ | ❌ | ✅ | 仅企业租户 |
+| 发票管理 | ❌ | ❌ | ✅ | 仅企业租户 |
+| 成本分摊 | ❌ | ❌ | ✅ | 仅企业租户 |
+| 多级审批流程 | ❌ | ❌ | ✅ | 仅企业租户 |
+| 费用审批 | ❌ | ❌ | ✅ | 仅企业租户 |
+| 预算审批 | ❌ | ❌ | ✅ | 仅企业租户 |
+| SSO单点登录 | ❌ | ❌ | ✅ | 仅企业租户 |
+| IP白名单 | ❌ | ❌ | ✅ | 仅企业租户 |
+| 访问时间限制 | ❌ | ❌ | ✅ | 仅企业租户 |
+| 合规性审计 | ❌ | ❌ | ✅ | 仅企业租户 |
+| 资源预留 | ❌ | ❌ | ✅ | 仅企业租户 |
+| SLA保障 | ❌ | ❌ | ✅ | 仅企业租户 |
+| 资源优先级管理 | ❌ | ❌ | ✅ | 仅企业租户 |
+
+**功能模块可见性规则**:
+- 前端UI根据租户类型动态显示/隐藏功能模块
+- 企业租户不显示学校场景功能模块（排课、积分计费等）
+- 学校租户不显示企业场景功能模块（合同管理、SSO等）
+- 普通租户只显示基础功能模块
+- 系统管理员（admin）可以访问所有功能模块（跨租户）
+
+**功能模块配置实现**:
+- 前端路由守卫：根据租户类型过滤菜单项和路由
+- 后端API：根据租户类型返回可用功能模块列表
+- 权限验证：访问场景特定功能时验证租户类型
+- 错误提示：访问不支持的功能时返回明确的错误信息
+
+**租户类型切换限制**:
+- 租户类型创建后不建议修改（涉及数据迁移）
+- 如需修改租户类型，需要：
+  1. 验证现有用户角色是否与新类型兼容
+  2. 迁移或清理不兼容的用户角色
+  3. 迁移或清理场景特定的配置数据
+  4. 清理场景特定的功能模块数据（如排课计划、企业合同等）
 
 **租户与用户的关系** (一对多):
 - 一个租户包含多个用户
@@ -727,6 +842,19 @@ Instance的资源分配是动态的，与Instance状态相关：
 - `description`: 用户组描述
 - `tenant_id`: 所属租户ID（外键 → tenants.tenant_id）
 - `parent_group_id`: 父用户组ID（可选，支持层级结构）
+- `group_type`: 用户组类型（可选，用于不同场景）
+  - `general`: 普通用户组（默认）
+  - `school`: 学校用户组（支持院校-专业-年级-班级四级结构）
+  - `enterprise`: 企业用户组（支持企业-部门-项目组-团队四级结构）
+- `group_level`: 层级级别（场景专用）
+  - `university`: 院校级别（学校场景）
+  - `major`: 专业级别（学校场景）
+  - `grade`: 年级级别（学校场景）
+  - `class`: 班级级别（学校场景）
+  - `enterprise`: 企业级别（企业场景）
+  - `department`: 部门级别（企业场景）
+  - `project_group`: 项目组级别（企业场景）
+  - `team`: 团队级别（企业场景）
 - `quota_config`: 用户组配额配置（JSON）
 - `created_at`, `updated_at`: 时间戳
 
@@ -734,6 +862,34 @@ Instance的资源分配是动态的，与Instance状态相关：
 - 每个用户组必须属于一个租户
 - 用户组通过 `tenant_id` 字段关联到租户
 - 租户内的用户组可以跨组共享资源（如共享配额）
+
+**学校场景用户组层级结构**:
+- 支持院校-专业-年级-班级四级层级结构
+- 通过 `parent_group_id` 实现层级关系
+- 层级示例：
+  ```
+  院校（university）
+    └─ 专业（major）
+        └─ 年级（grade）
+            └─ 班级（class）
+  ```
+- 每个层级可以设置独立的配额配置
+- 支持跨层级权限继承
+
+**企业场景用户组层级结构**:
+- 支持企业-部门-项目组-团队四级层级结构
+- 通过 `parent_group_id` 实现层级关系
+- 层级示例：
+  ```
+  企业（enterprise）
+    └─ 部门（department）
+        └─ 项目组（project_group）
+            └─ 团队（team）
+                └─ 用户（users）
+  ```
+- 每个层级可以设置独立的配额和预算配置
+- 支持成本中心（Cost Center）关联
+- 支持跨层级权限继承和资源共享
 
 **用户组与用户的关系** (多对多):
 - 一个用户可以在多个用户组
@@ -749,10 +905,74 @@ Instance的资源分配是动态的，与Instance状态相关：
 - `username`: 用户名
 - `email`: 邮箱
 - `password_hash`: 密码（加密存储）
-- `role`: 角色 (admin, tenant_admin, operator, user)
+- `role`: 角色 (admin, tenant_admin, operator, user, teacher, student, academic_affairs, it_staff, enterprise_admin, department_manager, project_manager, finance_manager, compliance_officer)
+  - `admin`: 系统管理员
+  - `tenant_admin`: 租户管理员
+  - `operator`: 运维人员
+  - `user`: 普通用户
+  - `teacher`: 教师（学校场景）
+  - `student`: 学生（学校场景）
+  - `academic_affairs`: 教务人员（学校场景）
+  - `it_staff`: IT管理员（学校场景）
+  - `enterprise_admin`: 企业管理员（企业场景）
+  - `department_manager`: 部门经理（企业场景）
+  - `project_manager`: 项目经理（企业场景）
+  - `finance_manager`: 财务管理员（企业场景）
+  - `compliance_officer`: 合规官（企业场景）
 - `status`: 账户状态 (active, inactive, locked)
 - `tenant_id`: 所属租户ID（外键 → tenants.tenant_id）
 - `groups`: 所属用户组（多对多关系）
+
+**角色与租户类型关联规则**:
+- **通用角色**（适用于所有租户类型）:
+  - `admin`: 系统管理员（跨租户）
+  - `tenant_admin`: 租户管理员
+  - `operator`: 运维人员
+  - `user`: 普通用户
+
+- **学校场景角色**（仅适用于 `tenant_type = school`）:
+  - `teacher`: 教师
+  - `student`: 学生
+  - `academic_affairs`: 教务人员
+  - `it_staff`: IT管理员
+
+- **企业场景角色**（仅适用于 `tenant_type = enterprise`）:
+  - `enterprise_admin`: 企业管理员
+  - `department_manager`: 部门经理
+  - `project_manager`: 项目经理
+  - `finance_manager`: 财务管理员
+  - `compliance_officer`: 合规官
+
+**角色可见性配置表**:
+
+| 角色 | general | school | enterprise | 说明 |
+|------|---------|--------|------------|------|
+| `admin` | ✅ | ✅ | ✅ | 系统管理员，跨租户 |
+| `tenant_admin` | ✅ | ✅ | ✅ | 租户管理员 |
+| `operator` | ✅ | ✅ | ✅ | 运维人员 |
+| `user` | ✅ | ✅ | ✅ | 普通用户 |
+| `teacher` | ❌ | ✅ | ❌ | 仅学校场景 |
+| `student` | ❌ | ✅ | ❌ | 仅学校场景 |
+| `academic_affairs` | ❌ | ✅ | ❌ | 仅学校场景 |
+| `it_staff` | ❌ | ✅ | ❌ | 仅学校场景 |
+| `enterprise_admin` | ❌ | ❌ | ✅ | 仅企业场景 |
+| `department_manager` | ❌ | ❌ | ✅ | 仅企业场景 |
+| `project_manager` | ❌ | ❌ | ✅ | 仅企业场景 |
+| `finance_manager` | ❌ | ❌ | ✅ | 仅企业场景 |
+| `compliance_officer` | ❌ | ❌ | ✅ | 仅企业场景 |
+
+**角色可见性规则**:
+- 创建/编辑用户时，只能选择当前租户类型支持的角色
+- 企业租户的用户创建界面不显示学校角色选项
+- 学校租户的用户创建界面不显示企业角色选项
+- 普通租户（general）只能使用通用角色
+- 系统管理员（admin）可以跨租户操作，不受此限制
+
+**角色验证规则**:
+- 创建用户时：验证 `role` 是否适用于用户的 `tenant_id` 对应的租户类型
+- 更新用户角色时：验证新角色是否适用于当前租户类型
+- 用户切换租户时：如果新租户类型不支持当前角色，需要先修改角色
+- 验证失败时：返回明确的错误信息，提示该角色不适用于当前租户类型
 
 **权限体系**:
 - 基于角色的访问控制 (RBAC)
@@ -785,6 +1005,209 @@ Instance的资源分配是动态的，与Instance状态相关：
   - 仅操作自有资源
   - 可以创建和管理自己的实例
   - 可以管理自己的私有数据盘
+
+---
+
+### 5.3 角色可见性与过滤机制 (Role Visibility & Filtering)
+
+**目的**: 根据租户类型动态过滤可见角色，确保用户只能看到和使用适用于当前租户类型的角色。
+
+#### 5.3.1 角色可见性规则
+
+**规则定义**:
+- 角色可见性由租户类型决定
+- 前端UI根据租户类型动态生成角色选择列表
+- 后端API验证角色与租户类型的匹配性
+
+**过滤逻辑**:
+```
+获取当前租户类型 (tenant_type)
+  ↓
+根据租户类型查询可用角色列表
+  ↓
+过滤角色选择列表（前端）
+  ↓
+验证选择的角色是否匹配（后端）
+```
+
+#### 5.3.2 前端实现
+
+**角色选择组件**:
+- 读取当前用户的租户类型
+- 根据租户类型过滤角色选项
+- 企业租户：只显示通用角色 + 企业角色
+- 学校租户：只显示通用角色 + 学校角色
+- 普通租户：只显示通用角色
+
+**实现示例**:
+```typescript
+// 伪代码示例
+function getAvailableRoles(tenantType: TenantType): Role[] {
+  const commonRoles = ['admin', 'tenant_admin', 'operator', 'user'];
+  
+  if (tenantType === 'enterprise') {
+    return [...commonRoles, 'enterprise_admin', 'department_manager', 
+            'project_manager', 'finance_manager', 'compliance_officer'];
+  } else if (tenantType === 'school') {
+    return [...commonRoles, 'teacher', 'student', 
+            'academic_affairs', 'it_staff'];
+  } else {
+    return commonRoles;
+  }
+}
+```
+
+#### 5.3.3 后端验证
+
+**创建用户验证**:
+- 验证 `role` 是否适用于 `tenant_id` 对应的租户类型
+- 验证失败返回错误：`"角色 {role} 不适用于租户类型 {tenant_type}"`
+
+**更新用户角色验证**:
+- 验证新角色是否适用于当前租户类型
+- 如果用户切换租户，需要同时验证角色兼容性
+
+**API响应**:
+- 用户列表API：根据租户类型过滤返回的角色信息
+- 角色列表API：返回当前租户类型可用的角色列表
+
+**验证逻辑**:
+```typescript
+// 伪代码示例
+function validateRoleForTenant(role: string, tenantType: TenantType): boolean {
+  const roleTenantMapping = {
+    // 通用角色
+    'admin': ['general', 'school', 'enterprise'],
+    'tenant_admin': ['general', 'school', 'enterprise'],
+    'operator': ['general', 'school', 'enterprise'],
+    'user': ['general', 'school', 'enterprise'],
+    // 学校角色
+    'teacher': ['school'],
+    'student': ['school'],
+    'academic_affairs': ['school'],
+    'it_staff': ['school'],
+    // 企业角色
+    'enterprise_admin': ['enterprise'],
+    'department_manager': ['enterprise'],
+    'project_manager': ['enterprise'],
+    'finance_manager': ['enterprise'],
+    'compliance_officer': ['enterprise'],
+  };
+  
+  const allowedTenantTypes = roleTenantMapping[role] || [];
+  return allowedTenantTypes.includes(tenantType);
+}
+```
+
+#### 5.3.4 功能模块可见性配置
+
+**功能模块过滤逻辑**:
+```typescript
+// 伪代码示例
+function getAvailableModules(tenantType: TenantType): Module[] {
+  const baseModules = [
+    'tenant_management',
+    'user_management',
+    'user_group_management',
+    'edge_datacenter',
+    'compute_machine',
+    'instance_management',
+    'instance_set_management',
+    'private_data_disk',
+    'image_management',
+    'template_management',
+    'vpc_management',
+    'subnet_management',
+    'ip_address_management',
+    'security_group',
+    'resource_pool',
+    'cloud_box',
+    'quota_management',
+    'subscription_management',
+    'usage_metering',
+    'billing_management',
+    'payment_management',
+    'operation_logs',
+    'monitoring_metrics',
+  ];
+  
+  if (tenantType === 'enterprise') {
+    return [
+      ...baseModules,
+      'enterprise_organization',
+      'cost_center',
+      'budget_management',
+      'contract_billing',
+      'enterprise_contract',
+      'credit_limit',
+      'invoice_management',
+      'cost_allocation',
+      'multi_level_approval',
+      'expense_approval',
+      'budget_approval',
+      'sso_integration',
+      'ip_whitelist',
+      'access_time_restriction',
+      'compliance_audit',
+      'resource_reservation',
+      'sla_guarantee',
+      'resource_priority',
+    ];
+  } else if (tenantType === 'school') {
+    return [
+      ...baseModules,
+      'course_scheduling',
+      'schedule_import',
+      'auto_instance_creation',
+      'points_billing',
+      'semester_points',
+      'gpu_proportional_allocation',
+      'auto_disk_mounting_school',
+      'resource_application_school',
+      'place_management',
+    ];
+  } else {
+    return baseModules;
+  }
+}
+```
+
+**前端路由守卫**:
+- 根据租户类型动态生成侧边栏菜单
+- 路由访问时验证租户类型是否支持该功能模块
+- 不支持的功能模块返回404或权限错误页面
+
+**后端API验证**:
+- 每个场景特定功能的API端点验证租户类型
+- 返回403 Forbidden如果租户类型不支持该功能
+- 错误信息：`"功能模块 {module} 不适用于租户类型 {tenant_type}"`
+
+**功能模块访问控制示例**:
+```typescript
+// 伪代码示例
+function canAccessModule(module: string, tenantType: TenantType): boolean {
+  const moduleTenantMapping = {
+    // 基础模块（所有租户类型）
+    'tenant_management': ['general', 'school', 'enterprise'],
+    'user_management': ['general', 'school', 'enterprise'],
+    'instance_management': ['general', 'school', 'enterprise'],
+    // ... 其他基础模块
+    
+    // 学校场景模块
+    'course_scheduling': ['school'],
+    'points_billing': ['school'],
+    'semester_points': ['school'],
+    
+    // 企业场景模块
+    'enterprise_organization': ['enterprise'],
+    'contract_billing': ['enterprise'],
+    'sso_integration': ['enterprise'],
+  };
+  
+  const allowedTenantTypes = moduleTenantMapping[module] || [];
+  return allowedTenantTypes.includes(tenantType);
+}
+```
 
 ---
 
@@ -2407,12 +2830,17 @@ ORDER BY iv.created_at DESC;
 - `max_private_data_disk_gb`: 最大私有数据盘容量（租户内所有用户的总和）
 - `max_ip_addresses`: 最大IP地址数（租户内所有用户的总和）
 - `max_bandwidth_gbps`: 最大网络带宽（Gbps，租户内所有用户的总和）
+- `semester_points`: 学期积分（学校租户专用）
+  - 学期总积分配额
+  - 学期末自动作废
+  - 用于学校排课等场景的资源消耗
 
 **租户配额特点**:
 - 租户配额是租户内所有用户和用户组共享的上限
 - 租户内所有用户的资源使用总和不能超过租户配额
 - 租户管理员可以查看租户配额使用情况
 - 只有超级管理员可以修改租户配额
+- 学校租户的学期积分在学期末自动清零，不可跨学期使用
 
 ---
 
@@ -2881,6 +3309,86 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 - 带宽资源包: 10万Gbps·小时
 - 流量资源包: 100TB
 
+#### 11.3.4 按量/包时长转换 (Pay-as-you-go / Prepaid Conversion)
+
+**转换规则**:
+- **包时长 → 按量**: 满整周/日按对应包价计费，防止"拆包"薅羊毛
+- **按量 → 包时长**: 当使用时长达到包时长阈值时，自动按包价计费
+- **转换时机**: 实例创建时选择计费模式，运行期间可手动转换
+
+**包时长类型**:
+- `pay_as_you_go`: 按量计费（按秒计费，前端展示"约 X 元/天"）
+- `daily`: 包日（24小时）
+- `weekly`: 包周（7天）
+- `monthly`: 包月（30天，学校场景禁用）
+
+**转换示例**:
+```
+场景1: 用户选择按量计费，使用满7天
+  - 系统自动按包周价格计费
+  - 防止用户通过频繁创建/删除实例规避包时长优惠
+
+场景2: 用户选择包周，但只使用3天就删除
+  - 按实际使用时长（3天）计费
+  - 不强制按整周收费
+
+场景3: 学校场景禁用包月
+  - 防止长期占用资源
+  - 鼓励学期内灵活使用
+```
+
+#### 11.3.5 积分计费模式 (Points-based Billing)
+
+**适用场景**: 学校租户专用计费模式
+
+**积分类型**:
+- **学期积分** (Semester Points): 学校租户级别
+  - 由学校统一分配
+  - 学期末自动作废
+  - 用于学校排课等场景
+- **免费积分** (Free Points): 用户级别
+  - 平台赠送的免费额度
+  - 1个月失效
+  - 用于个人练习等场景
+
+**积分扣除优先级**:
+1. 优先扣除免费积分（用户个人）
+2. 其次扣除学期积分（学校租户）
+3. 最后扣除余额（需要充值）
+
+**积分计费规则**:
+- 按秒计费，统一转换为积分消耗
+- 不同机房、GPU品牌/型号有不同的积分单价
+- 积分单价配置示例：
+  ```json
+  {
+    "pricing_rules": {
+      "edge_data_center_coefficient": {
+        "beijing": 1.0,
+        "shanghai": 1.2,
+        "guangzhou": 0.9
+      },
+      "gpu_pricing": {
+        "nvidia": {
+          "3090": 10.0,
+          "4090": 15.0
+        },
+        "amd": {
+          "rx6900": 8.0
+        }
+      },
+      "cpu_per_core_per_hour": 0.5,
+      "memory_per_gb_per_hour": 0.2,
+      "storage_per_gb_per_day": 0.01
+    }
+  }
+  ```
+
+**退费机制**:
+- 锁定资源后若取消，扣除"手续费"后退还积分
+- 手续费比例可配置（如5%）
+- 退款优先返还到学期积分，其次返还到用户余额
+
 ---
 
 ### 11.4 账单生成 (Invoice Generation)
@@ -3170,6 +3678,802 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 
 ---
 
+## 14. 学校场景特殊功能 (School Scenario Special Features)
+
+**说明**: 本章节描述学校租户场景下的特殊功能扩展，包括排课自动化、积分计费体系、GPU比例分配等。这些功能仅在学校租户（`tenant_type = school`）中启用。
+
+---
+
+### 14.1 学校排课自动化 (Automated Course Scheduling)
+
+**功能**: 根据学校课表自动创建、启动、停止和销毁实例，实现"云端实验室"的自动化管理。
+
+#### 14.1.1 课表导入与解析
+
+**课表数据格式**:
+- 支持 Excel、CSV 格式导入
+- 必填字段：
+  - `course_name`: 课程名称
+  - `course_type`: 课程类型（理论课/实训课）
+  - `class_name`: 班级名称
+  - `teacher_name`: 教师姓名
+  - `place_name`: 上课场所
+  - `start_time`: 上课开始时间
+  - `end_time`: 下课结束时间
+  - `weekday`: 星期几
+  - `week_range`: 周次范围（如：1-16周）
+
+**课表解析流程**:
+```
+导入课表文件
+  ↓
+解析课程信息
+  ↓
+筛选实训课程（course_type = 'training'）
+  ↓
+匹配上课模板（根据课程名称、用途）
+  ↓
+计算所需实例数（根据班级人数）
+  ↓
+生成排课计划（PlanInstance 表）
+```
+
+#### 14.1.2 自动创建实例流程
+
+**排课计划表 (PlanInstance)**:
+- `plan_id`: 计划唯一标识 (UUID)
+- `course_name`: 课程名称
+- `class_id`: 班级ID（外键 → user_groups.group_id）
+- `teacher_id`: 教师ID（外键 → users.user_id）
+- `place_id`: 场所ID（外键 → places.place_id）
+- `template_id`: 上课模板ID（外键 → templates.template_id）
+- `scheduled_start_time`: 计划开机时间（上课前5分钟）
+- `scheduled_stop_time`: 计划关机时间（下课后10分钟）
+- `scheduled_create_time`: 计划创建时间（上课前10分钟）
+- `scheduled_destroy_time`: 计划销毁时间（下课后30分钟）
+- `required_instance_count`: 所需实例数
+- `estimated_points_cost`: 预估积分消耗
+- `status`: 计划状态 (pending, created, running, stopped, destroyed)
+- `created_at`, `updated_at`: 时间戳
+
+**自动创建流程**:
+```mermaid
+graph TD
+    A[每天0点批处理任务] --> B[查询今日排课计划]
+    B --> C[筛选需要创建的实例]
+    C --> D[检查资源冲突]
+    D --> E{冲突检测}
+    E -->|无冲突| F[锁定主机资源]
+    E -->|有冲突| G[记录冲突日志]
+    F --> H[上课前10min 自动创建实例]
+    H --> I[上课前5min 自动开机]
+    I --> J[学生/教师登录]
+    J --> K[自动挂载数据盘]
+    K --> L[下课后10min 自动关机]
+    L --> M{继续练习?}
+    M -->|是| N[手动租用/保存镜像]
+    M -->|否| O[30min后自动销毁]
+```
+
+#### 14.1.3 资源冲突检测
+
+**三维冲突检测**:
+- **时间维度**: 检查同一时间段是否有其他课程占用资源
+- **场所维度**: 检查同一场所是否有其他课程占用
+- **用户维度**: 检查同一用户（教师/学生）是否有时间冲突
+
+**冲突检测算法**:
+- 采用**区间树 + 锁表**数据结构
+- 创建实例时加行锁，防止并发冲突
+- 冲突检测查询：
+  ```sql
+  SELECT COUNT(*) FROM plan_instances
+  WHERE place_id = ?
+    AND scheduled_start_time < ? AND scheduled_stop_time > ?
+    AND status IN ('pending', 'created', 'running')
+  ```
+
+**冲突处理策略**:
+- **时间冲突**: 自动调整创建时间或拒绝创建
+- **场所冲突**: 提示更换场所或调整时间
+- **用户冲突**: 提示用户已有其他课程安排
+
+#### 14.1.4 自动开机/关机时间管理
+
+**时间节点**:
+- `scheduled_create_time`: 上课前10分钟创建实例
+- `scheduled_start_time`: 上课前5分钟自动开机
+- `scheduled_stop_time`: 下课后10分钟自动关机
+- `scheduled_destroy_time`: 下课后30分钟自动销毁
+
+**定时任务**:
+- 使用 Cron 或类似定时任务系统
+- 每分钟检查一次待执行的计划
+- 批量处理同一批次的实例操作
+
+**异常处理**:
+- 创建失败：记录日志，发送告警通知
+- 开机失败：重试3次，失败后通知管理员
+- 关机失败：强制关机，记录日志
+
+#### 14.1.5 自动销毁或保存镜像
+
+**销毁策略**:
+- **默认策略**: 下课后30分钟自动销毁实例
+- **保留策略**: 教师可选择保存镜像，延迟销毁
+- **继续练习**: 学生可手动租用实例，延长使用时间
+
+**镜像保存**:
+- 教师可在下课前选择"保存镜像"
+- 保存的镜像可用于下次课程或学生练习
+- 镜像命名规则：`{course_name}-{class_name}-{date}`
+
+---
+
+### 14.2 学校积分计费体系 (School Points-based Billing System)
+
+**说明**: 学校场景使用积分计费模式，替代传统的货币计费。
+
+#### 14.2.1 积分类型与配额
+
+**学期积分 (Semester Points)**:
+- **级别**: 学校租户级别
+- **分配**: 由学校统一分配给租户
+- **过期策略**: 学期末自动作废
+- **用途**: 学校排课、集体实训等场景
+
+**免费积分 (Free Points)**:
+- **级别**: 用户级别
+- **分配**: 平台赠送的免费额度
+- **过期策略**: 1个月失效
+- **用途**: 个人练习、临时使用等场景
+
+**积分扣除优先级**:
+1. 优先扣除免费积分（用户个人）
+2. 其次扣除学期积分（学校租户）
+3. 最后扣除余额（需要充值）
+
+#### 14.2.2 多维度单价配置
+
+**机房系数**:
+- 不同机房有基准价系数
+- 示例：
+  ```json
+  {
+    "beijing": 1.0,
+    "shanghai": 1.2,
+    "guangzhou": 0.9
+  }
+  ```
+
+**GPU定价**:
+- 品牌（NVIDIA/AMD/Intel）+ 型号（3090/4090...）+ 数量
+- 示例：
+  ```json
+  {
+    "nvidia": {
+      "3090": 10.0,
+      "4090": 15.0
+    },
+    "amd": {
+      "rx6900": 8.0
+    }
+  }
+  ```
+
+**基础资源单价**:
+- CPU: 0.5 积分/核心/小时
+- 内存: 0.2 积分/GB/小时
+- 存储: 0.01 积分/GB/日（免费额度后）
+
+#### 14.2.3 积分计费公式
+
+**按量计费**:
+```
+总积分 = (CPU核心数 × CPU单价 × 使用小时数 × 机房系数) +
+         (内存GB × 内存单价 × 使用小时数 × 机房系数) +
+         (GPU数量 × GPU单价 × 使用小时数 × 机房系数) +
+         (存储GB × 存储单价 × 使用天数)
+```
+
+**包时长计费**:
+- 包日：固定积分/天
+- 包周：固定积分/周（学校场景禁用包月）
+
+**转换规则**:
+- 包时长 → 按量时，满整周/日按对应包价计费
+- 防止"拆包"薅羊毛
+
+#### 14.2.4 退费机制
+
+**退款规则**:
+- 锁定资源后若取消，扣除"手续费"后退还积分
+- 手续费比例：5%（可配置）
+- 退款优先级：
+  1. 优先返还到学期积分
+  2. 其次返还到用户余额
+
+**退款示例**:
+```
+用户锁定资源消耗 1000 积分
+取消后扣除手续费 50 积分
+实际退还 950 积分
+```
+
+---
+
+### 14.3 GPU资源比例分配 (GPU Resource Proportional Allocation)
+
+**约束规则**: 1 GPU : 8 CPU : 32 GB 内存
+
+#### 14.3.1 比例约束说明
+
+**资源比例**:
+- 1个GPU必须配置8个CPU核心
+- 1个GPU必须配置32GB内存
+- 不允许单独配置GPU而不满足比例要求
+
+**验证时机**:
+- 实例创建时验证资源比例
+- 实例扩容时验证新配置比例
+- 模板配置时验证默认比例
+
+#### 14.3.2 资源池 Slot 预分配机制
+
+**Slot概念**:
+- 类似 K8s Device Plugin 的资源预分配
+- 每个GPU对应一个Slot
+- 每个Slot包含：1 GPU + 8 CPU + 32 GB 内存
+
+**Slot分配流程**:
+```
+1. 资源池初始化时预分配Slot
+2. 创建实例时从Slot池中分配
+3. 实例删除时Slot归还到池中
+4. Slot不可拆分，必须整体分配
+```
+
+**Slot管理**:
+- `slot_id`: Slot唯一标识
+- `host_id`: 所属主机ID
+- `gpu_index`: GPU索引
+- `status`: Slot状态 (available, allocated, reserved)
+- `allocated_instance_id`: 分配的实例ID
+
+---
+
+### 14.4 数据盘自动挂载（学校场景）(Automatic Disk Mounting for School Scenario)
+
+#### 14.4.1 个人数据盘自动挂载
+
+**挂载时机**:
+- 实例启动时自动挂载用户个人数据盘
+- 按用户ID查询所有可用的私有数据盘
+- 按创建时间顺序挂载
+
+**挂载配置**:
+- 挂载路径：`/mnt/personal/{disk_name}`
+- 挂载模式：读写（rw）
+- 自动创建挂载点
+
+#### 14.4.2 公共只读数据盘自动挂载
+
+**公共数据盘**:
+- 由教师或管理员创建
+- 设置为共享模式（share_mode = shared）
+- 挂载模式强制只读（ro）
+
+**挂载时机**:
+- 实例启动时自动挂载课程相关的公共数据盘
+- 根据课程ID或班级ID查询公共数据盘
+- 使用 Ceph RBD Snapshot + ReadOnlyMany 实现
+
+**Ceph RBD Snapshot 实现**:
+```
+1. 教师创建公共数据盘并上传数据
+2. 创建 RBD Snapshot
+3. 学生实例启动时从 Snapshot 克隆只读镜像
+4. 挂载为只读模式（ReadOnlyMany）
+5. 多个实例可同时挂载同一公共数据盘
+```
+
+**挂载配置**:
+- 挂载路径：`/mnt/public/{course_name}/{disk_name}`
+- 挂载模式：只读（ro）
+- 支持多个实例同时挂载
+
+---
+
+### 14.5 资源申请与审批 (Resource Application and Approval)
+
+#### 14.5.1 资源申请流程
+
+**申请属性**:
+- `application_id`: 申请唯一标识 (UUID)
+- `applicant_id`: 申请人ID（外键 → users.user_id）
+- `resource_type`: 资源类型 (instance, disk, bandwidth)
+- `resource_config`: 资源配置（JSON）
+- `planned_start_time`: 计划开机时间
+- `planned_stop_time`: 计划关机时间
+- `purpose`: 申请用途
+- `status`: 申请状态 (pending, approved, rejected, cancelled)
+- `approver_id`: 审批人ID（外键 → users.user_id）
+- `approval_time`: 审批时间
+- `approval_comment`: 审批意见
+- `created_at`, `updated_at`: 时间戳
+
+**申请流程**:
+```
+用户提交资源申请
+  ↓
+系统验证资源可用性
+  ↓
+锁定资源（临时预留）
+  ↓
+提交审批（发送给审批人）
+  ↓
+审批人审核
+  ├─ 批准 → 创建实例/分配资源
+  └─ 拒绝 → 释放锁定资源
+```
+
+#### 14.5.2 审批流程
+
+**审批角色**:
+- **教务人员** (academic_affairs): 审批课程相关资源申请
+- **IT管理员** (it_staff): 审批技术资源申请
+- **租户管理员** (tenant_admin): 审批高价值资源申请
+
+**审批规则**:
+- 根据资源类型和申请金额路由到不同审批人
+- 支持多级审批（如：金额 > 10000 积分需要两级审批）
+- 审批超时自动拒绝（如：24小时未审批）
+
+#### 14.5.3 资源锁定机制
+
+**锁定类型**:
+- **临时锁定**: 申请提交后锁定，审批通过后正式分配
+- **计划锁定**: 排课计划锁定，按计划时间自动创建
+
+**锁定属性**:
+- `lock_id`: 锁定唯一标识
+- `resource_type`: 资源类型
+- `resource_id`: 资源ID（可选，锁定具体资源）
+- `lock_type`: 锁定类型 (temporary, scheduled)
+- `locked_by`: 锁定人ID
+- `expires_at`: 锁定过期时间
+- `status`: 锁定状态 (active, released, expired)
+
+**锁定释放**:
+- 审批拒绝：立即释放锁定
+- 审批超时：自动释放锁定
+- 用户取消：释放锁定并退还积分（扣除手续费）
+
+---
+
+### 14.6 学校用户组层级结构 (School User Group Hierarchy)
+
+#### 14.6.1 四级层级结构
+
+**层级定义**:
+- **院校** (university): 最高层级，如"清华大学"
+- **专业** (major): 第二层级，如"计算机科学与技术"
+- **年级** (grade): 第三层级，如"2023级"
+- **班级** (class): 最底层级，如"计科2301班"
+
+**层级关系**:
+```
+院校（university）
+  └─ 专业（major）
+      └─ 年级（grade）
+          └─ 班级（class）
+              └─ 用户（users）
+```
+
+#### 14.6.2 层级属性配置
+
+**用户组属性扩展**:
+- `group_level`: 层级级别 (university, major, grade, class)
+- `parent_group_id`: 父用户组ID（实现层级关系）
+- `group_type`: 用户组类型（school）
+
+**配额继承**:
+- 子层级继承父层级的配额配置
+- 子层级配额总和不能超过父层级配额
+- 支持层级配额独立配置
+
+#### 14.6.3 学校角色权限
+
+**角色定义**:
+- **教师** (teacher):
+  - 可以创建和管理课程实例
+  - 可以上传公共数据盘
+  - 可以审批学生资源申请
+  - 可以查看所教班级的资源使用情况
+
+- **学生** (student):
+  - 可以使用分配的实例
+  - 可以申请个人练习资源
+  - 可以查看自己的资源使用情况
+  - 不能创建公共资源
+
+- **教务人员** (academic_affairs):
+  - 可以导入和管理课表
+  - 可以审批课程资源申请
+  - 可以查看全校资源使用统计
+  - 可以管理学期积分配额
+
+- **IT管理员** (it_staff):
+  - 可以管理基础设施资源
+  - 可以审批技术资源申请
+  - 可以监控系统运行状态
+  - 可以处理技术故障
+
+---
+
+## 15. 企业场景特殊功能 (Enterprise Scenario Special Features)
+
+**说明**: 本章节描述企业租户场景下的特殊功能扩展，包括合同制计费、部门管理、审批流程、企业级安全策略等。这些功能仅在企业租户（`tenant_type = enterprise`）中启用。
+
+---
+
+### 15.1 企业组织结构管理 (Enterprise Organization Management)
+
+#### 15.1.1 部门/项目层级结构
+
+**层级定义**:
+- **企业** (enterprise): 最高层级，对应租户本身
+- **部门** (department): 第二层级，如"研发部"、"销售部"
+- **项目组** (project_group): 第三层级，如"产品A项目组"
+- **团队** (team): 最底层级，如"前端团队"、"后端团队"
+
+**层级关系**:
+```
+企业（enterprise）
+  └─ 部门（department）
+      └─ 项目组（project_group）
+          └─ 团队（team）
+              └─ 用户（users）
+```
+
+#### 15.1.2 成本中心管理
+
+**成本中心 (CostCenter)**:
+- `cost_center_id`: 成本中心唯一标识 (UUID)
+- `tenant_id`: 所属租户ID（外键 → tenants.tenant_id）
+- `name`: 成本中心名称
+- `code`: 成本中心代码（租户内唯一，如"CC001"）
+- `parent_id`: 父成本中心ID（可选，支持层级结构）
+- `budget`: 预算金额（元）
+- `budget_period`: 预算周期 (monthly, quarterly, yearly)
+- `manager_id`: 成本中心负责人ID（外键 → users.user_id）
+- `status`: 状态 (active, inactive, archived)
+- `created_at`, `updated_at`: 时间戳
+
+**成本中心与用户组的关系**:
+- 一个用户组可以关联一个成本中心
+- 成本中心用于费用分摊和预算管理
+- 支持多级成本中心结构
+
+#### 15.1.3 预算分配与跟踪
+
+**预算管理**:
+- 按成本中心分配预算
+- 支持月度/季度/年度预算
+- 实时跟踪预算使用情况
+- 预算超支告警（80%、90%、100%阈值）
+
+**预算跟踪**:
+- 按部门/项目组/团队统计资源使用成本
+- 生成成本分析报表
+- 支持预算调整和审批流程
+
+---
+
+### 15.2 企业级计费体系 (Enterprise Billing System)
+
+#### 15.2.1 合同制计费
+
+**企业合同 (EnterpriseContract)**:
+- `contract_id`: 合同唯一标识 (UUID)
+- `tenant_id`: 所属租户ID（外键 → tenants.tenant_id）
+- `contract_number`: 合同编号（唯一）
+- `contract_type`: 合同类型 (monthly, quarterly, yearly)
+- `start_date`: 合同开始日期
+- `end_date`: 合同结束日期
+- `contract_value`: 合同金额（元）
+- `payment_terms`: 付款条件 (net30, net60, net90)
+- `billing_contact`: 财务联系人邮箱
+- `status`: 合同状态 (draft, active, expired, terminated)
+- `created_at`, `updated_at`: 时间戳
+
+**合同计费模式**:
+- **月结模式**: 每月生成账单，下月付款
+- **季结模式**: 每季度生成账单，下季度付款
+- **年结模式**: 每年生成账单，下年付款
+
+#### 15.2.2 信用额度管理
+
+**信用额度**:
+- 企业租户可以设置信用额度（`credit_limit`）
+- 允许先使用后付款（在信用额度范围内）
+- 信用额度使用情况实时监控
+- 超信用额度时限制新建资源或发送告警
+
+**信用额度配置**:
+```json
+{
+  "credit_limit": 100000,
+  "used_credit": 45000,
+  "available_credit": 55000,
+  "warning_threshold": 0.8,  // 80%告警
+  "block_threshold": 1.0      // 100%阻止
+}
+```
+
+#### 15.2.3 发票管理
+
+**发票生成**:
+- 支持增值税发票（增值税专用发票、增值税普通发票）
+- 支持电子发票和纸质发票
+- 发票抬头、税号等企业信息管理
+
+**发票属性**:
+- `invoice_id`: 发票唯一标识 (UUID)
+- `contract_id`: 关联合同ID（外键 → enterprise_contracts.contract_id）
+- `invoice_number`: 发票号码
+- `invoice_type`: 发票类型 (vat_special, vat_ordinary, electronic)
+- `billing_period`: 计费周期（如"2025-10"）
+- `amount`: 发票金额（含税）
+- `tax_amount`: 税额
+- `amount_excluding_tax`: 不含税金额
+- `status`: 发票状态 (draft, issued, sent, paid, cancelled)
+- `issued_at`: 开票时间
+- `due_date`: 付款截止日期
+- `created_at`, `updated_at`: 时间戳
+
+#### 15.2.4 成本分摊
+
+**分摊规则**:
+- 按部门分摊：资源使用成本按部门统计
+- 按项目分摊：资源使用成本按项目组统计
+- 按成本中心分摊：资源使用成本按成本中心统计
+
+**分摊计算**:
+```
+部门总成本 = Σ(部门内所有用户的资源使用成本)
+项目组成本 = Σ(项目组内所有用户的资源使用成本)
+成本中心成本 = Σ(关联到该成本中心的所有资源使用成本)
+```
+
+---
+
+### 15.3 审批流程管理 (Approval Workflow Management)
+
+#### 15.3.1 资源申请审批
+
+**多级审批流程**:
+- 根据资源类型和金额路由到不同审批人
+- 支持多级审批（如：部门经理 → 财务经理 → 企业管理员）
+- 审批超时自动升级或拒绝
+
+**审批规则配置**:
+```json
+{
+  "approval_rules": [
+    {
+      "resource_type": "instance",
+      "amount_threshold": 1000,
+      "approvers": ["department_manager"]
+    },
+    {
+      "resource_type": "instance",
+      "amount_threshold": 10000,
+      "approvers": ["department_manager", "finance_manager"]
+    },
+    {
+      "resource_type": "instance",
+      "amount_threshold": 100000,
+      "approvers": ["department_manager", "finance_manager", "enterprise_admin"]
+    }
+  ]
+}
+```
+
+#### 15.3.2 费用审批流程
+
+**费用审批**:
+- 大额费用需要审批（可配置阈值）
+- 预算超支需要审批
+- 特殊资源申请需要审批
+
+**审批状态**:
+- `pending`: 待审批
+- `approved`: 已批准
+- `rejected`: 已拒绝
+- `cancelled`: 已取消
+
+#### 15.3.3 预算审批
+
+**预算申请与审批**:
+- 部门/项目组可以申请预算调整
+- 预算调整需要财务管理员审批
+- 预算审批通过后自动更新成本中心预算
+
+---
+
+### 15.4 企业级安全策略 (Enterprise Security Policies)
+
+#### 15.4.1 SSO单点登录集成
+
+**支持的SSO协议**:
+- **SAML 2.0**: 企业常用SSO协议
+- **OIDC (OpenID Connect)**: 现代SSO协议
+- **LDAP/Active Directory**: 企业目录服务
+
+**SSO配置**:
+- `sso_enabled`: 是否启用SSO
+- `sso_provider`: SSO提供商类型
+- `sso_config`: SSO配置（JSON，包含端点、证书等）
+- `sso_attribute_mapping`: 属性映射（用户名、邮箱等）
+
+#### 15.4.2 IP白名单
+
+**IP白名单管理**:
+- 企业可以配置IP白名单（CIDR格式）
+- 仅允许白名单IP访问系统
+- 支持多个IP段配置
+
+**白名单验证**:
+- 登录时验证IP地址
+- API调用时验证IP地址
+- 支持动态IP白名单更新
+
+#### 15.4.3 访问时间限制
+
+**时间限制策略**:
+- 可以配置允许访问的时间段
+- 支持工作日/周末不同策略
+- 支持节假日配置
+
+**时间限制配置**:
+```json
+{
+  "access_time_restrictions": {
+    "weekdays": {
+      "start_time": "09:00",
+      "end_time": "18:00"
+    },
+    "weekends": {
+      "enabled": false
+    },
+    "holidays": {
+      "enabled": false,
+      "custom_dates": ["2025-01-01", "2025-10-01"]
+    }
+  }
+}
+```
+
+#### 15.4.4 合规性审计
+
+**审计要求**:
+- 完整的操作日志记录
+- 数据访问审计
+- 合规性报告生成
+
+**支持的合规标准**:
+- **GDPR**: 欧盟通用数据保护条例
+- **ISO 27001**: 信息安全管理体系
+- **SOC 2**: 服务组织控制
+- **等保**: 中国网络安全等级保护
+
+**审计日志**:
+- 所有资源操作记录
+- 用户登录/登出记录
+- 权限变更记录
+- 数据访问记录
+- 审计日志长期保留（根据合规要求）
+
+---
+
+### 15.5 资源预留与SLA保障 (Resource Reservation & SLA Guarantee)
+
+#### 15.5.1 资源预留机制
+
+**资源预留 (ResourceReservation)**:
+- `reservation_id`: 预留唯一标识 (UUID)
+- `tenant_id`: 所属租户ID（外键 → tenants.tenant_id）
+- `resource_type`: 资源类型 (cpu, memory, gpu, storage, bandwidth)
+- `reserved_amount`: 预留数量
+- `start_date`: 预留开始日期
+- `end_date`: 预留结束日期
+- `sla_level`: SLA级别 (standard, premium, enterprise)
+- `status`: 预留状态 (pending, active, expired, released)
+- `created_at`, `updated_at`: 时间戳
+
+**预留保障**:
+- 预留的资源不会被其他租户使用
+- 预留资源优先分配给该企业租户
+- 预留资源可以提前释放
+
+#### 15.5.2 SLA保障
+
+**SLA级别**:
+- **Standard**: 标准SLA
+  - 可用性: 99.5%
+  - 响应时间: < 2秒
+  - 支持时间: 工作时间（9:00-18:00）
+- **Premium**: 高级SLA
+  - 可用性: 99.9%
+  - 响应时间: < 1秒
+  - 支持时间: 7×24小时
+- **Enterprise**: 企业级SLA
+  - 可用性: 99.99%
+  - 响应时间: < 500ms
+  - 支持时间: 7×24小时 + 专属支持
+
+**SLA监控**:
+- 实时监控SLA指标
+- SLA违约自动告警
+- SLA报告生成
+
+#### 15.5.3 资源优先级管理
+
+**优先级策略**:
+- 企业租户资源优先级高于普通租户
+- 预留资源优先级最高
+- 支持按部门/项目设置优先级
+
+---
+
+### 15.6 企业角色权限 (Enterprise Role Permissions)
+
+#### 15.6.1 企业管理员 (enterprise_admin)
+
+**权限范围**:
+- 管理企业内所有部门和用户
+- 管理企业合同和计费
+- 配置企业级安全策略
+- 查看企业资源使用统计
+- 审批高价值资源申请
+
+#### 15.6.2 部门经理 (department_manager)
+
+**权限范围**:
+- 管理本部门内的用户和项目组
+- 查看本部门的资源使用和成本
+- 审批本部门的资源申请
+- 管理本部门的预算
+
+#### 15.6.3 项目经理 (project_manager)
+
+**权限范围**:
+- 管理项目组内的用户和资源
+- 查看项目组的资源使用和成本
+- 申请项目组资源
+- 管理项目组预算
+
+#### 15.6.4 财务管理员 (finance_manager)
+
+**权限范围**:
+- 管理企业合同和发票
+- 审批费用申请
+- 审批预算调整
+- 查看企业成本分析报表
+- 管理信用额度
+
+#### 15.6.5 合规官 (compliance_officer)
+
+**权限范围**:
+- 查看所有审计日志
+- 生成合规性报告
+- 配置合规性策略
+- 监控安全事件
+- 处理合规性违规
+
+---
+
 ## 系统体系树 (System Hierarchy Tree)
 
 ```
@@ -3448,6 +4752,61 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 │       ├── 成本分析
 │       ├── 预算管理
 │       └── 优化建议
+├── 学校场景特殊功能 (School Scenario Special Features)
+│   ├── 学校排课自动化 (Automated Course Scheduling)
+│   │   ├── 课表导入与解析
+│   │   ├── 自动创建实例流程
+│   │   ├── 资源冲突检测（时间+场所+用户三维）
+│   │   ├── 自动开机/关机时间管理
+│   │   └── 自动销毁或保存镜像
+│   ├── 学校积分计费体系 (School Points-based Billing)
+│   │   ├── 学期积分（学校租户级别）
+│   │   ├── 免费积分（用户级别，1个月失效）
+│   │   ├── 按量/包时长计费转换规则
+│   │   ├── 积分/余额支付方式
+│   │   └── 多维度单价（机房、GPU品牌/型号）
+│   ├── GPU资源比例分配 (GPU Proportional Allocation)
+│   │   ├── 1 GPU : 8 CPU : 32 GB 内存 约束
+│   │   └── 资源池 Slot 预分配机制
+│   ├── 数据盘自动挂载（学校场景）(Automatic Disk Mounting)
+│   │   ├── 个人数据盘自动挂载
+│   │   └── 公共只读数据盘自动挂载（Ceph RBD Snapshot）
+│   ├── 资源申请与审批 (Resource Application & Approval)
+│   │   ├── 计划开/关机时间
+│   │   ├── 审批流程
+│   │   └── 资源锁定机制
+│   └── 学校用户组层级结构 (School User Group Hierarchy)
+│       ├── 院校-专业-年级-班级 四级结构
+│       └── 角色：教师/学生/教务/IT
+├── 企业场景特殊功能 (Enterprise Scenario Special Features)
+│   ├── 企业组织结构管理 (Enterprise Organization Management)
+│   │   ├── 部门/项目层级结构
+│   │   ├── 成本中心管理
+│   │   └── 预算分配与跟踪
+│   ├── 企业级计费体系 (Enterprise Billing System)
+│   │   ├── 合同制计费（月结/季结/年结）
+│   │   ├── 信用额度管理
+│   │   ├── 发票管理（增值税发票）
+│   │   └── 成本分摊（按部门/项目/成本中心）
+│   ├── 审批流程管理 (Approval Workflow Management)
+│   │   ├── 资源申请审批（多级审批）
+│   │   ├── 费用审批流程
+│   │   └── 预算审批
+│   ├── 企业级安全策略 (Enterprise Security Policies)
+│   │   ├── SSO单点登录集成（SAML/OIDC/LDAP）
+│   │   ├── IP白名单
+│   │   ├── 访问时间限制
+│   │   └── 合规性审计（GDPR/ISO27001/SOC2/等保）
+│   ├── 资源预留与SLA保障 (Resource Reservation & SLA)
+│   │   ├── 资源预留机制
+│   │   ├── SLA保障（Standard/Premium/Enterprise）
+│   │   └── 资源优先级管理
+│   └── 企业角色权限 (Enterprise Role Permissions)
+│       ├── 企业管理员
+│       ├── 部门经理
+│       ├── 项目经理
+│       ├── 财务管理员
+│       └── 合规官
 └── 系统运维 (System Operations)
     ├── 系统状态跟踪 (System State Tracking)
     │   ├── 操作日志 (Operation Logs)
@@ -3475,10 +4834,61 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 
 ---
 
-**文档版本**: 1.8
-**最后更新**: 2025-11-01
+**文档版本**: 1.12
+**最后更新**: 2025-11-14
 
 **更新历史**:
+
+**v1.12 (2025-11-14)** - 功能模块可见性与租户类型关联配置:
+
+**重要更新**:
+- ✅ 扩展4.1租户管理章节：添加功能模块可见性配置表，明确每个功能模块适用的租户类型
+- ✅ 新增功能模块可见性规则：定义前端UI和后端API如何根据租户类型过滤功能模块
+- ✅ 扩展5.3.4章节：添加功能模块可见性配置的实现逻辑和代码示例
+- ✅ 完善租户类型切换限制：添加场景特定功能模块数据的清理说明
+- ✅ 提供功能模块过滤代码示例：包含TypeScript伪代码，说明如何实现功能模块过滤和访问控制
+
+**v1.11 (2025-11-14)** - 角色可见性与租户类型关联规则:
+
+**重要更新**:
+- ✅ 扩展5.2用户管理章节：添加角色与租户类型关联规则说明
+- ✅ 新增角色可见性配置表：明确每个角色适用的租户类型
+- ✅ 新增角色可见性规则：定义创建/编辑用户时的角色过滤规则
+- ✅ 新增角色验证规则：说明前后端如何验证角色与租户类型的匹配
+- ✅ 扩展4.1租户管理章节：添加租户类型与功能关联说明
+- ✅ 新增租户类型切换限制：说明租户类型修改的注意事项
+- ✅ 新增5.3章节：角色可见性与过滤机制，包含前端实现和后端验证的详细说明
+- ✅ 提供代码示例：包含TypeScript伪代码示例，说明如何实现角色过滤和验证
+
+**v1.10 (2025-11-14)** - 企业场景特殊功能整合:
+
+**重要更新**:
+- ✅ 新增第15章：企业场景特殊功能，包含组织结构管理、企业级计费、审批流程、安全策略、资源预留等子章节
+- ✅ 扩展4.1租户管理章节：添加企业租户类型（tenant_type = enterprise）和企业租户专用配置（enterprise_config）
+- ✅ 扩展5.1用户组管理章节：添加企业场景的企业-部门-项目组-团队四级层级结构支持
+- ✅ 扩展5.2用户管理章节：添加企业场景角色（enterprise_admin, department_manager, project_manager, finance_manager, compliance_officer）
+- ✅ 更新系统体系树：添加企业场景特殊功能分支
+- ✅ 完善企业组织结构管理：包含成本中心管理、预算分配与跟踪
+- ✅ 完善企业级计费体系：包含合同制计费、信用额度管理、发票管理、成本分摊
+- ✅ 完善审批流程管理：包含多级审批、费用审批、预算审批
+- ✅ 完善企业级安全策略：包含SSO集成、IP白名单、访问时间限制、合规性审计
+- ✅ 完善资源预留与SLA保障：包含资源预留机制、SLA级别定义、资源优先级管理
+
+**v1.9 (2025-11-14)** - 学校场景特殊功能整合:
+
+**重要更新**:
+- ✅ 新增第14章：学校场景特殊功能，包含排课自动化、积分计费、GPU比例分配等子章节
+- ✅ 扩展4.1租户管理章节：添加学校租户类型（tenant_type）和学期积分配额（semester_points）
+- ✅ 扩展5.1用户组管理章节：添加学校场景的院校-专业-年级-班级四级层级结构支持
+- ✅ 扩展11.3计费模式章节：添加按量/包时长转换规则（11.3.4）和积分计费模式（11.3.5）
+- ✅ 扩展10.1租户配额章节：添加学期积分配额类型和过期策略说明
+- ✅ 扩展5.2用户管理章节：添加学校场景角色（teacher, student, academic_affairs, it_staff）
+- ✅ 更新系统体系树：添加学校场景特殊功能分支
+- ✅ 完善学校排课自动化流程：包含课表导入、资源冲突检测、自动创建/销毁实例等
+- ✅ 完善学校积分计费体系：包含学期积分、免费积分、多维度单价配置等
+- ✅ 完善GPU资源比例分配：1 GPU : 8 CPU : 32 GB 内存约束和Slot预分配机制
+- ✅ 完善数据盘自动挂载：个人盘和公共只读盘的自动挂载机制
+- ✅ 完善资源申请与审批：包含申请流程、审批流程和资源锁定机制
 
 **v1.8 (2025-11-01)** - 云盒临时绑定机制:
 

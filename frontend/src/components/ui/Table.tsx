@@ -145,7 +145,7 @@ export const TableSelectCell = React.forwardRef<HTMLTableCellElement, TableSelec
 )
 TableSelectCell.displayName = 'TableSelectCell'
 
-export interface TableDropdownCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
+export interface TableDropdownCellProps extends Omit<React.TdHTMLAttributes<HTMLTableCellElement>, 'onChange'> {
   /**
    * Dropdown value/text
    */

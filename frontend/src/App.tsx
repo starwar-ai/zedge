@@ -5,13 +5,16 @@ import { FormShowcase } from './components/features/form'
 import { IconShowcase } from './components/ui'
 import { TabListShowcase } from './components/features/page-components/TabListShowcase'
 import { PaginationShowcase } from './components/features/pagination/PaginationShowcase'
-import { ImageManagement } from './components/features/image-management'
+import { NewImage } from './components/features/image-management'
 
 function App() {
   return (
     <div className="min-h-screen bg-neutral-50">
+      {/* New Image Creation Page - Full Figma Implementation */}
+      <NewImage />
+
       {/* Image Management Page - Full Figma Implementation */}
-      <ImageManagement />
+      {/* <ImageManagement /> */}
 
       <div className="container-custom py-12">
         <div className="page-header">
