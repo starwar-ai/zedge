@@ -66,8 +66,16 @@
 - **虚拟块设备**: 每个私有数据盘是独立的 RBD image
 - **支持快照和克隆**: 使用 Ceph RBD 原生功能
 - **在线扩容**: 支持在线扩容，无需停机
-- **多实例挂载**: 可挂载到多个实例（支持共享存储场景）
+- **多实例挂载**: 通过 Ceph RBD 快照克隆实现多实例只读共享（标准 RBD 不支持多实例并发写入）
 - **自动挂载**: 实例启动时自动加载用户私有数据盘
+
+**多实例挂载说明**:
+- **独占模式** (share_mode=exclusive): RBD image 可被单个实例以读写模式挂载
+- **共享模式** (share_mode=shared): 通过 RBD 快照+克隆机制实现多实例只读访问
+  - 系统创建 RBD 快照
+  - 为每个实例创建只读克隆
+  - 所有实例以 ro (只读) 模式挂载
+  - 不支持多实例并发写入（Ceph RBD 限制）
 
 **存储类型支持**:
 - `standard`: 标准存储（HDD/混合存储池）
@@ -170,11 +178,11 @@
 - 一个算力机只能属于一个算力池（一对多关系）
 - 通过 `resource_pool_id` 外键直接关联
 - 算力机注册时必须指定算力池
-- 算力机可以转移至另一个算力池（需确保没有运行中的虚拟机或实例）
+- 算力机可以转移至另一个算力池（需确保没有运行中的实例）
 
 ---
 
-### 1.6 云盒 (Cloud Box)
+### 1.4 云盒 (Cloud Box)
 
 **定义**: 云盒是一个操作终端设备,可以连接键盘、鼠标和显示器,通过网线连接到边缘机房,作为用户访问云电脑的本地终端。
 
@@ -182,7 +190,7 @@
 - `box_id`: 云盒唯一标识 (UUID)
 - `name`: 云盒名称
 - `serial_number`: 设备序列号 (唯一标识)
-- `network_id`: 所属网络ID (外键 → networks.network_id)
+- `subnet_id`: 所属子网ID (外键 → subnets.subnet_id，可选)
 - `status`: 运行状态
   - `online`: 在线运行中
   - `offline`: 离线
@@ -323,8 +331,8 @@
   - `userData`: 实例初始化脚本（cloud-init，可选）
   - `description`: 实例描述
 - `rental_mode`: 租赁模式 (exclusive-独占, shared-共享，仅在运行时设置)
-- `resource_pool_id`: 分配的算力池ID（可选，外键 → resource_pools.pool_id，仅在运行时设置）
-- `host_id`: 分配的算力机ID（可选，外键 → hosts.host_id，独占模式且运行时使用）
+- `resource_pool_id`: 分配的算力池ID（外键 → resource_pools.pool_id，创建时为 NULL，启动时必填）
+- `host_id`: 分配的算力机ID（外键 → hosts.host_id，创建时为 NULL，启动时根据租赁模式设置）
 - `created_at`, `updated_at`: 时间戳
 
 **重要说明**:
@@ -371,9 +379,9 @@ Instance的资源分配是动态的，与Instance状态相关：
    - 算力机资源可以重新分配给其他Instance
 
 **关系约束**:
-- Instance直接关联到Host（不再通过虚拟机）
-- Instance停止时，Host关联会被清空
-- Instance启动时必须指定算力池ID（`resource_pool_id`）
+- Instance直接关联到Host
+- Instance停止时，Host关联会被清空（`host_id` 和 `resource_pool_id` 设为 NULL）
+- Instance启动时必须指定算力池ID（`resource_pool_id`），系统从该算力池中选择可用的Host
 - Instance可以指定租赁模式（`rental_mode`），如果不指定则默认为共享模式
 
 ---
@@ -391,7 +399,7 @@ Instance的资源分配是动态的，与Instance状态相关：
 
 ---
 
-### 2.4 实例管理 (Instance Management)
+### 2.3 实例管理 (Instance Management)
 
 **功能**: 单个实例的直接管理
 
@@ -593,11 +601,19 @@ Instance的资源分配是动态的，与Instance状态相关：
 | `status` | ENUM | 挂载状态 (attaching, attached, detaching, failed) |
 
 **约束条件**:
-- **唯一性约束**: (instance_id, disk_id) 组合唯一，防止重复挂载
+- **唯一性约束**: `UNIQUE(instance_id, disk_id)` - 防止重复挂载
 - **独占模式**: share_mode=exclusive 时，一个私有数据盘最多挂载到1个实例
 - **共享模式**: share_mode=shared 时，一个私有数据盘可挂载到多个实例，但不超过 max_attachments
 - **挂载限制**: 同一实例不能重复挂载同一私有数据盘
 - **共享限制**: 共享模式私有数据盘只能以只读模式（ro）挂载，不支持读写模式（rw）
+  - **数据库约束**:
+    ```sql
+    CHECK (
+      (SELECT share_mode FROM private_data_disks WHERE disk_id = instance_private_data_disk_attachments.disk_id) = 'exclusive'
+      OR mount_mode = 'ro'
+    )
+    ```
+  - **应用层验证**: 在挂载前验证 share_mode 和 mount_mode 的组合
 - **共享安全**: 多实例共享时强制只读，防止数据冲突和并发写入问题
 
 **特性**:
@@ -1272,7 +1288,7 @@ function canAccessModule(module: string, tenantType: TenantType): boolean {
 - **一个算力机只能属于一个算力池**（一对多关系）
 - 一个算力池可以包含多个算力机
 - 算力机注册时必须指定算力池
-- 算力机可以转移至另一个算力池（需确保没有运行中的虚拟机或实例）
+- 算力机可以转移至另一个算力池（需确保没有运行中的实例）
 
 **特性**:
 - 多个用户的实例可部署在同一算力池中
@@ -1556,9 +1572,9 @@ function canAccessModule(module: string, tenantType: TenantType): boolean {
 
 ---
 
-### 6.3 算力机 (Compute Machine)
+### 6.3 算力机 (Host)
 
-参见 [1.3 算力机](#13-算力机-compute-machine)
+参见 [1.3 算力机 (Host)](#13-算力机-host)
 
 ---
 
@@ -1770,20 +1786,38 @@ ORDER BY iv.created_at DESC;
 
 关联表 `image_requirements` 定义了每个镜像的最低和推荐资源:
 
-| 要求项 | 说明 | 示例 |
-|--------|------|------|
-| `min_cpu_cores` | 最低CPU | 1核 |
-| `min_memory_gb` | 最低内存 | 2GB |
-| `min_storage_gb` | 最低存储 | 20GB |
-| `recommended_cpu_cores` | 推荐CPU | 4核 |
-| `recommended_memory_gb` | 推荐内存 | 8GB |
-| `recommended_storage_gb` | 推荐存储 | 50GB |
-| `hypervisor_compatibility` | 虚拟化兼容性 | kvm,hyperv,vmware |
+**表结构**:
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `requirement_id` | UUID | 唯一标识（主键） |
+| `image_id` | UUID | 关联的镜像ID（外键 → images.image_id，唯一） |
+| `min_cpu_cores` | INTEGER | 最低CPU核心数 (e.g., 1) |
+| `min_memory_gb` | INTEGER | 最低内存容量 (e.g., 2) |
+| `min_storage_gb` | INTEGER | 最低存储容量 (e.g., 20) |
+| `recommended_cpu_cores` | INTEGER | 推荐CPU核心数 (e.g., 4) |
+| `recommended_memory_gb` | INTEGER | 推荐内存容量 (e.g., 8) |
+| `recommended_storage_gb` | INTEGER | 推荐存储容量 (e.g., 50) |
+| `gpu_required` | BOOLEAN | 是否需要GPU (默认false) |
+| `min_gpu_count` | INTEGER | 最低GPU数量（可选，gpu_required=true时必填） |
+| `hypervisor_compatibility` | VARCHAR(255) | 虚拟化兼容性列表（逗号分隔：kvm,hyperv,vmware） |
+| `created_at` | TIMESTAMP | 创建时间 |
+| `updated_at` | TIMESTAMP | 更新时间 |
+
+**约束条件**:
+- `UNIQUE(image_id)` - 每个镜像只能有一条资源要求记录
+- `CHECK(min_cpu_cores > 0)` - 最低CPU必须大于0
+- `CHECK(min_memory_gb > 0)` - 最低内存必须大于0
+- `CHECK(min_storage_gb > 0)` - 最低存储必须大于0
+- `CHECK(recommended_cpu_cores >= min_cpu_cores)` - 推荐配置不低于最低配置
+- `CHECK(recommended_memory_gb >= min_memory_gb)`
+- `CHECK(recommended_storage_gb >= min_storage_gb)`
+- `CHECK(gpu_required = false OR min_gpu_count > 0)` - 需要GPU时必须指定数量
 
 **作用**:
 - 实例创建时验证资源充足性
 - 用户创建时的推荐规格选择
 - 防止资源不足导致的启动失败
+- 前端显示镜像的资源要求信息
 - 确保共享镜像在不同实例上的正确运行
 
 **共享优势**:
@@ -3322,20 +3356,39 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 - `weekly`: 包周（7天）
 - `monthly`: 包月（30天，学校场景禁用）
 
-**转换示例**:
+**计费规则与防欺诈机制**:
 ```
-场景1: 用户选择按量计费，使用满7天
+场景1: 用户选择按量计费（pay_as_you_go），使用满7天
   - 系统自动按包周价格计费
   - 防止用户通过频繁创建/删除实例规避包时长优惠
+  - 计费方式：累计使用时长达到7天后，按包周价格结算
 
-场景2: 用户选择包周，但只使用3天就删除
-  - 按实际使用时长（3天）计费
-  - 不强制按整周收费
+场景2: 用户选择包周（weekly），使用不满7天即删除
+  - **最小承诺期**: 包周模式有7天最小承诺期
+  - **提前终止**: 如3天后删除实例
+    - 按整周计费（7天包周价格）
+    - 或按日单价 × 3天（不享受包周折扣）
+  - **防止套利**: 避免用户以包周价格使用短期资源后退款
+  - **例外**: 系统故障导致的提前终止可申请退款
 
-场景3: 学校场景禁用包月
+场景3: 用户选择包周（weekly），使用满7天后继续使用
+  - 自动续费：继续按包周价格计费
+  - 或转为按量计费：按日单价计费（取决于配置）
+
+场景4: 学校场景禁用包月
   - 防止长期占用资源
   - 鼓励学期内灵活使用
 ```
+
+**最小承诺期说明**:
+- **按量计费** (pay_as_you_go): 无最小承诺期，按实际使用计费
+- **包周** (weekly): 7天最小承诺期，提前终止不退款（或按日单价计费，不享受折扣）
+- **包月** (monthly): 30天最小承诺期，提前终止不退款（或按日单价计费，不享受折扣）
+
+**防欺诈策略**:
+- 按量计费达到包周/包月时长自动转换价格（场景1）
+- 包周/包月提前终止需支付最小承诺期费用（场景2）
+- 或提前终止按日单价计费，不享受包时长折扣
 
 #### 11.3.5 积分计费模式 (Points-based Billing)
 
@@ -4471,6 +4524,407 @@ graph TD
 - 配置合规性策略
 - 监控安全事件
 - 处理合规性违规
+
+---
+
+## 16. 数据库约束与级联行为 (Database Constraints & Cascade Behavior)
+
+### 16.1 外键级联删除行为 (Foreign Key Cascade Behavior)
+
+本节定义所有外键关系的级联删除行为，确保数据一致性和完整性。
+
+#### 16.1.1 租户相关表 (Tenant Related Tables)
+
+| 表名 | 外键字段 | 引用表 | 级联行为 | 说明 |
+|------|----------|--------|----------|------|
+| `users` | `tenant_id` | `tenants.tenant_id` | `CASCADE` | 租户删除时级联删除所有用户 |
+| `user_groups` | `tenant_id` | `tenants.tenant_id` | `CASCADE` | 租户删除时级联删除所有用户组 |
+| `user_groups` | `parent_group_id` | `user_groups.group_id` | `SET NULL` | 父组删除时子组保留，父组ID设为NULL |
+| `vpcs` | `tenant_id` | `tenants.tenant_id` | `CASCADE` | 租户删除时级联删除所有VPC |
+| `places` | `tenant_id` | `tenants.tenant_id` | `CASCADE` | 租户删除时级联删除所有场所 |
+| `instances` | `tenant_id` | `tenants.tenant_id` | `RESTRICT` | 租户有实例时禁止删除租户 |
+| `private_data_disks` | `tenant_id` | `tenants.tenant_id` | `RESTRICT` | 租户有私有数据盘时禁止删除租户 |
+
+#### 16.1.2 用户相关表 (User Related Tables)
+
+| 表名 | 外键字段 | 引用表 | 级联行为 | 说明 |
+|------|----------|--------|----------|------|
+| `instances` | `user_id` | `users.user_id` | `RESTRICT` | 用户有实例时禁止删除用户 |
+| `private_data_disks` | `user_id` | `users.user_id` | `RESTRICT` | 用户有私有数据盘时禁止删除用户 |
+| `user_group_members` | `user_id` | `users.user_id` | `CASCADE` | 用户删除时级联删除所有用户组成员关系 |
+| `user_group_members` | `group_id` | `user_groups.group_id` | `CASCADE` | 用户组删除时级联删除所有成员关系 |
+| `cloud_boxes` | `assigned_user_id` | `users.user_id` | `SET NULL` | 用户删除时云盒的用户分配设为NULL |
+
+#### 16.1.3 实例相关表 (Instance Related Tables)
+
+| 表名 | 外键字段 | 引用表 | 级联行为 | 说明 |
+|------|----------|--------|----------|------|
+| `instances` | `host_id` | `hosts.host_id` | `SET NULL` | 算力机删除时实例的host_id设为NULL（应先停止实例） |
+| `instances` | `resource_pool_id` | `resource_pools.pool_id` | `RESTRICT` | 资源池有实例时禁止删除资源池 |
+| `instances` | `template_id` | `templates.template_id` | `SET NULL` | 模板删除时实例保留，template_id设为NULL |
+| `instance_private_data_disk_attachments` | `instance_id` | `instances.instance_id` | `CASCADE` | 实例删除时级联删除所有私有数据盘挂载关系 |
+| `instance_private_data_disk_attachments` | `disk_id` | `private_data_disks.disk_id` | `CASCADE` | 私有数据盘删除时级联删除所有挂载关系 |
+| `cloud_boxes` | `temporary_instance_id` | `instances.instance_id` | `SET NULL` | 实例删除时云盒的临时绑定设为NULL |
+
+#### 16.1.4 网络相关表 (Network Related Tables)
+
+| 表名 | 外键字段 | 引用表 | 级联行为 | 说明 |
+|------|----------|--------|----------|------|
+| `subnets` | `vpc_id` | `vpcs.vpc_id` | `CASCADE` | VPC删除时级联删除所有子网 |
+| `places` | `subnet_id` | `subnets.subnet_id` | `SET NULL` | 子网删除时场所保留，subnet_id设为NULL |
+| `ip_addresses` | `ip_pool_id` | `ip_address_pools.pool_id` | `CASCADE` | IP地址池删除时级联删除所有IP地址记录 |
+| `ip_addresses` | `instance_id` | `instances.instance_id` | `SET NULL` | 实例删除时IP地址释放，instance_id设为NULL |
+| `cloud_boxes` | `subnet_id` | `subnets.subnet_id` | `SET NULL` | 子网删除时云盒保留，subnet_id设为NULL |
+
+#### 16.1.5 镜像和模板相关表 (Image & Template Related Tables)
+
+| 表名 | 外键字段 | 引用表 | 级联行为 | 说明 |
+|------|----------|--------|----------|------|
+| `image_versions` | `image_id` | `images.image_id` | `CASCADE` | 镜像删除时级联删除所有镜像版本 |
+| `image_requirements` | `image_id` | `images.image_id` | `CASCADE` | 镜像删除时级联删除资源要求记录 |
+| `template_versions` | `template_id` | `templates.template_id` | `CASCADE` | 模板删除时级联删除所有模板版本 |
+
+#### 16.1.6 资源池相关表 (Resource Pool Related Tables)
+
+| 表名 | 外键字段 | 引用表 | 级联行为 | 说明 |
+|------|----------|--------|----------|------|
+| `hosts` | `resource_pool_id` | `resource_pools.pool_id` | `RESTRICT` | 资源池有算力机时禁止删除资源池 |
+| `hosts` | `edge_data_center_id` | `edge_data_centers.room_id` | `RESTRICT` | 边缘机房有算力机时禁止删除边缘机房 |
+
+---
+
+### 16.2 唯一性约束 (Unique Constraints)
+
+#### 16.2.1 租户和用户
+
+- `tenants`: `UNIQUE(name)` - 租户名称全局唯一
+- `users`: `UNIQUE(username)` - 用户名全局唯一
+- `users`: `UNIQUE(email)` - 邮箱全局唯一
+- `user_groups`: `UNIQUE(tenant_id, name)` - 租户内用户组名称唯一
+- `user_group_members`: `UNIQUE(group_id, user_id)` - 防止用户重复加入同一用户组
+
+#### 16.2.2 实例和模板
+
+- `instances`: `UNIQUE(tenant_id, name)` - 租户内实例名称唯一（可选，根据业务需求）
+- `templates`: `UNIQUE(tenant_id, name)` - 租户内模板名称唯一
+- `instance_private_data_disk_attachments`: `UNIQUE(instance_id, disk_id)` - 防止重复挂载
+
+#### 16.2.3 网络
+
+- `vpcs`: `UNIQUE(tenant_id, name)` - 租户内VPC名称唯一
+- `subnets`: `UNIQUE(vpc_id, name)` - VPC内子网名称唯一
+- `ip_addresses`: `UNIQUE(ip_pool_id, ip_address)` - IP地址池内IP地址唯一
+- `security_groups`: `UNIQUE(tenant_id, name)` - 租户内安全组名称唯一
+
+#### 16.2.4 镜像和存储
+
+- `images`: `UNIQUE(name, version)` - 镜像名称和版本组合唯一（或使用版本表）
+- `image_requirements`: `UNIQUE(image_id)` - 每个镜像只有一条资源要求记录
+- `private_data_disks`: `UNIQUE(user_id, name)` - 用户内私有数据盘名称唯一
+- `private_data_disks`: `UNIQUE(rbd_image_name)` - Ceph RBD image名称全局唯一
+
+#### 16.2.5 边缘机房和设备
+
+- `edge_data_centers`: `UNIQUE(name)` - 边缘机房名称全局唯一
+- `hosts`: `UNIQUE(hostname)` - 算力机主机名全局唯一
+- `cloud_boxes`: `UNIQUE(serial_number)` - 云盒序列号全局唯一
+
+---
+
+### 16.3 检查约束 (Check Constraints)
+
+#### 16.3.1 资源配额约束
+
+```sql
+-- 实例资源检查
+CHECK (instances.cpu_cores > 0)
+CHECK (instances.memory_gb > 0)
+CHECK (instances.allocated_storage_gb > 0)
+
+-- 算力机资源跟踪
+CHECK (hosts.allocated_cpu_cores >= 0 AND hosts.allocated_cpu_cores <= hosts.cpu_cores)
+CHECK (hosts.allocated_memory_gb >= 0 AND hosts.allocated_memory_gb <= hosts.memory_gb)
+CHECK (hosts.allocated_storage_gb >= 0 AND hosts.allocated_storage_gb <= hosts.storage_gb)
+
+-- 私有数据盘大小
+CHECK (private_data_disks.size_gb > 0)
+CHECK (private_data_disks.max_attachments > 0)
+```
+
+#### 16.3.2 镜像资源要求约束
+
+```sql
+CHECK (image_requirements.min_cpu_cores > 0)
+CHECK (image_requirements.min_memory_gb > 0)
+CHECK (image_requirements.min_storage_gb > 0)
+CHECK (image_requirements.recommended_cpu_cores >= image_requirements.min_cpu_cores)
+CHECK (image_requirements.recommended_memory_gb >= image_requirements.min_memory_gb)
+CHECK (image_requirements.recommended_storage_gb >= image_requirements.min_storage_gb)
+CHECK (image_requirements.gpu_required = false OR image_requirements.min_gpu_count > 0)
+```
+
+#### 16.3.3 共享数据盘挂载约束
+
+```sql
+-- 共享模式私有数据盘只能只读挂载
+CHECK (
+  (SELECT share_mode FROM private_data_disks WHERE disk_id = instance_private_data_disk_attachments.disk_id) = 'exclusive'
+  OR instance_private_data_disk_attachments.mount_mode = 'ro'
+)
+```
+
+#### 16.3.4 网络约束
+
+```sql
+-- 子网CIDR必须在VPC CIDR范围内（应用层验证）
+-- IP地址必须在IP池网络段内（应用层验证）
+```
+
+---
+
+### 16.4 索引建议 (Index Recommendations)
+
+#### 16.4.1 高频查询索引
+
+```sql
+-- 租户相关
+CREATE INDEX idx_instances_tenant_id ON instances(tenant_id);
+CREATE INDEX idx_instances_user_id ON instances(user_id);
+CREATE INDEX idx_instances_status ON instances(status);
+CREATE INDEX idx_instances_tenant_status ON instances(tenant_id, status);
+
+-- 实例资源分配
+CREATE INDEX idx_instances_host_id ON instances(host_id);
+CREATE INDEX idx_instances_resource_pool_id ON instances(resource_pool_id);
+
+-- 私有数据盘
+CREATE INDEX idx_private_data_disks_user_id ON private_data_disks(user_id);
+CREATE INDEX idx_private_data_disks_tenant_id ON private_data_disks(tenant_id);
+CREATE INDEX idx_private_data_disks_status ON private_data_disks(status);
+
+-- IP地址管理
+CREATE INDEX idx_ip_addresses_pool_status ON ip_addresses(ip_pool_id, status);
+CREATE INDEX idx_ip_addresses_instance_id ON ip_addresses(instance_id);
+
+-- 用户组成员
+CREATE INDEX idx_user_group_members_user_id ON user_group_members(user_id);
+CREATE INDEX idx_user_group_members_group_id ON user_group_members(group_id);
+
+-- 网络
+CREATE INDEX idx_subnets_vpc_id ON subnets(vpc_id);
+CREATE INDEX idx_vpcs_tenant_id ON vpcs(tenant_id);
+```
+
+#### 16.4.2 外键索引
+
+所有外键字段应自动创建索引（大多数数据库自动处理），确保连接查询性能。
+
+---
+
+## 17. VLAN ID 分配机制 (VLAN ID Allocation Mechanism)
+
+### 17.1 VLAN ID 池管理 (VLAN ID Pool Management)
+
+#### 17.1.1 VLAN ID 范围
+
+**VLAN ID 规范** (IEEE 802.1Q):
+- **总范围**: 0-4095 (12-bit)
+- **保留范围**: 0, 4095 (不可用)
+- **可用范围**: 1-4094
+- **系统预留**: 1-99 (管理网络、基础设施)
+- **租户分配**: 100-4000 (最多3901个租户)
+- **特殊用途**: 4001-4094 (测试、临时网络)
+
+**VLAN ID 池表** (`vlan_id_pool`):
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `vlan_id` | INTEGER | VLAN ID (主键，范围100-4000) |
+| `status` | ENUM | 状态 (available, allocated, reserved) |
+| `tenant_id` | UUID | 分配的租户ID（外键 → tenants.tenant_id，可选） |
+| `allocated_at` | TIMESTAMP | 分配时间 |
+| `reserved_for` | VARCHAR(255) | 预留用途描述（reserved状态使用） |
+
+**约束条件**:
+- `CHECK(vlan_id >= 100 AND vlan_id <= 4000)` - VLAN ID范围限制
+- `UNIQUE(vlan_id)` - VLAN ID唯一
+- `UNIQUE(tenant_id)` WHERE `tenant_id IS NOT NULL` - 每个租户只能分配一个VLAN ID
+
+---
+
+### 17.2 VLAN ID 分配策略 (Allocation Strategy)
+
+#### 17.2.1 自动分配
+
+**创建租户时自动分配VLAN ID**:
+
+```typescript
+async function createTenant(tenantData) {
+  // 1. 从VLAN ID池中选择可用的VLAN ID
+  const vlanId = await db.query(`
+    SELECT vlan_id FROM vlan_id_pool
+    WHERE status = 'available'
+    ORDER BY vlan_id ASC
+    LIMIT 1
+    FOR UPDATE SKIP LOCKED  -- 防止并发冲突
+  `);
+
+  if (!vlanId) {
+    throw new Error('VLAN ID pool exhausted. Maximum 3901 tenants reached.');
+  }
+
+  // 2. 创建租户并分配VLAN ID
+  const tenant = await db.transaction(async (trx) => {
+    // 创建租户记录
+    const newTenant = await trx('tenants').insert({
+      ...tenantData,
+      vlan_id: vlanId.vlan_id
+    }).returning('*');
+
+    // 更新VLAN ID池状态
+    await trx('vlan_id_pool').update({
+      status: 'allocated',
+      tenant_id: newTenant.tenant_id,
+      allocated_at: new Date()
+    }).where('vlan_id', vlanId.vlan_id);
+
+    return newTenant;
+  });
+
+  return tenant;
+}
+```
+
+#### 17.2.2 VLAN ID 回收
+
+**租户删除时回收VLAN ID**:
+
+```typescript
+async function deleteTenant(tenantId) {
+  await db.transaction(async (trx) => {
+    // 1. 获取租户的VLAN ID
+    const tenant = await trx('tenants').where('tenant_id', tenantId).first();
+
+    // 2. 删除租户
+    await trx('tenants').where('tenant_id', tenantId).delete();
+
+    // 3. 回收VLAN ID到池中
+    await trx('vlan_id_pool').update({
+      status: 'available',
+      tenant_id: null,
+      allocated_at: null
+    }).where('vlan_id', tenant.vlan_id);
+  });
+}
+```
+
+---
+
+### 17.3 VLAN ID 扩展方案 (Scalability Solutions)
+
+#### 17.3.1 VLAN ID 限制
+
+**问题**: VLAN只有4096个ID (实际可用约3900个)，无法支持超大规模多租户场景。
+
+**解决方案**: 使用 **VXLAN (Virtual Extensible LAN)** 替代VLAN
+
+#### 17.3.2 VXLAN 扩展
+
+**VXLAN 优势**:
+- **24-bit VNI** (VXLAN Network Identifier): 支持 16,777,216 个网络
+- **隧道封装**: 通过UDP封装实现L2 over L3
+- **跨数据中心**: 支持分布式多数据中心部署
+
+**VXLAN 实现** (替代VLAN):
+
+| 字段 | VLAN实现 | VXLAN实现 |
+|------|---------|-----------|
+| 网络标识 | `vlan_id` (12-bit, 1-4094) | `vni` (24-bit, 1-16777215) |
+| 隔离层级 | L2 (数据链路层) | L2 over L3 (网络层隧道) |
+| 扩展性 | 最多~4000租户 | 最多1600万租户 |
+| 跨数据中心 | 不支持 | 支持 |
+
+**数据库设计修改** (支持VXLAN):
+
+```sql
+-- tenants表添加VXLAN支持
+ALTER TABLE tenants ADD COLUMN vni INTEGER;
+ALTER TABLE tenants ADD COLUMN network_type VARCHAR(10) DEFAULT 'vlan';
+-- network_type: 'vlan' 或 'vxlan'
+
+-- 创建VNI池表 (类似VLAN ID池)
+CREATE TABLE vni_pool (
+  vni INTEGER PRIMARY KEY CHECK(vni >= 1 AND vni <= 16777215),
+  status VARCHAR(20) CHECK(status IN ('available', 'allocated', 'reserved')),
+  tenant_id UUID REFERENCES tenants(tenant_id),
+  allocated_at TIMESTAMP,
+  UNIQUE(tenant_id) WHERE tenant_id IS NOT NULL
+);
+```
+
+---
+
+### 17.4 网络隔离验证 (Network Isolation Validation)
+
+#### 17.4.1 创建VPC时验证VLAN ID
+
+**VPC创建时自动继承租户的VLAN ID**:
+
+```typescript
+async function createVPC(vpcData) {
+  const tenant = await db('tenants').where('tenant_id', vpcData.tenant_id).first();
+
+  // VPC自动继承租户的VLAN ID
+  const vpc = await db('vpcs').insert({
+    ...vpcData,
+    vlan_id: tenant.vlan_id  // 继承租户VLAN ID
+  }).returning('*');
+
+  return vpc;
+}
+```
+
+#### 17.4.2 跨租户隔离验证
+
+**确保不同租户的实例无法通信** (即使IP在同一网段):
+
+```typescript
+// 网络ACL验证
+function validateNetworkAccess(sourceInstance, targetInstance) {
+  const sourceTenant = await db('instances')
+    .join('tenants', 'instances.tenant_id', 'tenants.tenant_id')
+    .where('instances.instance_id', sourceInstance.id)
+    .first();
+
+  const targetTenant = await db('instances')
+    .join('tenants', 'instances.tenant_id', 'tenants.tenant_id')
+    .where('instances.instance_id', targetInstance.id)
+    .first();
+
+  // 不同VLAN ID禁止通信
+  if (sourceTenant.vlan_id !== targetTenant.vlan_id) {
+    throw new Error('Cross-tenant network access denied: Different VLAN IDs');
+  }
+
+  return true;
+}
+```
+
+---
+
+### 17.5 初始化VLAN ID池 (Initialize VLAN ID Pool)
+
+**系统初始化时预填充VLAN ID池**:
+
+```sql
+-- 插入可用的VLAN ID (100-4000)
+INSERT INTO vlan_id_pool (vlan_id, status)
+SELECT generate_series(100, 4000) AS vlan_id, 'available' AS status;
+
+-- 预留特殊VLAN ID
+UPDATE vlan_id_pool SET status = 'reserved', reserved_for = '系统预留'
+WHERE vlan_id IN (100, 101, 102);  -- 预留示例
+```
 
 ---
 
