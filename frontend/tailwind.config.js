@@ -1,4 +1,34 @@
 /** @type {import('tailwindcss').Config} */
+
+// 尝试读取自动生成的 Figma tokens JSON（如果存在）
+// 注意：如果文件不存在，会使用默认配置
+import { readFileSync, existsSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const tokensJsonPath = join(__dirname, 'tailwind.config.tokens.json');
+
+let figmaTokensExtend = {};
+try {
+  if (existsSync(tokensJsonPath)) {
+    const tokensJson = JSON.parse(readFileSync(tokensJsonPath, 'utf-8'));
+    // 转换为 Tailwind extend 格式
+    figmaTokensExtend = {
+      colors: tokensJson.colors || {},
+      spacing: tokensJson.spacing || {},
+      fontSize: tokensJson.fontSize || {},
+      borderRadius: tokensJson.borderRadius || {},
+      boxShadow: tokensJson.boxShadow || {},
+    };
+  }
+} catch (e) {
+  // 如果读取失败，使用默认配置
+  // 这是正常的，如果还没有运行过同步脚本
+  figmaTokensExtend = {};
+}
+
 export default {
   content: [
     "./index.html",
@@ -6,6 +36,9 @@ export default {
   ],
   theme: {
     extend: {
+      // 合并 Figma tokens（如果存在，优先级更高）
+      ...figmaTokensExtend,
+      
       // Color tokens - Zedge Cloud Platform
       colors: {
         // Primary brand colors

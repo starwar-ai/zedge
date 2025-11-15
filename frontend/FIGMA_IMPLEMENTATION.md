@@ -1532,4 +1532,30 @@ import { Pagination } from '@/components/ui/Pagination'
 - Figma Design: https://www.figma.com/design/s3szBzWOPmpdq0EZg9PwKj/DeskPro?node-id=97-1632
 - Design System Rules: `.claude/figma-design-system-rules.md`
 - Design Tokens: `DESIGN_TOKENS.md`
+- **Figma Tokens Sync**: `FIGMA_TOKENS_SYNC.md` - 如何从 Figma Variables 同步 Tokens
 - Tailwind Config: `tailwind.config.js`
+
+## Figma Variables/Tokens 同步
+
+项目支持从 Figma Variables 自动同步 Design Tokens 到 Tailwind CSS 配置。
+
+### 快速开始
+
+1. **设置环境变量**（参考 `.env.local.example`）:
+   ```bash
+   FIGMA_FILE_KEY=your-file-key
+   FIGMA_ACCESS_TOKEN=your-token
+   ```
+
+2. **运行同步脚本**:
+   ```bash
+   npm run sync:tokens
+   ```
+
+3. **使用同步的 Tokens**:
+   同步后，tokens 会自动合并到 `tailwind.config.js` 中，可以直接使用：
+   ```tsx
+   <div className="bg-primary-500">使用 Figma Variables</div>
+   ```
+
+详细文档请参考: [FIGMA_TOKENS_SYNC.md](./FIGMA_TOKENS_SYNC.md)

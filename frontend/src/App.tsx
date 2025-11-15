@@ -1,3 +1,4 @@
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { FigmaButtonShowcase } from './components/features/buttons/FigmaButtons'
 import { PageComponentShowcase } from './components/features/page-components'
 import { TableShowcase } from './components/features/table'
@@ -5,16 +6,20 @@ import { FormShowcase } from './components/features/form'
 import { IconShowcase } from './components/ui'
 import { TabListShowcase } from './components/features/page-components/TabListShowcase'
 import { PaginationShowcase } from './components/features/pagination/PaginationShowcase'
-import { NewImage } from './components/features/image-management'
+import { MainLayout } from './components/layout'
+import LoginPage from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import { ImageManagementPage } from './pages/image-management'
+import { UserManagement } from './pages/UserManagement'
 
-function App() {
+function HomePage() {
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* New Image Creation Page - Full Figma Implementation */}
-      <NewImage />
-
-      {/* Image Management Page - Full Figma Implementation */}
-      {/* <ImageManagement /> */}
+      {/* User Management Page - Full Figma Implementation */}
+      {/*<UserManagement />*/}
+      {/* Image Management Pages - Full Figma Implementation */}
+      {/* <ImageManagementPage /> */}
+      {/* <NewImagePage /> */}
 
       <div className="container-custom py-12">
         <div className="page-header">
@@ -167,6 +172,26 @@ function App() {
         </div>
       </div>
     </div>
+  )
+}
+
+function App() {
+  return (
+    <Routes>
+      {/* Public routes without layout */}
+      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<LoginPage />} />
+
+      {/* Protected routes with MainLayout (Sidebar) */}
+      <Route element={<MainLayout />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/images" element={<ImageManagementPage />} />
+        <Route path="/users" element={<UserManagement />} />
+      </Route>
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }
 

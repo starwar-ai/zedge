@@ -19,12 +19,37 @@
 **说明**: 数据中心级别的物理边缘机房，包含所有硬件资源
 
 **主要属性**:
+- `edge_data_center_id`: 机房唯一标识 (UUID)
 - `name`: 边缘机房名称 (e.g., 北京数据中心)
-- `location`: 物理位置
+- `location`: 物理位置（JSON格式）
+  - `administrative_division`: 行政区划 (e.g., 北京市海淀区)
+  - `detailed_address`: 详细地址 (e.g., 中关村大街1号)
 - `total_cpu_cores`: 总CPU核心数
 - `total_memory_gb`: 总内存容量
 - `total_storage_gb`: 总存储容量
-- `status`: 运营状态 (active, maintenance, offline)
+- `status`: 运营状态
+  - `active`: 正常 - 机房正常运行，可提供服务
+  - `maintenance`: 运维中 - 机房处于维护状态，暂停服务
+  - `offline`: 已关闭 - 机房已关闭，不可用
+- `host_count`: 主机数量（统计字段，实时更新）
+- `resource_statistics`: 资源统计（JSON格式，实时更新）
+  - `total_cpu`: CPU总数（核心数）
+  - `total_gpu`: GPU总数（卡数）
+  - `total_memory`: 内存总数（GB）
+  - `total_disk`: 硬盘总数（GB）
+- `instance_statistics`: 实例统计（统计字段，实时更新）
+  - `total_instances`: 实例总数
+  - `running_instances`: 运行中实例数
+  - `stopped_instances`: 已停止实例数
+- `created_at`: 创建日期（TIMESTAMP）
+- `updated_at`: 更新时间（TIMESTAMP）
+
+**操作**:
+- **创建**: 创建新的边缘机房，初始化资源统计
+- **编辑**: 修改机房信息（名称、位置等）
+- **开启**: 将已关闭的机房重新开启（状态：offline → active）
+- **关闭**: 关闭机房，停止服务（状态：active/maintenance → offline）
+- **删除**: 删除机房记录（需确保没有关联的主机和实例）
 
 ---
 
@@ -134,10 +159,18 @@
 - `allocated_cpu_cores`: 已分配CPU（实时跟踪）
 - `allocated_memory_gb`: 已分配内存（实时跟踪）
 - `allocated_storage_gb`: 已分配存储（实时跟踪）
-- `status`: 运营状态 (active, maintenance, offline, decommissioning)
+- `status`: 运营状态
+  - `active`: 运行中 - 主机正常运行，可提供服务
+  - `maintenance`: 维护中 - 主机处于维护状态，暂停服务
+  - `offline`: 已下线 - 主机已下线，不可用
+  - `decommissioning`: 已下线（待确认）- 主机正在下线过程中
 - `health_status`: 健康状态 (healthy, warning, critical)
 - `hypervisor_type`: 虚拟化技术 (KVM, Hyper-V, VMware)
 - `rental_mode`: 租赁方式 (exclusive-独占, shared-共享)
+- `rental_deadline`: 主机可租用期限（TIMESTAMP，可选）
+  - 用于限制主机可被租用的最长期限
+  - 超过期限后，主机不再接受新的租用申请
+  - 已租用的实例不受影响，可继续使用至到期
 
 **租赁方式** (Rental Mode):
 
@@ -286,20 +319,33 @@
 
 **生命周期状态**:
 ```
-创建中 (creating) / 已停止 (stopped)  ← 创建时状态为stopped，不分配资源
+已创建 (creating) / 已停止 (stopped)  ← 创建时状态为stopped，不分配资源
   ↓
-初始化中 (initializing)              ← Instance启动时，正在分配资源
+已计划 (planned)                      ← 按课表计划创建的实例，等待自动创建
+  ↓
+初始化中 (initializing)              ← Instance启动时，正在分配资源（开机中）
   ↓
 运行中 (running) ←→ 暂停 (suspended)  ← 资源已分配，可以使用
   ↓
-停止中 (stopping)                    ← Instance停止时，正在释放资源
+停止中 (stopping)                    ← Instance停止时，正在释放资源（关机中）
   ↓
-已停止 (stopped)                      ← 资源已释放，但Instance记录保留
+已停止 (stopped)                      ← 资源已释放，但Instance记录保留（已关机）
   ↓
 删除中 (terminating)
   ↓
-已删除 (deleted)
+已删除 (deleted)                     ← 已销毁
 ```
+
+**状态值对应关系**:
+- `creating` = 已创建
+- `planned` = 已计划（按课表计划创建的实例）
+- `initializing` = 开机中
+- `running` = 运行中
+- `suspended` = 暂停
+- `stopping` = 关机中
+- `stopped` = 已关机
+- `terminating` = 已销毁（删除中）
+- `deleted` = 已删除（已销毁）
 
 **资源分配时机**:
 - **创建时**：只创建Instance记录，状态为 `stopped`，不分配算力机
@@ -314,7 +360,8 @@
 - `user_id`: 所有者用户ID（外键 → users.user_id）
 - `tenant_id`: 所属租户ID（外键 → tenants.tenant_id）
 - `template_id`: 创建源模板ID（可选，外键 → templates.template_id）
-- `status`: 实例状态 (creating, initializing, running, suspended, stopping, stopped, terminating, deleted)
+- `status`: 实例状态 (creating, planned, initializing, running, suspended, stopping, stopped, terminating, deleted)
+- `health_status`: 健康状况 (healthy, warning, critical, unknown)
 - `config`: 实例配置信息（JSON格式）
   - `imageId`: 使用的镜像ID（如果从模板创建，继承模板的baseImageId）
   - `imageVersionId`: 具体使用的镜像版本ID（可选）
@@ -330,9 +377,16 @@
     - auto_assign_public_ip: 是否自动分配公网IP
   - `userData`: 实例初始化脚本（cloud-init，可选）
   - `description`: 实例描述
+  - `specification_details`: 规格详情（JSON，可选）
 - `rental_mode`: 租赁模式 (exclusive-独占, shared-共享，仅在运行时设置)
+- `rental_type`: 租用方式（可选）
+  - `fixed_duration`: 固定时长，到时自动销毁
+  - `long_term_rental`: 长时间租用，按时间扣费，费用不足提醒，超过期限未充值，自动销毁
 - `resource_pool_id`: 分配的算力池ID（外键 → resource_pools.pool_id，创建时为 NULL，启动时必填）
 - `host_id`: 分配的算力机ID（外键 → hosts.host_id，创建时为 NULL，启动时根据租赁模式设置）
+- `expires_at`: 到期时间（TIMESTAMP，可选）- 用于租用到期自动销毁
+- `release_time`: 释放时间（TIMESTAMP，可选）- 用于自动释放实例
+- `local_disk`: 本地磁盘信息（JSON，可选）
 - `created_at`, `updated_at`: 时间戳
 
 **重要说明**:
@@ -404,6 +458,69 @@ Instance的资源分配是动态的，与Instance状态相关：
 **功能**: 单个实例的直接管理
 
 **操作**:
+
+#### 创建实例 (Create Instance)
+1. **按计划创建**:
+   - 根据最新导入课表，创建实例计划
+   - 设置计划创建时间、自动开机时间、自动关机时间
+   - 取消或调整计划
+   - 创建时，检查场所、用户在时间是否有资源冲突
+   - 是否按比例分配（GPU资源比例分配：1 GPU : 8 CPU : 32 GB 内存）
+
+2. **临时创建**:
+   - 用户直接创建实例，不设置计划
+   - 设置租用方式：
+     - 固定时长，到时自动销毁
+     - 长时间租用，按时间扣费，费用不足提醒，超过期限未充值，自动销毁
+
+#### 列表查看 (List Instances)
+- 查看实例列表
+- 查看实例创建计划
+- 支持筛选和搜索
+
+#### 保存镜像 (Save Image)
+- 保存系统盘，但不保存数据盘
+- 从实例创建自定义镜像
+- 保存的镜像可用于后续创建实例
+
+#### 加载镜像 (Load Image)
+- 从镜像创建实例
+- 选择镜像版本
+
+#### 到期释放与预警 (Expiration and Warning)
+- 自动检测实例到期时间
+- 到期前发送预警通知
+- 到期后自动释放实例
+
+#### 升降配 (Resize Instance)
+- 调整实例资源配置（CPU、内存、GPU）
+- 查看主机可分配资源（CPU、GPU、内存、数据盘）
+- 验证资源比例约束（GPU资源需满足比例要求）
+
+#### 重置 (Reset Instance)
+- 重置实例到初始状态
+- 系统盘也会重置
+- 数据盘保持不变（可选）
+
+#### 替换镜像 (Replace Image)
+- 更换实例使用的镜像
+- 需要重新创建系统盘
+
+#### 实例迁移 (Instance Migration)
+- 迁移系统盘到新的主机
+- 迁移数据盘到新的存储位置
+- 支持在线迁移和离线迁移
+
+#### 开关机 (Start/Stop Instance)
+- 开机：启动实例，分配资源
+- 关机：停止实例，释放资源
+- 无卡开机：支持无GPU卡开机（仅CPU实例）
+
+#### 设置名称 (Set Instance Name)
+- 修改实例名称
+- 支持批量重命名
+
+#### 其他操作
 - 启动/停止实例
 - 修改实例配置
 - 重启实例
@@ -564,9 +681,65 @@ Instance的资源分配是动态的，与Instance状态相关：
 
 ---
 
-### 3.1 私有数据盘 (Private Data Disk)
+### 3.1 存储分类 (Storage Classification)
 
-**功能**: 独立的持久化存储资源
+**存储分类**:
+- **磁盘 (Disk)**:
+  - **公共磁盘 (Public Disk)**: 平台或组织共享的数据集和资源
+  - **私有磁盘 (Private Disk)**: 用户个人拥有的数据盘
+- **文件 (File)**: 文件存储资源
+
+---
+
+### 3.1.1 公共磁盘 (Public Disk)
+
+**功能**: 平台或组织共享的数据集和资源，可被多个用户和实例访问
+
+**公共磁盘分类**:
+- **公开数据集**: 自动加载到实例的公共数据
+  - 只读模式（read-only）
+  - 实例启动时自动挂载
+  - 用于课程教学、实验数据等场景
+
+**公共磁盘属性**:
+- `public_disk_id`: 公共磁盘唯一标识 (UUID)
+- `name`: 公共磁盘名称
+- `instance_path`: 实例中挂载路径 (e.g., /mnt/public/datasets)
+- `type`: 磁盘类型
+  - `dataset`: 数据集
+  - `course_material`: 课程资料
+  - `shared_resource`: 共享资源
+- `publisher`: 发布方（组织或用户ID）
+- `description`: 简介
+- `size_gb`: 容量大小（GB）
+- `disk_type`: 存储类型 (standard, ssd, nvme)
+- `status`: 状态 (available, attached, creating, deleting, error)
+- `auto_mount`: 是否自动挂载到实例（BOOLEAN）
+- `mount_mode`: 挂载模式（固定为只读 ro）
+- `created_at`, `updated_at`: 时间戳
+
+**公共磁盘特性**:
+- **只读访问**: 所有公共磁盘均为只读模式，防止数据被修改
+- **自动挂载**: 支持实例启动时自动挂载公共磁盘
+- **多实例共享**: 多个实例可同时挂载同一公共磁盘
+- **组织共享**: 可以共享给他人或组内共享
+- **课程关联**: 可以关联到特定课程或班级
+
+**公共磁盘与实例的挂载关系**:
+- 通过关联表 `instance_public_disk_attachments` 管理公共磁盘与实例的挂载关系
+- 挂载模式固定为只读（ro）
+- 支持自动挂载和手动挂载
+
+---
+
+### 3.1.2 私有数据盘 (Private Data Disk)
+
+**功能**: 独立的持久化存储资源，用户个人拥有
+
+**私有数据盘分类**:
+- **只读私有磁盘**: 可以共享给他人或组内共享
+  - 共享时强制只读模式
+- **可写私有磁盘**: 用户个人使用，可读写
 
 **私有数据盘属性**:
 - `disk_id`: 私有数据盘唯一标识 (UUID)
@@ -1254,7 +1427,10 @@ function canAccessModule(module: string, tenantType: TenantType): boolean {
   - `priority`: 优先级调度
   - `affinity`: 亲和性调度
   - `round_robin`: 轮询调度
-- `status`: 状态 (active, maintenance, disabled)
+- `status`: 状态
+  - `active`: 正常 - 资源池正常运行，可提供服务
+  - `maintenance`: 维护中 - 资源池处于维护状态
+  - `disabled`: 已关闭 - 资源池已关闭，不可用
 - `created_at`, `updated_at`: 时间戳
 - `created_by`, `updated_by`: 审计字段
 
@@ -1396,10 +1572,20 @@ function canAccessModule(module: string, tenantType: TenantType): boolean {
   - auto_assign_public_ip: 是否自动分配公网IP
 - `user_data`: 实例初始化脚本（cloud-init，可选）
 - `tags`: 默认标签（JSON，可选）
-- `visibility`: 可见性 (public, private, group_specific)
-  - `public`: 公开 - 所有用户可见
-  - `private`: 私有 - 仅创建者可见
-  - `group_specific`: 组内共享 - 仅创建者所属用户组可见
+- `visibility`: 可见性（模板分类）
+  - `public`: 公共模板 - 所有用户可见，平台级共享资源
+  - `private`: 私有模板 - 仅创建者可见，需要指定所有者（owner_id）
+  - `group_specific`: 组内共享模板 - 仅创建者所属用户组可见
+- `template_number`: 模板编号（可选，用于标识模板）
+- `operating_system`: 操作系统（从关联镜像继承，可选）
+- `applicable_config`: 适用配置（JSON格式，可选）
+  - `cpu_cores`: CPU核心数（适用范围）
+  - `gpu_count`: GPU数量（适用范围）
+  - `memory_gb`: 内存大小（适用范围）
+  - `disk_gb`: 磁盘大小（适用范围）
+- `mounted_disks`: 挂载磁盘配置（JSON数组，可选）
+  - 指定模板创建实例时自动挂载的磁盘
+  - 包括公共磁盘和私有磁盘的挂载配置
 - `owner_id`: 创建者用户ID（外键 → users.user_id）
 - `tenant_id`: 所属租户ID（外键 → tenants.tenant_id，可选）
 - `version`: 模板版本号（默认 "v1.0.0"）
@@ -1599,12 +1785,41 @@ function canAccessModule(module: string, tenantType: TenantType): boolean {
 - `architecture`: 系统架构 (x86_64, arm64)
 - `size_gb`: 镜像大小
 - `visibility`: 可见性 (public-全员共享, private-私有, group_specific-组内共享)
-- `status`: 状态 (active, deprecated, archived)
+- `status`: 状态
+  - `active`: 活跃状态，可以使用
+  - `listed`: 已上架 - 镜像已审核通过并上架，用户可见可用
+  - `unlisted`: 已下架 - 镜像已下架，用户不可见
+  - `pending_review`: 待审核 - 镜像提交后等待审核
+  - `deprecated`: 已废弃，不推荐使用但仍可用
+  - `archived`: 已归档，不可使用
+- `preinstalled_software`: 预装软件（JSON数组，可选）
+  - `name`: 软件名称
+  - `version`: 版本
+  - `install_path`: 安装路径
+- `minimum_requirements`: 最低配置要求（JSON格式，可选）
+  - `cpu_cores`: CPU核心数
+  - `memory_gb`: 内存大小（GB）
+  - `disk_gb`: 磁盘空间（GB）
+- `recommended_config`: 推荐配置（JSON格式，可选）
+  - `cpu_cores`: 推荐CPU核心数
+  - `memory_gb`: 推荐内存大小（GB）
+  - `disk_gb`: 推荐磁盘空间（GB）
+- `current_version`: 当前版本（镜像版本ID，外键 → image_versions.version_id）
+- `cache_regions`: 缓存地区（JSON数组，可选）- 镜像缓存的地区列表
+- `base_image_info`: 基础镜像信息（JSON格式，可选）- 如果是应用层镜像，记录基础镜像信息
 - `file_server_id`: 所在文件服务器（集中存储，统一分发）
 - `file_path`: 镜像文件路径
 - `checksum_md5`: MD5校验和（确保完整性）
-- `owner_id`: 创建者用户ID
+- `owner_id`: 创建者用户ID（私有镜像需要指定所有者）
 - `created_at`, `updated_at`: 时间戳
+
+**镜像操作**:
+- **创建**: 创建新镜像，设置用途、OS镜像、挂载磁盘等
+- **审核**: 镜像提交后，需要审核才能上架（状态：pending_review → listed）
+- **上架**: 将镜像上架，用户可见可用（状态：unlisted → listed）
+- **下架**: 将镜像下架，用户不可见（状态：listed → unlisted）
+- **共享镜像**: 将私有镜像共享给他人或组内共享
+- **增删改查**: 镜像的基本管理操作
 
 ---
 
@@ -2876,6 +3091,42 @@ ORDER BY iv.created_at DESC;
 - 只有超级管理员可以修改租户配额
 - 学校租户的学期积分在学期末自动清零，不可跨学期使用
 
+#### 10.1.1 学校配额 (School Quotas)
+
+**学校配额特性**:
+- **学期积分**: 学校租户级别的积分配额
+  - 总积分有时间限制，比如一个学期，过期作废
+  - 学期末自动清零，不可跨学期使用
+  - 由学校统一分配和管理
+
+**系统自动计算积分**:
+- 系统能根据实验室排课表，自动计算出所需积分
+- 根据课程配置、实例数量、使用时长等因素计算积分消耗
+- 支持提前预估和实际扣费
+
+**计划实例与扣费**:
+- **筛选课程**: 筛选需要用到实训室的课程
+- **设置模板**: 为课程设置上课模板（实例配置）
+- **自动计算**: 自动计算所需实例数，以及耗费积分
+  - 根据课程人数、课程时长、资源配置计算
+  - 考虑机房系数、GPU品牌型号等计费要素
+- **资源锁定**: 如果已经锁定了资源，需要调整时间或者取消预定
+  - 可以退还积分，但要扣除一定的费用（手续费）
+  - 手续费比例可配置（如5%）
+- **临时调整**: 上课前，老师可以临时增加或删除实例
+  - 新增实例要用学校积分（学期积分）
+  - 删除实例可退还部分积分（扣除手续费）
+
+**积分扣除优先级**:
+1. 优先扣除免费积分（用户个人）
+2. 其次扣除学期积分（学校租户）
+3. 最后扣除余额（需要充值）
+
+**积分过期机制**:
+- 学期积分在学期末自动作废
+- 系统定期检查并清理过期积分
+- 过期前发送提醒通知
+
 ---
 
 ### 10.2 用户配额 (User Quotas)
@@ -2888,6 +3139,26 @@ ORDER BY iv.created_at DESC;
 - `max_private_data_disk_gb`: 最大私有数据盘容量
 - `max_ip_addresses`: 最大IP地址数
 - `max_bandwidth_gbps`: 最大网络带宽（Gbps）
+
+**用户配额特性**:
+- 用户配额是用户级别的资源限制
+- 用户创建资源时需验证配额
+- 配额超限时禁止创建新资源
+- 管理员可以调整用户配额
+
+#### 10.2.1 用户免费积分 (User Free Points)
+
+**免费积分特性**:
+- **平台赠送**: 平台可以给用户一定的免费积分
+- **时间限制**: 积分都有时间限制，如一个月，过期会作废
+- **用途**: 用于个人练习等场景
+- **优先级**: 积分扣除时优先扣除免费积分
+
+**免费积分管理**:
+- 系统定期检查并清理过期积分
+- 过期前发送提醒通知
+- 支持管理员手动调整用户免费积分
+- 支持批量发放免费积分（如新用户注册奖励）
 
 ### 10.3 用户组配额 (User Group Quotas)
 
@@ -3390,7 +3661,73 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 - 包周/包月提前终止需支付最小承诺期费用（场景2）
 - 或提前终止按日单价计费，不享受包时长折扣
 
-#### 11.3.5 积分计费模式 (Points-based Billing)
+#### 11.3.5 计费要素 (Billing Factors)
+
+**计费要素说明**:
+计费价格由多个维度组合决定，不同要素有不同的单价系数：
+
+| 要素 | 说明 | 计费方式 |
+|------|------|---------|
+| **机房** | 不同机房与标准价格有不同 | 机房系数 × 基础价格 |
+| **GPU** | 不同品牌和型号有不同的价格 | 品牌（N卡/A卡/华为/玄武纪）+ 型号（3090/4090等）+ 数量 |
+| **CPU** | 按核心数计费 | 核心数 × CPU单价 |
+| **内存** | 按容量计费 | 容量（GB）× 内存单价 |
+| **存储** | 有免费额度，超过收费 | 免费额度后，0.01元/GB/日 |
+
+**机房系数配置**:
+```json
+{
+  "edge_data_center_coefficient": {
+    "beijing": 1.0,      // 北京机房，标准价格
+    "shanghai": 1.2,     // 上海机房，价格系数1.2
+    "guangzhou": 0.9,    // 广州机房，价格系数0.9
+    "shenzhen": 1.1      // 深圳机房，价格系数1.1
+  }
+}
+```
+
+**GPU品牌和型号定价**:
+```json
+{
+  "gpu_pricing": {
+    "nvidia": {
+      "3090": 10.0,      // N卡3090，10积分/卡/小时
+      "4090": 15.0,      // N卡4090，15积分/卡/小时
+      "A100": 20.0       // N卡A100，20积分/卡/小时
+    },
+    "amd": {
+      "rx6900": 8.0,     // A卡RX6900，8积分/卡/小时
+      "rx7900": 12.0     // A卡RX7900，12积分/卡/小时
+    },
+    "huawei": {
+      "ascend910": 18.0  // 华为昇腾910，18积分/卡/小时
+    },
+    "xuanwuji": {
+      "bianguang": 16.0  // 玄武纪边光，16积分/卡/小时
+    }
+  }
+}
+```
+
+**基础资源单价**:
+```json
+{
+  "cpu_per_core_per_hour": 0.5,        // CPU：0.5积分/核心/小时
+  "memory_per_gb_per_hour": 0.2,       // 内存：0.2积分/GB/小时
+  "storage_per_gb_per_day": 0.01,      // 存储：0.01积分/GB/日（超过免费额度）
+  "storage_free_quota_gb": 50          // 存储免费额度：50GB
+}
+```
+
+**计费公式示例**:
+```
+总费用 = (CPU核心数 × CPU单价 × 机房系数 × 使用时长) +
+         (内存GB × 内存单价 × 机房系数 × 使用时长) +
+         (GPU数量 × GPU单价 × 机房系数 × 使用时长) +
+         (存储GB - 免费额度) × 存储单价 × 使用天数
+```
+
+#### 11.3.6 积分计费模式 (Points-based Billing)
 
 **适用场景**: 学校租户专用计费模式
 
@@ -3441,6 +3778,9 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 - 锁定资源后若取消，扣除"手续费"后退还积分
 - 手续费比例可配置（如5%）
 - 退款优先返还到学期积分，其次返还到用户余额
+
+**场景限制**:
+- 学校等租户场景，不支持包日/包月方式（学校场景禁用包月，包日需确认）
 
 ---
 
@@ -3594,9 +3934,196 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 
 ---
 
-### 11.6 成本优化建议 (Cost Optimization)
+### 11.6 订单管理 (Order Management)
 
-#### 11.6.1 成本分析
+#### 11.6.1 订单 (Order)
+
+**功能**: 记录用户的购买订单信息
+
+**订单表结构** (`orders`):
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `order_id` | UUID | 订单唯一标识（主键） |
+| `order_number` | VARCHAR(50) | 订单编号（唯一，格式：ORD-YYYYMMDD-XXXXX） |
+| `user_id` | UUID | 用户ID（外键 → users.user_id） |
+| `tenant_id` | UUID | 所属租户ID（外键 → tenants.tenant_id，可选） |
+| `order_type` | ENUM | 订单类型 |
+| | | `new_instance`: 新实例购买 |
+| | | `new_file_storage`: 新文件存储购买 |
+| | | `new_data_disk`: 新数据盘购买 |
+| | | `image_storage`: 镜像存储购买 |
+| `status` | ENUM | 订单状态 |
+| | | `paid`: 已支付 |
+| | | `unpaid`: 未支付 |
+| | | `cancelled`: 已取消 |
+| `product_name` | VARCHAR(255) | 产品名称 |
+| `billing_mode` | ENUM | 计费方式 |
+| | | `pay_as_you_go`: 按量计费 |
+| | | `daily`: 包日 |
+| | | `weekly`: 包周 |
+| | | `monthly`: 包月 |
+| | | `yearly`: 包年 |
+| `amount` | DECIMAL(10,2) | 订单金额 |
+| `related_instance_id` | UUID | 关联实例ID（可选，外键 → instances.instance_id） |
+| `related_disk_id` | UUID | 关联磁盘ID（可选，外键 → private_data_disks.disk_id） |
+| `related_image_id` | UUID | 关联镜像ID（可选，外键 → images.image_id） |
+| `created_at` | TIMESTAMP | 创建时间 |
+| `paid_at` | TIMESTAMP | 支付时间（可选） |
+| `cancelled_at` | TIMESTAMP | 取消时间（可选） |
+| `expires_at` | TIMESTAMP | 订单过期时间（可选） |
+| `description` | TEXT | 订单描述（可选） |
+
+**订单操作**:
+- **创建订单**: 用户购买资源时创建订单
+- **支付订单**: 用户支付后更新订单状态为已支付
+- **取消订单**: 用户或系统取消未支付订单
+- **查询订单**: 用户查看订单列表和详情
+
+**订单状态流转**:
+```
+未支付 (unpaid)
+  ↓ (支付)
+已支付 (paid)
+  ↓ (取消)
+已取消 (cancelled)
+```
+
+---
+
+### 11.7 收支明细管理 (Transaction Management)
+
+#### 11.7.1 收支明细 (Transaction)
+
+**功能**: 记录用户的每一笔交易流水
+
+**收支明细表结构** (`transactions`):
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `transaction_id` | UUID | 流水号（唯一标识，主键） |
+| `user_id` | UUID | 用户ID（外键 → users.user_id） |
+| `tenant_id` | UUID | 所属租户ID（外键 → tenants.tenant_id，可选） |
+| `transaction_time` | TIMESTAMP | 交易时间 |
+| `transaction_type` | ENUM | 交易类型 |
+| | | `expense`: 支出 |
+| | | `income`: 收入 |
+| `payment_method` | ENUM | 支付方式 |
+| | | `points`: 积分 |
+| | | `wechat`: 微信支付 |
+| | | `alipay`: 支付宝 |
+| | | `balance`: 账户余额 |
+| | | `bank_transfer`: 银行转账 |
+| `amount` | DECIMAL(10,2) | 交易金额 |
+| `balance_before` | DECIMAL(10,2) | 交易前账户余额 |
+| `balance_after` | DECIMAL(10,2) | 交易后账户余额 |
+| `order_id` | UUID | 关联订单ID（可选，外键 → orders.order_id） |
+| `related_instance_id` | UUID | 关联实例ID（可选，外键 → instances.instance_id） |
+| `related_disk_id` | UUID | 关联磁盘ID（可选，外键 → private_data_disks.disk_id） |
+| `remark` | TEXT | 备注（实例ID等购买信息） |
+| `created_at` | TIMESTAMP | 创建时间 |
+
+**收支明细特性**:
+- **流水号唯一**: 每个交易记录有唯一的流水号
+- **余额跟踪**: 记录交易前后的账户余额
+- **关联订单**: 可以关联到具体的订单
+- **关联资源**: 可以关联到实例、磁盘等资源
+
+**收支明细操作**:
+- **记录支出**: 用户购买资源时记录支出
+- **记录收入**: 用户充值、退款时记录收入
+- **查询流水**: 用户查看交易流水记录
+- **导出明细**: 支持导出交易明细报表
+
+---
+
+### 11.8 账单明细管理 (Bill Detail Management)
+
+#### 11.8.1 账单明细 (Bill Detail)
+
+**功能**: 记录用户的账单明细，包括按日汇总和详细交易记录
+
+**账单明细表结构** (`bill_details`):
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `bill_id` | UUID | 账单ID（唯一标识，主键） |
+| `user_id` | UUID | 用户ID（外键 → users.user_id） |
+| `tenant_id` | UUID | 所属租户ID（外键 → tenants.tenant_id，可选） |
+| `bill_date` | DATE | 账单日期 |
+| `transaction_type` | ENUM | 交易类型 |
+| | | `consumption`: 消费 |
+| | | `refund`: 退款 |
+| `daily_summary` | JSONB | 按日汇总（JSON格式） |
+| | | `date`: 日期 |
+| | | `transaction_type`: 交易类型 |
+| | | `transaction_amount`: 交易金额 |
+| | | `discount_amount`: 优惠金额 |
+| | | `points_payment`: 积分支付 |
+| `details` | JSONB | 明细列表（JSON数组） |
+| | | `transaction_id`: 流水号 |
+| | | `transaction_time`: 交易时间 |
+| | | `transaction_type`: 交易类型 |
+| | | `original_price`: 原价 |
+| | | `transaction_amount`: 交易金额 |
+| | | `product_name`: 产品名称 |
+| | | `discount_amount`: 优惠金额 |
+| | | `points_payment`: 积分支付 |
+| | | `order_number`: 订单号 |
+| | | `billing_period`: 计费周期 |
+| | | `billing_duration`: 计费时长 |
+| `total_amount` | DECIMAL(10,2) | 总金额 |
+| `total_discount` | DECIMAL(10,2) | 总优惠金额 |
+| `total_points` | DECIMAL(10,2) | 总积分支付 |
+| `created_at` | TIMESTAMP | 创建时间 |
+| `updated_at` | TIMESTAMP | 更新时间 |
+
+**账单明细特性**:
+- **按日汇总**: 每日自动生成账单汇总
+- **详细记录**: 包含每笔交易的详细信息
+- **多维度统计**: 支持按交易类型、产品名称等维度统计
+- **优惠记录**: 记录优惠金额和积分支付
+
+**账单明细操作**:
+- **生成账单**: 系统自动按日生成账单明细
+- **查询账单**: 用户查看账单明细
+- **导出账单**: 支持导出账单报表（PDF、Excel等格式）
+
+**账单明细JSON结构示例**:
+```json
+{
+  "bill_id": "bill-uuid",
+  "bill_date": "2025-10-31",
+  "daily_summary": {
+    "date": "2025-10-31",
+    "transaction_type": "consumption",
+    "transaction_amount": 150.50,
+    "discount_amount": 10.00,
+    "points_payment": 50.00
+  },
+  "details": [
+    {
+      "transaction_id": "trans-uuid-1",
+      "transaction_time": "2025-10-31T10:30:00Z",
+      "transaction_type": "consumption",
+      "original_price": 100.00,
+      "transaction_amount": 90.00,
+      "product_name": "云电脑实例",
+      "discount_amount": 10.00,
+      "points_payment": 0.00,
+      "order_number": "ORD-20251031-00001",
+      "billing_period": "2025-10",
+      "billing_duration": "24小时"
+    }
+  ]
+}
+```
+
+---
+
+### 11.9 成本优化建议 (Cost Optimization)
+
+#### 11.9.1 成本分析
 
 **成本洞察**:
 - 按资源类型分析成本占比
@@ -3610,7 +4137,7 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 - 推荐使用预付费资源包
 - 提示升级/降级套餐
 
-#### 11.6.2 预算管理
+#### 11.9.2 预算管理
 
 **预算设置**:
 - 设置月度预算
@@ -3625,9 +4152,9 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 
 ---
 
-### 11.7 计费集成 (Billing Integration)
+### 11.10 计费集成 (Billing Integration)
 
-#### 11.7.1 与配额系统集成
+#### 11.10.1 与配额系统集成
 
 **订阅套餐 → 配额限制**:
 ```
@@ -3642,14 +4169,14 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
   - max_ip_addresses = 10
 ```
 
-#### 11.7.2 与监控系统集成
+#### 11.10.2 与监控系统集成
 
 **使用计量 ← 监控指标**:
 - 实时从监控系统获取资源使用数据
 - 聚合计算计量数据
 - 生成计费记录
 
-#### 11.7.3 与实例管理集成
+#### 11.10.3 与实例管理集成
 
 **实例生命周期 → 计费事件**:
 - 实例创建: 开始计费
