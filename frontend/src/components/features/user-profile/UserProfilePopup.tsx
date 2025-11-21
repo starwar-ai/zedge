@@ -97,12 +97,12 @@ export const UserProfilePopup = React.forwardRef<HTMLDivElement, UserProfilePopu
     return (
       <div
         ref={ref}
-        className={`bg-[#1e1e1e] rounded-card p-card w-[250px] ${className}`}
+        className={`bg-[#1e1e1e] rounded-card p-page w-[250px] ${className}`}
         data-name="UserProfilePopup"
         data-node-id="553:9362"
       >
         {/* Main Content Container */}
-        <div className="flex flex-col items-center p-card gap-page">
+        <div className="flex flex-col items-center  gap-page">
           {/* User Avatar */}
           <div className="w-[35px] h-[35px] rounded-full overflow-hidden flex-shrink-0">
             <img
@@ -127,7 +127,7 @@ export const UserProfilePopup = React.forwardRef<HTMLDivElement, UserProfilePopu
             {/* Settings Button */}
             <button
               onClick={onSettingsClick}
-              className="flex items-center justify-between w-full group transition-colors hover:bg-white/5 rounded px-2 py-1.5 -mx-2"
+              className="flex items-center justify-between w-full group transition-colors hover:bg-white/5 rounded px-2 py-1.5"
             >
               <div className="flex items-center gap-2">
                 <SettingsIcon size={15} color="white" />
@@ -158,7 +158,7 @@ export const UserProfilePopup = React.forwardRef<HTMLDivElement, UserProfilePopu
                     onClick={() => onOrganizationClick?.(org)}
                     className="flex items-center gap-3 w-full transition-colors hover:bg-white/5 rounded px-2 py-1.5 -mx-2"
                   >
-                    <div className="w-[25px] h-[25px] rounded-full overflow-hidden flex-shrink-0">
+                    <div className="w-[25px] h-[26px] rounded-full overflow-hidden flex-shrink-0">
                       <img
                         src={org.avatarUrl}
                         alt={org.name}
@@ -179,7 +179,7 @@ export const UserProfilePopup = React.forwardRef<HTMLDivElement, UserProfilePopu
             {/* Logout Button */}
             <button
               onClick={onLogoutClick}
-              className="flex items-center justify-between w-full group transition-colors hover:bg-white/5 rounded px-2 py-1.5 -mx-2"
+              className="flex items-center justify-between w-full group transition-colors hover:bg-white/5 rounded px-2 py-1.5"
             >
               <div className="flex items-center gap-2">
                 <LogoutIcon size={15} color="white" />
