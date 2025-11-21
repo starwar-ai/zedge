@@ -137,7 +137,7 @@ export interface SidebarProps {
  * - Responsive icon-only mode (future enhancement)
  *
  * Design specs:
- * - Width: 223px
+ * - Width: var(--sidebar-width) (223px)
  * - Background: neutral-50
  * - Border right: 1px solid neutral-200
  * - Border radius: 8.75px for menu items
@@ -256,20 +256,26 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
         ref={ref}
         className={`
           flex flex-col justify-between items-start
-          w-[223px] h-full
+          h-full
           bg-neutral-50 border-r border-neutral-200
           ${className}
         `}
+        style={{ width: 'var(--sidebar-width)' }}
       >
         {/* Top Section: Logo & Menu */}
         <div className="flex flex-col items-start w-full">
           {/* Logo Section */}
-          <div className="
-            flex flex-col items-start
-            w-[223px] h-[81.5px]
-            pt-[21px] px-[21px] pb-px
-            border-b border-neutral-200
-          ">
+          <div 
+            className="
+              flex flex-col items-start
+              py-[12px] px-[12px] 
+              border-b border-neutral-200
+            "
+            style={{ 
+              width: 'var(--sidebar-width)',
+              height: 'var(--sidebar-logo-height)'
+            }}
+          >
             <div className="flex items-center gap-[10.5px] w-full h-[38.5px]">
               {/* Logo Container */}
               <div className="relative shrink-0 w-[28px] h-[28px] rounded-[8.75px] overflow-hidden">
@@ -421,13 +427,16 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
         </div>
 
         {/* Bottom Section: User Profile */}
-        <div className="
-          flex flex-col items-start
-          w-full h-[60.5px]
-          pt-[15px] px-[14px] pb-0
-          border-t border-neutral-200
-          relative
-        ">
+        <div 
+          className="
+            flex flex-col items-start
+            w-full
+            py-[8px] px-[12px]
+            border-t border-neutral-200
+            relative
+          "
+          style={{ height: 'var(--sidebar-user-profile-height)' }}
+        >
           {/* User Profile Popup */}
           {showProfilePopup && (
             <div
@@ -452,13 +461,8 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
             type="button"
             onClick={() => setShowProfilePopup(!showProfilePopup)}
             className="
-              flex items-center gap-[10.5px] w-full
-              transition-colors duration-200
-              hover:bg-neutral-100/50 rounded-lg p-1 -m-1
-              focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
+              flex items-center gap-2 
             "
-            aria-label="User profile"
-            aria-expanded={showProfilePopup}
           >
             {/* Avatar */}
             <div className="

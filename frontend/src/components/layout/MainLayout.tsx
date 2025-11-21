@@ -21,13 +21,13 @@ import logoContainer from '@/assets/images/logo-container.png'
  * Uses React Router's Outlet to render child route components.
  *
  * Features:
- * - Fixed sidebar (223px width) on the left
+ * - Fixed sidebar (width: var(--sidebar-width)) on the left
  * - Content area on the right that automatically loads different pages based on routes
  * - RBAC integration for menu visibility
  * - User profile section at bottom of sidebar
  *
  * Design specs:
- * - Sidebar width: 223px
+ * - Sidebar width: var(--sidebar-width) (223px)
  * - Content area padding: CSS var(--padding/page, 24px)
  * - Background: neutral-50 (Sidebar), white (Content)
  */
@@ -73,8 +73,11 @@ export const MainLayout: React.FC = () => {
 
   return (
     <div className="flex items-start w-full h-screen bg-white overflow-hidden">
-      {/* Sidebar Navigation - Fixed width 223px, full height, no scroll */}
-      <div className="h-screen w-[223px] flex-shrink-0 overflow-hidden">
+      {/* Sidebar Navigation - Fixed width, full height, no scroll */}
+      <div 
+        className="h-screen flex-shrink-0 overflow-hidden"
+        style={{ width: 'var(--sidebar-width)' }}
+      >
         <Sidebar
           menuItems={menuItems}
           userProfile={userProfile}
