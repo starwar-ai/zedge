@@ -72,9 +72,9 @@ export const MainLayout: React.FC = () => {
   }
 
   return (
-    <div className="flex w-full h-screen bg-white overflow-hidden">
-      {/* Sidebar Navigation - Fixed width 223px, no scroll */}
-      <div className="h-full w-[223px] flex-shrink-0 overflow-hidden">
+    <div className="flex items-start w-full h-screen bg-white overflow-hidden">
+      {/* Sidebar Navigation - Fixed width 223px, full height, no scroll */}
+      <div className="h-screen w-[223px] flex-shrink-0 overflow-hidden">
         <Sidebar
           menuItems={menuItems}
           userProfile={userProfile}
@@ -84,15 +84,20 @@ export const MainLayout: React.FC = () => {
         />
       </div>
 
-      {/* Main Content Area - Scrollable when content overflows */}
+      {/* Main Content Area - Uses Outlet to render child routes */}
       <div
-        className="flex-1 flex flex-col gap-3 items-start min-w-0 h-full overflow-auto"
-        style={{
-          gap: 'var(--padding/card, 12px)',
-          padding: 'var(--padding/page, 24px)',
-        }}
+        className="flex-1 flex flex-col h-screen min-w-0 overflow-hidden"
       >
-        <Outlet />
+        {/* Scrollable content area */}
+        <div
+          className="flex-1 flex flex-col gap-3 items-start overflow-y-auto overflow-x-hidden p-6"
+          style={{
+            gap: 'var(--padding/card, 12px)',
+            padding: 'var(--padding/page, 24px)',
+          }}
+        >
+          <Outlet />
+        </div>
       </div>
     </div>
   )

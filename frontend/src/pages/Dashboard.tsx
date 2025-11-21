@@ -2,7 +2,8 @@ import React from 'react'
 import {
   InstanceIcon,
   StorageIcon,
-} from '@/components/layout/SidebarIcons'
+  PageHeader,
+} from '@/components/layout'
 
 /**
  * Dashboard Page Component
@@ -20,23 +21,11 @@ import {
 export const Dashboard: React.FC = () => {
   return (
     <>
-      {/* Header Section */}
-      <header className="flex items-center justify-between w-full">
-        <div className="flex flex-col">
-          <h1
-            className="text-base font-medium leading-[31.5px] tracking-[var(--letter-spacing/default, 0px)] text-neutral-950"
-            style={{
-              fontSize: 'var(--font-size/heading/h3, 16px)',
-              color: 'var(--color/text/primary, #0a0a0a)',
-            }}
-          >
-            首页
-          </h1>
-        </div>
-      </header>
+      {/* Page Header - Sticky at top */}
+      <PageHeader title="首页" />
 
       {/* Main Content */}
-      <main className="flex-1 w-full">
+      <main className="flex-1 w-full pt-6">
           {/* Dashboard content will go here */}
           <div className="grid grid-cols-1 gap-6">
             {/* Placeholder content - replace with actual dashboard widgets */}

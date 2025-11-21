@@ -12,13 +12,13 @@
  */
 
 import { useState } from 'react'
-import { Search } from 'lucide-react'
 import { TabList } from '../../components/ui/Tab'
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableTextCell, TableSelectCell, TableActionCell } from '../../components/ui/Table'
 import { Pagination } from '../../components/ui/Pagination'
 import { CreateButton, FilterButton, ResetButton } from '../../components/features/buttons/FigmaButtons'
 import { PermissionGuard } from '../../components/PermissionGuard'
 import { ResourceType, PermissionAction } from '../../types/auth'
+import { PageHeader } from '../../components/layout'
 
 // Mock data type for images
 export interface ImageData {
@@ -163,88 +163,132 @@ export function ImageManagementPage() {
 
   return (
     <>
-      {/* Header */}
-      <div className="bg-white border-b border-neutral-200">
-        <div className="container-custom py-6">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-semibold text-neutral-900">镜像列表</h1>
-            <PermissionGuard resource={ResourceType.IMAGE} action={PermissionAction.CREATE}>
-              <CreateButton onClick={handleCreate} />
-            </PermissionGuard>
-          </div>
+      {/* Page Header - Sticky at top */}
+      <PageHeader title="镜像列表">
+        <PermissionGuard resource={ResourceType.IMAGE} action={PermissionAction.CREATE}>
+          <CreateButton onClick={handleCreate} />
+        </PermissionGuard>
+      </PageHeader>
 
-          {/* Tabs */}
-          <TabList
-            tabs={tabs}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            className="w-fit"
-          />
-        </div>
+      {/* Tabs Section */}
+      <div className="w-full pt-6 pb-4">
+        <TabList
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          className="w-fit"
+        />
       </div>
 
       {/* Content */}
-      <div className="container-custom py-6">
-        {/* Table Panel with white background */}
-        <div className="bg-white rounded-lg shadow-sm border border-neutral-200">
-          {/* Search Section */}
-          <div className="px-3 py-3 border-b border-neutral-200">
-            <div className="flex items-center justify-between gap-4">
-              {/* Search Inputs */}
-              <div className="flex items-center gap-4">
-                {/* Image ID Search */}
-                <div className="relative w-[310px]">
-                  <input
-                    type="text"
-                    placeholder="镜像编号"
-                    value={searchImageId}
-                    onChange={(e) => setSearchImageId(e.target.value)}
-                    className="w-full h-7 pl-2 pr-8 py-1 text-xs bg-white border border-[#ececf0] rounded focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-[#717182]"
-                  />
-                  <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#717182]" />
-                </div>
-
-                {/* Image Name Search */}
-                <div className="relative w-[310px]">
-                  <input
-                    type="text"
-                    placeholder="镜像名称"
-                    value={searchImageName}
-                    onChange={(e) => setSearchImageName(e.target.value)}
-                    className="w-full h-[34px] pl-2 pr-8 py-2 text-sm bg-white border border-[#ececf0] rounded focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-[#717182]"
-                  />
-                  <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[#717182]" />
-                </div>
-              </div>
-
-              {/* Action Buttons */}
+      <div className="w-full">
+        {/* Table Panel with white background - Figma node-id: 97:2648 */}
+        <div
+          className="bg-white rounded-[10px] border"
+          style={{
+            borderWidth: 'var(--border-width/default, 1px)',
+            borderColor: 'var(--color/border/default, #ececf0)',
+            padding: 'var(--padding/card, 12px)',
+          }}
+        >
+          {/* Search Section - Figma node-id: 97:1635 */}
+          <div className="flex items-center justify-between w-full mb-3">
+            {/* Search Inputs */}
+            <div className="flex items-center gap-5">
+              {/* Image ID Search - Figma node-id: 97:1636 */}
               <div className="flex items-center gap-2">
-                <FilterButton onClick={handleFilter} />
-                <ResetButton onClick={handleReset} />
+                <label
+                  className="font-normal text-[#0a0a0a] whitespace-nowrap"
+                  style={{
+                    fontSize: 'var(--font-size/input, 12.5px)',
+                    lineHeight: '22px',
+                    letterSpacing: 'var(--letter-spacing/loose-1, 1px)',
+                    width: '80px',
+                  }}
+                >
+                  镜像编号
+                </label>
+                <input
+                  type="text"
+                  placeholder="Placeholder"
+                  value={searchImageId}
+                  onChange={(e) => setSearchImageId(e.target.value)}
+                  className="bg-white border border-solid px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  style={{
+                    width: '230px',
+                    height: '28px',
+                    borderColor: 'var(--color/border/default, #ececf0)',
+                    borderRadius: 'var(--border-radius/input, 4px)',
+                    fontSize: 'var(--font-size/input, 12.5px)',
+                    lineHeight: '22px',
+                    color: 'var(--color/text/secondary, #717182)',
+                  }}
+                />
               </div>
+
+              {/* Image Name Search - Figma node-id: 97:1640 */}
+              <div className="flex items-center gap-2">
+                <label
+                  className="font-normal text-[#0a0a0a] whitespace-nowrap"
+                  style={{
+                    fontSize: 'var(--font-size/input, 12.5px)',
+                    lineHeight: '22px',
+                    letterSpacing: 'var(--letter-spacing/loose-1, 1px)',
+                    width: '80px',
+                  }}
+                >
+                  镜像名称
+                </label>
+                <input
+                  type="text"
+                  placeholder="Placeholder"
+                  value={searchImageName}
+                  onChange={(e) => setSearchImageName(e.target.value)}
+                  className="bg-white border border-solid px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  style={{
+                    width: '230px',
+                    height: '28px',
+                    borderColor: 'var(--color/border/default, #ececf0)',
+                    borderRadius: 'var(--border-radius/input, 4px)',
+                    fontSize: 'var(--font-size/input, 12.5px)',
+                    lineHeight: '22px',
+                    color: 'var(--color/text/secondary, #717182)',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div
+              className="flex items-center"
+              style={{
+                gap: 'var(--spacing/button-group/tight, 8px)',
+              }}
+            >
+              <FilterButton onClick={handleFilter} />
+              <ResetButton onClick={handleReset} />
             </div>
           </div>
 
-          {/* Table */}
-          <div className="px-3 py-3">
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableSelectCell
-                    checked={selectedRows.length === mockImages.length}
-                    indeterminate={selectedRows.length > 0 && selectedRows.length < mockImages.length}
-                    onCheckedChange={handleSelectAll}
-                  />
-                  <TableHeaderCell>编号</TableHeaderCell>
-                  <TableHeaderCell>名称</TableHeaderCell>
-                  <TableHeaderCell>用途</TableHeaderCell>
-                  <TableHeaderCell>操作系统</TableHeaderCell>
-                  <TableHeaderCell>预装软件</TableHeaderCell>
-                  <TableHeaderCell>镜像大小</TableHeaderCell>
-                  <TableHeaderCell>当前版本</TableHeaderCell>
-                  <TableHeaderCell showDivider={false}>操作</TableHeaderCell>
-                </TableRow>
-              </TableHead>
+          {/* Table - Figma node-id: 105:2700 */}
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableSelectCell
+                  checked={selectedRows.length === mockImages.length}
+                  indeterminate={selectedRows.length > 0 && selectedRows.length < mockImages.length}
+                  onCheckedChange={handleSelectAll}
+                />
+                <TableHeaderCell>编号</TableHeaderCell>
+                <TableHeaderCell>名称</TableHeaderCell>
+                <TableHeaderCell>用途</TableHeaderCell>
+                <TableHeaderCell>操作系统</TableHeaderCell>
+                <TableHeaderCell>预装软件</TableHeaderCell>
+                <TableHeaderCell>镜像大小</TableHeaderCell>
+                <TableHeaderCell>当前版本</TableHeaderCell>
+                <TableHeaderCell showDivider={false}>操作</TableHeaderCell>
+              </TableRow>
+            </TableHead>
               <TableBody>
                 {currentImages.map((image) => (
                   <TableRow key={image.id}>
@@ -265,12 +309,16 @@ export function ImageManagementPage() {
                     />
                   </TableRow>
                 ))}
-              </TableBody>
-            </Table>
-          </div>
+            </TableBody>
+          </Table>
 
-          {/* Pagination */}
-          <div className="px-3 py-3 border-t border-neutral-200">
+          {/* Pagination - Figma node-id: 413:648 */}
+          <div
+            className="flex flex-col items-end mt-3"
+            style={{
+              padding: 'var(--padding/card, 12px)',
+            }}
+          >
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
