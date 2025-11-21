@@ -96,7 +96,7 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
     return (
       <div ref={ref} className={fullWidth ? 'w-full' : 'inline-block'} {...props}>
         {label && (
-          <label className="block text-sm font-medium text-neutral-700 mb-1">
+          <label className="block text-label font-medium text-text-primary mb-1">
             {label}
           </label>
         )}
@@ -108,10 +108,10 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
             disabled={disabled}
             className={`
               flex items-center justify-between
-              h-[34px] px-3 py-1
-              bg-white border border-[#ececf0]
-              rounded-[4px]
-              text-[12.5px]
+              h-[34px] p-input
+              bg-input-primary border border-input-secondary
+              rounded-input
+              text-label
               transition-colors duration-200
               focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1
               disabled:opacity-50 disabled:cursor-not-allowed
@@ -119,31 +119,31 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
               ${className}
             `}
           >
-            <span className={selectedOption ? 'text-neutral-950' : 'text-[#717182]'}>
+            <span className={selectedOption ? 'text-text-primary' : 'text-text-secondary'}>
               {selectedOption?.label || placeholder}
             </span>
             <ChevronDown
-              className={`w-4 h-4 text-neutral-600 transition-transform duration-200 ${
+              className={`w-4 h-4 text-icon-primary transition-transform duration-200 ${
                 isOpen ? 'rotate-180' : ''
               }`}
             />
           </button>
 
           {isOpen && (
-            <div className="absolute top-full left-0 mt-1 w-full bg-white border border-[#ececf0] rounded-[4px] shadow-lg z-dropdown max-h-60 overflow-y-auto">
+            <div className="absolute top-full left-0 mt-1 w-full bg-surface-primary border border-input-secondary rounded-input shadow-lg z-dropdown max-h-60 overflow-y-auto">
               {options.map((option, index) => (
                 <button
                   key={option.value}
                   type="button"
                   onClick={() => handleSelect(option.value)}
                   className={`
-                    w-full text-left px-3 py-2
-                    text-[12.5px]
-                    hover:bg-neutral-100
+                    w-full text-left p-input
+                    text-label
+                    hover:bg-surface-secondary
                     transition-colors
-                    ${option.value === value ? 'bg-neutral-50 font-medium' : ''}
-                    ${index === 0 ? 'rounded-t-[4px]' : ''}
-                    ${index === options.length - 1 ? 'rounded-b-[4px]' : ''}
+                    ${option.value === value ? 'bg-surface-secondary font-medium' : ''}
+                    ${index === 0 ? 'rounded-t-input' : ''}
+                    ${index === options.length - 1 ? 'rounded-b-input' : ''}
                   `}
                 >
                   {option.label}

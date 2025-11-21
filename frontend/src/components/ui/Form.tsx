@@ -50,16 +50,16 @@ export const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
     return (
       <div className={`flex items-center gap-2 ${fullWidth ? 'w-full' : 'w-[299px]'} ${className}`}>
         {showLabel && (
-          <label className="text-[12.5px] font-normal text-neutral-900 leading-[22px] tracking-[1px] w-20 shrink-0 whitespace-pre-wrap">
+          <label className="text-label font-normal text-text-primary leading-[22px] tracking-text-loose w-20 shrink-0 whitespace-pre-wrap">
             {label}
           </label>
         )}
         <div className="flex-1">
           <input
             ref={ref}
-            className={`w-full h-7 px-2 py-1 bg-white border ${
-              error ? 'border-error-500' : 'border-[#ececf0]'
-            } rounded text-[12.5px] text-neutral-700 placeholder:text-[#717182] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent`}
+            className={`w-full h-7 p-input bg-input-primary border ${
+              error ? 'border-error-500' : 'border-input-secondary'
+            } rounded-input text-label text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent`}
             {...props}
           />
           {error && <p className="mt-1 text-xs text-error-600">{error}</p>}
@@ -105,7 +105,7 @@ export const FormTextarea = React.forwardRef<HTMLTextAreaElement, FormTextareaPr
     return (
       <div className={`flex items-start gap-2 ${fullWidth ? 'w-full' : 'w-[299px]'} ${className}`}>
         {showLabel && (
-          <label className="text-[12.5px] font-normal text-neutral-900 leading-[22px] tracking-[1px] w-20 shrink-0 whitespace-pre-wrap pt-1">
+          <label className="text-label font-normal text-text-primary leading-[22px] tracking-text-loose w-20 shrink-0 whitespace-pre-wrap pt-1">
             {label}
           </label>
         )}
@@ -113,9 +113,9 @@ export const FormTextarea = React.forwardRef<HTMLTextAreaElement, FormTextareaPr
           <textarea
             ref={ref}
             rows={4}
-            className={`w-full px-2 py-1 bg-white border ${
-              error ? 'border-error-500' : 'border-[#ececf0]'
-            } rounded text-[12.5px] text-neutral-700 placeholder:text-[#717182] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-vertical`}
+            className={`w-full p-input bg-input-primary border ${
+              error ? 'border-error-500' : 'border-input-secondary'
+            } rounded-input text-label text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-vertical`}
             {...props}
           />
           {error && <p className="mt-1 text-xs text-error-600">{error}</p>}
@@ -203,7 +203,7 @@ export const FormSelect = React.forwardRef<HTMLDivElement, FormSelectProps>(
     return (
       <div className={`flex items-center gap-2 ${fullWidth ? 'w-full' : 'w-[299px]'} ${className}`} {...props}>
         {showLabel && (
-          <label className="text-[12.5px] font-normal text-black leading-[22px] w-20 shrink-0 whitespace-pre-wrap">
+          <label className="text-label font-normal text-text-primary leading-[22px] w-20 shrink-0 whitespace-pre-wrap">
             {label}
           </label>
         )}
@@ -211,20 +211,20 @@ export const FormSelect = React.forwardRef<HTMLDivElement, FormSelectProps>(
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className={`w-full h-7 px-2 py-1 bg-white border ${
-              error ? 'border-error-500' : 'border-[#ececf0]'
-            } rounded text-[12.5px] flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent`}
+            className={`w-full h-7 p-input bg-input-primary border ${
+              error ? 'border-error-500' : 'border-input-secondary'
+            } rounded-input text-label flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent`}
           >
-            <span className={selectedOption ? 'text-neutral-900' : 'text-[#717182]'}>
+            <span className={selectedOption ? 'text-text-primary' : 'text-text-secondary'}>
               {selectedOption?.label || placeholder}
             </span>
-            <ChevronDown className="w-3 h-3 text-neutral-400" />
+            <ChevronDown className="w-3 h-3 text-icon-primary" />
           </button>
 
           {isOpen && (
             <>
-              <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-              <div className="absolute top-full left-0 mt-1 w-full bg-white border border-[#ececf0] rounded shadow-lg z-20 max-h-60 overflow-y-auto">
+              <div className="fixed inset-0 z-dropdown" onClick={() => setIsOpen(false)} />
+              <div className="absolute top-full left-0 mt-1 w-full bg-surface-primary border border-input-secondary rounded-input shadow-lg z-dropdown max-h-60 overflow-y-auto">
                 {options.map((option, index) => (
                   <button
                     key={option.value}
@@ -233,9 +233,9 @@ export const FormSelect = React.forwardRef<HTMLDivElement, FormSelectProps>(
                       onChange?.(option.value)
                       setIsOpen(false)
                     }}
-                    className={`w-full text-left px-2 py-1.5 text-[12.5px] text-black hover:bg-neutral-100 ${
-                      index === 0 ? 'rounded-t' : ''
-                    } ${index === options.length - 1 ? 'rounded-b' : ''}`}
+                    className={`w-full text-left p-input text-label text-text-primary hover:bg-surface-secondary ${
+                      index === 0 ? 'rounded-t-input' : ''
+                    } ${index === options.length - 1 ? 'rounded-b-input' : ''}`}
                   >
                     {option.label}
                   </button>
@@ -331,27 +331,27 @@ export const FormMultiSelect = React.forwardRef<HTMLDivElement, FormMultiSelectP
     return (
       <div className={`flex items-start gap-2 ${fullWidth ? 'w-full' : 'w-[306px]'} ${className}`} {...props}>
         {showLabel && (
-          <label className="text-sm font-normal text-black leading-[22px] shrink-0 pt-1">{label}</label>
+          <label className="text-label font-normal text-text-primary leading-[22px] shrink-0 pt-1">{label}</label>
         )}
         <div className="flex-1 relative" ref={ref}>
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className={`w-full h-7 px-2 py-1 bg-white border ${
-              error ? 'border-error-500' : 'border-[#ececf0]'
-            } rounded text-sm flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent`}
+            className={`w-full h-7 p-input bg-input-primary border ${
+              error ? 'border-error-500' : 'border-input-secondary'
+            } rounded-input text-label flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent`}
           >
-            <span className={selectedLabels.length > 0 ? 'text-neutral-900' : 'text-[#717182]'}>
+            <span className={selectedLabels.length > 0 ? 'text-text-primary' : 'text-text-secondary'}>
               {selectedLabels.length > 0 ? selectedLabels.join(', ') : placeholder}
             </span>
-            <ChevronDown className="w-3 h-3 text-neutral-400" />
+            <ChevronDown className="w-3 h-3 text-icon-primary" />
           </button>
 
           {isOpen && (
             <>
-              <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-              <div className="absolute top-full left-0 mt-1 w-full bg-[#fafafa] border border-[#ececf0] rounded shadow-lg z-20 max-h-60 overflow-y-auto">
-                <div className="bg-white h-1 rounded-t" />
+              <div className="fixed inset-0 z-dropdown" onClick={() => setIsOpen(false)} />
+              <div className="absolute top-full left-0 mt-1 w-full bg-surface-secondary border border-input-secondary rounded-input shadow-lg z-dropdown max-h-60 overflow-y-auto">
+                <div className="bg-surface-primary h-1 rounded-t-input" />
                 {options.map((option) => {
                   const isSelected = value.includes(option.value)
                   return (
@@ -359,16 +359,16 @@ export const FormMultiSelect = React.forwardRef<HTMLDivElement, FormMultiSelectP
                       key={option.value}
                       type="button"
                       onClick={() => toggleOption(option.value)}
-                      className="w-full text-left px-2 py-0 h-[22px] flex items-center gap-2 text-sm text-black hover:bg-neutral-200"
+                      className="w-full text-left p-input h-[22px] flex items-center gap-2 text-label text-text-primary hover:bg-neutral-200"
                     >
                       <div
-                        className={`w-2 h-2 shrink-0 ${isSelected ? 'bg-primary-600' : 'bg-[#d9d9d9]'}`}
+                        className={`w-2 h-2 shrink-0 ${isSelected ? 'bg-primary-600' : 'bg-input-secondary'}`}
                       />
                       {option.label}
                     </button>
                   )
                 })}
-                <div className="bg-white h-1 rounded-b" />
+                <div className="bg-surface-primary h-1 rounded-b-input" />
               </div>
             </>
           )}
@@ -414,10 +414,10 @@ export const FormCheckbox = React.forwardRef<HTMLInputElement, FormCheckboxProps
           type="checkbox"
           checked={checked}
           onChange={(e) => onCheckedChange?.(e.target.checked)}
-          className="w-5 h-5 border border-[#767575] rounded-none cursor-pointer"
+          className="w-5 h-5 border border-input-secondary rounded-none cursor-pointer"
           {...props}
         />
-        <label className="text-sm font-normal text-neutral-900 leading-[22px] tracking-[1px] text-right cursor-pointer">
+        <label className="text-label font-normal text-text-primary leading-[22px] tracking-text-loose text-right cursor-pointer">
           {label}
         </label>
       </div>
@@ -451,7 +451,7 @@ export const FormLabel = React.forwardRef<HTMLDivElement, FormLabelProps>(
     return (
       <div
         ref={ref}
-        className={`flex items-center gap-2 h-7 text-[12.5px] font-normal text-black leading-[22px] tracking-[1px] ${className}`}
+        className={`flex items-center gap-2 h-7 text-label font-normal text-text-primary leading-[22px] tracking-text-loose ${className}`}
         {...props}
       >
         <span className="w-20 shrink-0 whitespace-pre-wrap">{label}</span>

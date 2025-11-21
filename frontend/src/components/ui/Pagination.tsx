@@ -184,10 +184,10 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
                 className="
                   flex items-center justify-between
                   w-full h-[28px]
-                  px-2 py-1
-                  bg-white border border-[#ececf0]
-                  rounded-[4px]
-                  text-sm text-[#717182]
+                  p-input
+                  bg-input-primary border border-input-secondary
+                  rounded-input
+                  text-label text-text-secondary
                   hover:border-neutral-300
                   focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1
                 "
@@ -198,16 +198,16 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
 
               {/* Dropdown Menu */}
               {isPageSizeOpen && (
-                <div className="absolute top-full left-0 mt-1 w-full bg-white border border-[#ececf0] rounded-[4px] shadow-lg z-20">
+                <div className="absolute top-full left-0 mt-1 w-full bg-surface-primary border border-input-secondary rounded-input shadow-lg z-dropdown">
                   {pageSizeOptions.map((size) => (
                     <button
                       key={size}
                       type="button"
                       onClick={() => handlePageSizeChange(size)}
                       className={`
-                        w-full px-2 py-1 text-left text-sm
-                        hover:bg-neutral-100
-                        ${size === pageSize ? 'bg-neutral-50 font-medium' : ''}
+                        w-full p-input text-left text-label
+                        hover:bg-surface-secondary
+                        ${size === pageSize ? 'bg-surface-secondary font-medium' : ''}
                       `}
                     >
                       {size}
@@ -218,7 +218,7 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
             </div>
 
             {/* Label */}
-            <span className="text-sm text-black">每页</span>
+            <span className="text-label text-text-primary">每页</span>
           </div>
         )}
 
@@ -232,10 +232,10 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
             className={`
               flex items-center justify-center
               w-[30px] h-[30px]
-              bg-white border border-[rgba(0,0,0,0.1)]
+              bg-surface-primary border border-default
               rounded-[8px]
               transition-colors duration-200
-              ${isFirstPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-neutral-50 active:bg-neutral-100'}
+              ${isFirstPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface-secondary active:bg-neutral-100'}
               focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1
             `}
             aria-label="First page"
@@ -251,10 +251,10 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
             className={`
               flex items-center justify-center
               w-[30px] h-[30px]
-              bg-white border border-[rgba(0,0,0,0.1)]
+              bg-surface-primary border border-default
               rounded-[8px]
               transition-colors duration-200
-              ${isFirstPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-neutral-50 active:bg-neutral-100'}
+              ${isFirstPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface-secondary active:bg-neutral-100'}
               focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1
             `}
             aria-label="Previous page"
@@ -287,13 +287,13 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
                     flex items-center justify-center
                     w-[30px] h-[30px]
                     rounded-[8px]
-                    text-[12.5px] font-medium leading-[20px] tracking-[-0.1504px]
+                    text-label font-medium leading-[20px] tracking-text-tight
                     transition-colors duration-200
                     focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1
                     ${
                       isActive
-                        ? 'bg-[#030213] text-white'
-                        : 'bg-white text-neutral-950 border border-[rgba(0,0,0,0.1)] hover:bg-neutral-50 active:bg-neutral-100'
+                        ? 'bg-button-primary text-white'
+                        : 'bg-surface-primary text-text-primary border border-default hover:bg-surface-secondary active:bg-neutral-100'
                     }
                   `}
                   aria-label={`Page ${page}`}
@@ -313,10 +313,10 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
             className={`
               flex items-center justify-center
               w-[30px] h-[30px]
-              bg-white border border-[rgba(0,0,0,0.1)]
+              bg-surface-primary border border-default
               rounded-[8px]
               transition-colors duration-200
-              ${isLastPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-neutral-50 active:bg-neutral-100'}
+              ${isLastPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface-secondary active:bg-neutral-100'}
               focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1
             `}
             aria-label="Next page"
@@ -332,10 +332,10 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
             className={`
               flex items-center justify-center
               w-[30px] h-[30px]
-              bg-white border border-[rgba(0,0,0,0.1)]
+              bg-surface-primary border border-default
               rounded-[8px]
               transition-colors duration-200
-              ${isLastPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-neutral-50 active:bg-neutral-100'}
+              ${isLastPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface-secondary active:bg-neutral-100'}
               focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1
             `}
             aria-label="Last page"
@@ -362,10 +362,10 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
               placeholder={String(currentPage)}
               className="
                 w-[42px] h-[28px]
-                px-2 py-1
-                bg-white border border-[#ececf0]
-                rounded-[4px]
-                text-[12.5px] text-[#717182] text-center
+                p-input
+                bg-input-primary border border-input-secondary
+                rounded-input
+                text-label text-text-secondary text-center
                 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1
                 [appearance:textfield]
                 [&::-webkit-outer-spin-button]:appearance-none
@@ -380,11 +380,11 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
               className="
                 flex items-center justify-center
                 h-[30px] px-[13px] py-px
-                bg-white border border-[rgba(0,0,0,0.1)]
+                bg-surface-primary border border-default
                 rounded-[8px]
-                text-[12.5px] font-medium leading-[20px] tracking-[-0.1504px]
-                text-neutral-950
-                hover:bg-neutral-50 active:bg-neutral-100
+                text-label font-medium leading-[20px] tracking-text-tight
+                text-text-primary
+                hover:bg-surface-secondary active:bg-neutral-100
                 transition-colors duration-200
                 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1
               "

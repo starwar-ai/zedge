@@ -51,15 +51,13 @@ export const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
       <div
         ref={ref}
         className={`
-          sticky top-0 z-10
+          sticky top-0 z-sticky
           flex items-center justify-between
           w-full h-8
+          bg-surface-primary
+          shadow-xs
           ${className}
         `}
-        className={`bg-surface-primary ${className}`}
-        style={{
-          boxShadow: '0 1px 0 0 rgba(0, 0, 0, 0.05)',
-        }}
       >
         {/* Title Section */}
         <div className="flex items-center gap-2">

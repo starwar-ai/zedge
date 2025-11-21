@@ -72,9 +72,9 @@ export const MainLayout: React.FC = () => {
   }
 
   return (
-    <div className="flex items-start w-full h-screen bg-white overflow-hidden">
+    <div className="flex items-start w-full h-screen bg-surface-primary overflow-hidden">
       {/* Sidebar Navigation - Fixed width, full height, no scroll */}
-      <div 
+      <div
         className="h-screen flex-shrink-0 overflow-hidden"
         style={{ width: 'var(--sidebar-width)' }}
       >
@@ -93,11 +93,7 @@ export const MainLayout: React.FC = () => {
       >
         {/* Scrollable content area */}
         <div
-          className="flex-1 flex flex-col gap-3 items-start overflow-y-auto overflow-x-hidden p-6"
-          style={{
-            gap: 'var(--padding/card, 12px)',
-            padding: 'var(--padding/page, 24px)',
-          }}
+          className="flex-1 flex flex-col items-start overflow-y-auto overflow-x-hidden p-page gap-card"
         >
           <Outlet />
         </div>
