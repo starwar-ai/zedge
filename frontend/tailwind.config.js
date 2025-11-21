@@ -122,7 +122,7 @@ export default {
           stopped: '#64748b',     // Slate - stopped
         },
 
-        // Neutral/Gray scale
+        // Neutral/Gray scale (Slate from Figma)
         neutral: {
           50: '#f8fafc',
           100: '#f1f5f9',
@@ -135,6 +135,84 @@ export default {
           800: '#1e293b',
           900: '#0f172a',
           950: '#020617',
+        },
+
+        // Slate colors from Figma (matching tokens.json)
+        slate: {
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cad5e2',
+          400: '#90a1b9',
+          500: '#62748e',
+          600: '#45556c',
+          700: '#314158',
+          800: '#1d293d',
+          900: '#0f172b',
+          950: '#020618',
+        },
+
+        // Red colors from Figma
+        red: {
+          50: '#fef2f2',
+          100: '#ffe2e2',
+          200: '#ffc9c9',
+          300: '#ffa2a2',
+          400: '#ff6467',
+          500: '#fb2c36',
+          600: '#e7000b',
+          700: '#c10007',
+          800: '#9f0712',
+          900: '#82181a',
+          950: '#460809',
+        },
+
+        // Lime colors from Figma
+        lime: {
+          50: '#f7fee7',
+          100: '#ecfcca',
+          200: '#d8f999',
+          300: '#bbf451',
+          400: '#9ae600',
+          500: '#7ccf00',
+          600: '#5ea500',
+          700: '#497d00',
+          800: '#3d6300',
+          900: '#35530e',
+          950: '#192e03',
+        },
+
+        // Semantic color tokens from DESIGN_TOKENS.md
+        surface: {
+          primary: '#ffffff',      // white
+          secondary: '#f8fafc',    // slate-50
+        },
+        text: {
+          primary: '#314158',      // slate-700
+          secondary: '#90a1b9',    // slate-400
+          alert: '#ff6467',        // red-400
+        },
+        button: {
+          primary: '#1d293d',      // slate-800
+          secondary: '#ffffff',   // white
+        },
+        tab: {
+          active: '#ffffff',       // white
+          inactive: '#62748e',    // slate-500
+        },
+        status: {
+          normal: '#bbf451',       // lime-300
+          abnormal: '#ff6467',     // red-400
+        },
+        icon: {
+          primary: '#62748e',     // slate-500
+        },
+        input: {
+          primary: '#ffffff',      // white
+          secondary: '#cad5e2',   // slate-300
+        },
+        border: {
+          default: '#f1f5f9',     // slate-100
         },
       },
 
@@ -154,6 +232,32 @@ export default {
         '4xl': ['2.25rem', { lineHeight: '2.5rem' }],   // 36px
         '5xl': ['3rem', { lineHeight: '1' }],           // 48px
         '6xl': ['3.75rem', { lineHeight: '1' }],        // 60px
+        
+        // Semantic font size tokens from DESIGN_TOKENS.md
+        'button-small': ['0.75rem', { lineHeight: '1rem' }],      // 12px
+        'button-medium': ['0.875rem', { lineHeight: '1.25rem' }], // 14px
+        'button-large': ['1.125rem', { lineHeight: '1.75rem' }],  // 18px
+        'heading-h1': ['1.5rem', { lineHeight: '2rem' }],         // 24px
+        'heading-h2': ['1.25rem', { lineHeight: '1.75rem' }],     // 20px
+        'heading-h3': ['1.125rem', { lineHeight: '1.75rem' }],   // 18px
+        'heading-h4': ['0.875rem', { lineHeight: '1.25rem' }],    // 14px
+        'heading-h5': ['0.875rem', { lineHeight: '1.25rem' }],     // 14px
+        'input': ['0.875rem', { lineHeight: '1.25rem' }],         // 14px
+        'label': ['0.875rem', { lineHeight: '1.25rem' }],        // 14px
+        'table-header': ['0.875rem', { lineHeight: '1.25rem' }], // 14px
+        'table-body': ['0.875rem', { lineHeight: '1.25rem' }],   // 14px
+        'text': ['0.875rem', { lineHeight: '1.25rem' }],         // 14px
+        'menu-sidebar': ['0.875rem', { lineHeight: '1.25rem' }], // 14px
+      },
+      
+      // Letter spacing tokens
+      letterSpacing: {
+        'button-default': '0',
+        'button-tight': '-0.8px',
+        'button-loose': '0.8px',
+        'text-default': '0',
+        'text-tight': '-0.8px',
+        'text-loose': '1.6px',
       },
 
       // Spacing tokens (extends default Tailwind spacing)
@@ -162,19 +266,44 @@ export default {
         '88': '22rem',    // 352px
         '100': '25rem',   // 400px
         '128': '32rem',   // 512px
+        
+        // Semantic spacing tokens from DESIGN_TOKENS.md
+        'page': '24px',              // p-page
+        'card': '12px',              // p-card
+        'form': '8px',               // p-form
+        'header1': '8px',            // p-header1
+        'header2': '8px',            // p-header2
+        'input': '8px',              // p-input
+        'button': '4px',             // p-button
+        'table': '8px',              // p-table
+        'input-value': '8px',        // spacing.input-value
+        'button-group-tight': '8px', // gap-button-group-tight
+        'button-group-default': '12px', // gap-button-group-default
       },
 
       // Border radius tokens
       borderRadius: {
         'none': '0',
-        'sm': '0.125rem',   // 2px
+        'xs': '2px',
+        'sm': '0.25rem',   // 4px
         DEFAULT: '0.25rem', // 4px
         'md': '0.375rem',   // 6px
         'lg': '0.5rem',     // 8px
         'xl': '0.75rem',    // 12px
         '2xl': '1rem',      // 16px
         '3xl': '1.5rem',    // 24px
+        '4xl': '2rem',      // 32px
         'full': '9999px',
+        
+        // Semantic border radius tokens from DESIGN_TOKENS.md
+        'card': '16px',     // rounded-card
+        'input': '4px',     // rounded-input
+      },
+      
+      // Border width tokens
+      borderWidth: {
+        'default': '1px',   // border-default
+        'divider': '2px',   // border-divider
       },
 
       // Shadow tokens

@@ -56,32 +56,24 @@ export const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
           w-full h-8
           ${className}
         `}
+        className={`bg-surface-primary ${className}`}
         style={{
-          backgroundColor: '#ffffff',
           boxShadow: '0 1px 0 0 rgba(0, 0, 0, 0.05)',
         }}
       >
         {/* Title Section */}
         <div className="flex items-center gap-2">
-          <h1
-            className="font-medium text-neutral-950"
-            style={{
-              fontSize: 'var(--font-size/heading/h3, 16px)',
-              lineHeight: '31.5px',
-              letterSpacing: 'var(--letter-spacing/default, 0px)',
-              color: 'var(--color/text/primary, #0a0a0a)',
-            }}
-          >
+          <h1 className="font-medium text-heading-h3 text-text-primary leading-[31.5px] tracking-text-default">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-sm text-neutral-500">{subtitle}</p>
+            <p className="text-text text-text-secondary">{subtitle}</p>
           )}
         </div>
 
         {/* Action Buttons Section */}
         {children && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-button-group-default">
             {children}
           </div>
         )}

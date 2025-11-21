@@ -259,4 +259,36 @@
   .gradient-error {
     @apply bg-gradient-to-r from-error-500 to-error-700;
   }
+
+  /* Semantic spacing utilities from DESIGN_TOKENS.md */
+  .p-page {
+    padding: theme('spacing.page');
+  }
+  .p-card {
+    padding: theme('spacing.card');
+  }
+  .p-form {
+    padding: theme('spacing.form');
+  }
+  .p-header1 {
+    padding: theme('spacing.header1');
+  }
+  .p-header2 {
+    padding: theme('spacing.header2');
+  }
+  .p-input {
+    padding: theme('spacing.input');
+  }
+  .p-button {
+    padding: theme('spacing.button');
+  }
+  .p-table {
+    padding: theme('spacing.table');
+  }
+  .gap-button-group-tight {
+    gap: theme('spacing.button-group-tight');
+  }
+  .gap-button-group-default {
+    gap: theme('spacing.button-group-default');
+  }
 }

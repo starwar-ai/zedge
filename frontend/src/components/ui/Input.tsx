@@ -61,17 +61,17 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ) => {
     const isSearch = variant === 'search' || showSearchIcon
 
-    // Size styles matching Figma specs
+    // Size styles using semantic design tokens
     const sizeStyles = {
-      sm: 'h-[28px] px-3 py-1 text-[12.5px] rounded-[4px]',
-      md: 'h-[36px] px-3 py-1 text-[14px] rounded-[6px]', // Login form size
+      sm: `h-[28px] p-input text-input rounded-input`,
+      md: `h-[36px] p-input text-input rounded-input`, // Login form size
     }
 
     const baseStyles = `
       ${sizeStyles[size]}
-      bg-white border border-[#ececf0]
-      text-neutral-950
-      placeholder:text-[#717182]
+      bg-input-primary border border-input-secondary
+      text-text-primary
+      placeholder:text-text-secondary
       transition-colors duration-200
       focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1
       disabled:opacity-50 disabled:cursor-not-allowed
@@ -83,7 +83,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={fullWidth ? 'w-full' : 'inline-block'}>
         {label && (
-          <label className="block text-[12.5px] font-medium text-neutral-950 mb-2 leading-[14px]">
+          <label className="block text-label font-medium text-text-primary mb-2 leading-[14px]">
             {label}
           </label>
         )}
@@ -91,7 +91,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         <div className="relative">
           {isSearch && (
             <div className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none">
-              <Search className="w-4 h-4 text-[#717182]" />
+              <Search className="w-4 h-4 text-icon-primary" />
             </div>
           )}
 

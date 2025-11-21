@@ -19,13 +19,13 @@ Background colors for surfaces and containers.
 
 ```tsx
 <div className="bg-surface-primary">Primary surface (white)</div>
-<div className="bg-surface-secondary">Secondary surface (slate-50)</div>
+<div className="bg-surface-secondary">Secondary surface (netural-50)</div>
 ```
 
 | Token | Value | Figma Reference | Use Case |
 |-------|-------|-----------------|----------|
 | `surface-primary` | #ffffff | `{color.white}` | Primary backgrounds, cards |
-| `surface-secondary` | #f8fafc | `{color.slate.50}` | Secondary backgrounds, page backgrounds |
+| `surface-secondary` | #f8fafc | `{color.netural.50}` | Secondary backgrounds, page backgrounds |
 
 #### Text Colors
 Text colors for content hierarchy.
@@ -38,8 +38,8 @@ Text colors for content hierarchy.
 
 | Token | Value | Figma Reference | Use Case |
 |-------|-------|-----------------|----------|
-| `text-primary` | #314158 | `{color.slate.700}` | Primary body text |
-| `text-secondary` | #90a1b9 | `{color.slate.400}` | Secondary/helper text |
+| `text-primary` | #314158 | `{color.netural.700}` | Primary body text |
+| `text-secondary` | #90a1b9 | `{color.netural.400}` | Secondary/helper text |
 | `text-alert` | #ff6467 | `{color.red.400}` | Alert/error messages |
 
 #### Button Colors
@@ -51,7 +51,7 @@ Text colors for content hierarchy.
 
 | Token | Value | Figma Reference | Use Case |
 |-------|-------|-----------------|----------|
-| `button-primary` | #1d293d | `{color.slate.800}` | Primary button background |
+| `button-primary` | #1d293d | `{color.netural.800}` | Primary button background |
 | `button-secondary` | #ffffff | `{color.white}` | Secondary button background |
 
 #### Tab Colors
@@ -64,7 +64,7 @@ Text colors for content hierarchy.
 | Token | Value | Figma Reference | Use Case |
 |-------|-------|-----------------|----------|
 | `tab-active` | #ffffff | `{color.white}` | Active tab background |
-| `tab-inactive` | #62748e | `{color.slate.500}` | Inactive tab background |
+| `tab-inactive` | #62748e | `{color.netural.500}` | Inactive tab background |
 
 #### Status Colors
 
@@ -86,7 +86,7 @@ Text colors for content hierarchy.
 
 | Token | Value | Figma Reference | Use Case |
 |-------|-------|-----------------|----------|
-| `icon-primary` | #62748e | `{color.slate.500}` | Primary icon color |
+| `icon-primary` | #62748e | `{color.netural.500}` | Primary icon color |
 
 #### Input Colors
 
@@ -97,7 +97,7 @@ Text colors for content hierarchy.
 | Token | Value | Figma Reference | Use Case |
 |-------|-------|-----------------|----------|
 | `input-primary` | #ffffff | `{color.white}` | Input background |
-| `input-secondary` | #cad5e2 | `{color.slate.300}` | Input border/placeholder |
+| `input-secondary` | #cad5e2 | `{color.netural.300}` | Input border/placeholder |
 
 #### Border Colors
 
@@ -107,7 +107,7 @@ Text colors for content hierarchy.
 
 | Token | Value | Figma Reference | Use Case |
 |-------|-------|-----------------|----------|
-| `border-default` | #f1f5f9 | `{color.slate.100}` | Default border color |
+| `border-default` | #f1f5f9 | `{color.netural.100}` | Default border color |
 
 ---
 
@@ -115,26 +115,26 @@ Text colors for content hierarchy.
 
 Complete color palette from Figma. These are the base colors referenced by semantic tokens above.
 
-#### Slate (Primary Gray Scale)
+#### Netural (Primary Gray Scale)
 
 ```tsx
-<div className="bg-slate-50">Lightest slate</div>
-<div className="bg-slate-700 text-white">Dark slate</div>
+<div className="bg-netural-50">Lightest netural</div>
+<div className="bg-netural-700 text-white">Dark netural</div>
 ```
 
 | Token | Value | Use Case |
 |-------|-------|----------|
-| `slate-50` | #f8fafc | Lightest backgrounds |
-| `slate-100` | #f1f5f9 | Card backgrounds |
-| `slate-200` | #e2e8f0 | Borders, dividers |
-| `slate-300` | #cad5e2 | Input borders |
-| `slate-400` | #90a1b9 | Placeholder text, icons |
-| `slate-500` | #62748e | Secondary text, inactive states |
-| `slate-600` | #45556c | Emphasized secondary text |
-| `slate-700` | #314158 | **Primary body text** |
-| `slate-800` | #1d293d | Headers, buttons |
-| `slate-900` | #0f172b | Strong emphasis |
-| `slate-950` | #020618 | Darkest backgrounds |
+| `netural-50` | #f8fafc | Lightest backgrounds |
+| `netural-100` | #f1f5f9 | Card backgrounds |
+| `netural-200` | #e2e8f0 | Borders, dividers |
+| `netural-300` | #cad5e2 | Input borders |
+| `netural-400` | #90a1b9 | Placeholder text, icons |
+| `netural-500` | #62748e | Secondary text, inactive states |
+| `netural-600` | #45556c | Emphasized secondary text |
+| `netural-700` | #314158 | **Primary body text** |
+| `netural-800` | #1d293d | Headers, buttons |
+| `netural-900` | #0f172b | Strong emphasis |
+| `netural-950` | #020618 | Darkest backgrounds |
 
 #### Red (Error/Alert)
 
@@ -803,9 +803,9 @@ React Components
 
 **Example Flow**:
 ```
-Primitive: color.slate.800 = #1d293d
+Primitive: color.netural.800 = #1d293d
     ↓
-Semantic: button.primary = {color.slate.800}
+Semantic: button.primary = {color.netural.800}
     ↓
 Tailwind: bg-button-primary
     ↓
@@ -825,7 +825,7 @@ Component: <button className="bg-button-primary">Click</button>
 
 ❌ **Avoid**:
 ```tsx
-<button className="bg-slate-800 text-sm p-1 rounded-sm">
+<button className="bg-netural-800 text-sm p-1 rounded-sm">
   Click me
 </button>
 ```
@@ -883,11 +883,11 @@ When implementing Figma designs:
 | Figma Token | Tailwind Class | Use Case |
 |-------------|----------------|----------|
 | `{color.white}` | `bg-surface-primary` or `bg-white` | Primary backgrounds |
-| `{color.slate.50}` | `bg-surface-secondary` or `bg-slate-50` | Secondary backgrounds |
-| `{color.slate.700}` | `text-text-primary` or `text-slate-700` | Primary text |
-| `{color.slate.400}` | `text-text-secondary` or `text-slate-400` | Secondary text |
+| `{color.netural.50}` | `bg-surface-secondary` or `bg-netural-50` | Secondary backgrounds |
+| `{color.netural.700}` | `text-text-primary` or `text-netural-700` | Primary text |
+| `{color.netural.400}` | `text-text-secondary` or `text-netural-400` | Secondary text |
 | `{color.red.400}` | `text-text-alert` or `text-red-400` | Error messages |
-| `{color.slate.800}` | `bg-button-primary` or `bg-slate-800` | Button background |
+| `{color.netural.800}` | `bg-button-primary` or `bg-netural-800` | Button background |
 | `{color.lime.300}` | `bg-status-normal` or `bg-lime-300` | Success states |
 
 #### Spacing Mapping

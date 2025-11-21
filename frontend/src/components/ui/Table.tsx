@@ -55,15 +55,15 @@ export const TableHeaderCell = React.forwardRef<HTMLTableCellElement, TableHeade
     return (
       <th
         ref={ref}
-        className={`bg-white border-b border-[#ececf0] h-[46px] px-2 py-4 ${className}`}
+        className={`bg-surface-primary border-b border-default h-[46px] p-table ${className}`}
         {...props}
       >
         <div className="flex items-center justify-between h-full">
-          <span className="text-[12.5px] font-bold text-black text-center leading-[14px]">
+          <span className="text-table-header font-bold text-text-primary text-center leading-[14px]">
             {children}
           </span>
           {showDivider && (
-            <div className="w-px h-[15px] bg-[#ececf0] shrink-0" />
+            <div className="w-px h-[15px] bg-border-default shrink-0" />
           )}
         </div>
       </th>
@@ -89,10 +89,10 @@ export const TableTextCell = React.forwardRef<HTMLTableCellElement, TableTextCel
     return (
       <td
         ref={ref}
-        className={`border-b border-[#ececf0] p-2 ${className}`}
+        className={`border-b border-default p-table ${className}`}
         {...props}
       >
-        <span className="text-[12.5px] font-medium text-black leading-[14px] tracking-[-0.1504px]">
+        <span className="text-table-body font-medium text-text-primary leading-[14px] tracking-text-tight">
           {children}
         </span>
       </td>
@@ -127,7 +127,7 @@ export const TableSelectCell = React.forwardRef<HTMLTableCellElement, TableSelec
     return (
       <td
         ref={ref}
-        className={`border-b border-[#ececf0] p-2 text-center ${className}`}
+        className={`border-b border-default p-table text-center ${className}`}
         {...props}
       >
         <input
@@ -173,23 +173,23 @@ export const TableDropdownCell = React.forwardRef<HTMLTableCellElement, TableDro
     return (
       <td
         ref={ref}
-        className={`border-b border-[#ececf0] p-1 ${className}`}
+        className={`border-b border-default p-table ${className}`}
         {...props}
       >
         <div className="relative">
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className="w-full bg-[#f3f3f5] border border-transparent rounded-lg px-[9px] py-px flex items-center justify-between min-h-[22px] hover:bg-neutral-200 transition-colors"
+            className="w-full bg-surface-secondary border border-transparent rounded-lg px-[9px] py-px flex items-center justify-between min-h-[22px] hover:bg-neutral-200 transition-colors"
           >
-            <span className="text-[12.5px] font-normal text-neutral-950 leading-5 tracking-[-0.1504px]">
+            <span className="text-table-body font-normal text-text-primary leading-5 tracking-text-tight">
               {value}
             </span>
-            <ChevronDown className="w-4 h-4 text-neutral-600" />
+            <ChevronDown className="w-4 h-4 text-icon-primary" />
           </button>
 
           {isOpen && options.length > 0 && (
-            <div className="absolute top-full left-0 mt-1 w-full bg-white border border-neutral-300 rounded-lg shadow-lg z-dropdown">
+            <div className="absolute top-full left-0 mt-1 w-full bg-surface-primary border border-default rounded-lg shadow-lg z-dropdown">
               {options.map((option, index) => (
                 <button
                   key={index}
@@ -198,7 +198,7 @@ export const TableDropdownCell = React.forwardRef<HTMLTableCellElement, TableDro
                     onChange?.(option)
                     setIsOpen(false)
                   }}
-                  className="w-full text-left px-[9px] py-1.5 text-[12.5px] hover:bg-neutral-100 first:rounded-t-lg last:rounded-b-lg"
+                  className="w-full text-left px-[9px] py-1.5 text-table-body hover:bg-surface-secondary first:rounded-t-lg last:rounded-b-lg"
                 >
                   {option}
                 </button>
@@ -243,25 +243,25 @@ export const TableActionCell = React.forwardRef<HTMLTableCellElement, TableActio
     return (
       <td
         ref={ref}
-        className={`border-b border-[#ececf0] p-2 text-center ${className}`}
+        className={`border-b border-default p-table text-center ${className}`}
         {...props}
       >
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-button-group-default">
           <button
             type="button"
             onClick={onAction}
-            className="text-[12.5px] font-medium text-black leading-[14px] tracking-[-0.1504px] hover:text-primary-600 transition-colors"
+            className="text-table-body font-medium text-text-primary leading-[14px] tracking-text-tight hover:text-primary-600 transition-colors"
           >
             {actionText}
           </button>
 
           {showMore && (
             <>
-              <div className="w-px h-[11px] bg-[#d9d9d9]" />
+              <div className="w-px h-[11px] bg-border-default" />
               <button
                 type="button"
                 onClick={onMore}
-                className="text-neutral-600 hover:text-neutral-900 transition-colors"
+                className="text-icon-primary hover:text-text-primary transition-colors"
               >
                 <MoreVertical className="w-[7.333px] h-6" />
               </button>
@@ -303,11 +303,11 @@ export const TableEnumCell = React.forwardRef<HTMLTableCellElement, TableEnumCel
     return (
       <td
         ref={ref}
-        className={`border-b border-[#ececf0] p-2 text-center ${className}`}
+        className={`border-b border-default p-table text-center ${className}`}
         {...props}
       >
         <span
-          className={`inline-flex items-center justify-center px-2 py-[3px] rounded-[6.75px] text-[12.5px] font-medium leading-[14px] tracking-[0.0923px] ${variantStyles[variant]}`}
+          className={`inline-flex items-center justify-center px-2 py-[3px] rounded-[6.75px] text-table-body font-medium leading-[14px] tracking-text-loose ${variantStyles[variant]}`}
         >
           {children}
         </span>
@@ -376,10 +376,10 @@ export const TableRow: React.FC<React.HTMLAttributes<HTMLTableRowElement>> = ({
   className = '',
   ...props
 }) => {
-  return (
-    <tr className={`hover:bg-neutral-50 transition-colors ${className}`} {...props}>
-      {children}
-    </tr>
-  )
+    return (
+      <tr className={`hover:bg-surface-secondary transition-colors ${className}`} {...props}>
+        {children}
+      </tr>
+    )
 }
 TableRow.displayName = 'TableRow'

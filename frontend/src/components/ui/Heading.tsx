@@ -24,14 +24,14 @@ export const Heading = React.forwardRef<HTMLHeadingElement, HeadingProps>(
   ({ level = 'h1', className = '', children, ...props }, ref) => {
     const Component = level
 
-    // Heading styles matching Figma specs
+    // Heading styles using semantic design tokens
     const levelStyles = {
-      h1: 'text-base font-medium text-neutral-900 leading-[31.5px]',     // 16px Medium (Figma h5)
-      h2: 'text-sm font-medium text-black leading-[31.5px] py-2',        // 14px Medium
-      h3: 'text-[12.5px] font-normal text-black leading-[31.5px]',       // 12.5px Regular
-      h4: 'text-xl font-semibold text-neutral-900',                      // Fallback
-      h5: 'text-lg font-semibold text-neutral-900',                      // Fallback
-      h6: 'text-base font-semibold text-neutral-900',                    // Fallback
+      h1: 'text-heading-h1 font-medium text-text-primary leading-[31.5px]',     // 24px Medium
+      h2: 'text-heading-h2 font-medium text-text-primary leading-[31.5px] py-2', // 20px Medium
+      h3: 'text-heading-h3 font-normal text-text-primary leading-[31.5px]',     // 18px Regular
+      h4: 'text-heading-h4 font-semibold text-text-primary',                    // 14px Semibold
+      h5: 'text-heading-h5 font-semibold text-text-primary',                    // 14px Semibold
+      h6: 'text-base font-semibold text-text-primary',                          // Fallback
     }
 
     return (

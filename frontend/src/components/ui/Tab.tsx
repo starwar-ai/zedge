@@ -31,11 +31,11 @@ export interface TabProps extends React.ButtonHTMLAttributes<HTMLButtonElement> 
 export const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
   ({ label, isActive = false, className = '', onClick, ...props }, ref) => {
     const baseStyles = 'inline-flex items-center justify-center min-w-[130px] px-2 py-[4.5px] rounded-[12.75px] border border-transparent transition-colors duration-200'
-    const textStyles = 'text-xs font-medium leading-[17.5px] tracking-[-0.0179px] text-neutral-900'
+    const textStyles = 'text-xs font-medium leading-[17.5px] tracking-button-default text-text-primary'
 
     const stateStyles = isActive
-      ? 'bg-white'
-      : 'bg-[#ececf0] hover:bg-[#e0e0e5]'
+      ? 'bg-tab-active'
+      : 'bg-tab-inactive hover:opacity-80'
 
     return (
       <button
@@ -158,7 +158,7 @@ export const TabList: React.FC<TabListProps> = ({
     <div
       className={`
         flex items-center justify-center
-        bg-[#ececf0]
+        bg-tab-inactive
         p-[4px]
         rounded-[12.75px]
         ${className}
@@ -179,7 +179,7 @@ export const TabList: React.FC<TabListProps> = ({
               rounded-[12.75px]
               border border-transparent
               transition-colors duration-200
-              ${isActive ? 'bg-white' : 'bg-[#ececf0] hover:bg-[#e0e0e5]'}
+              ${isActive ? 'bg-tab-active' : 'bg-tab-inactive hover:opacity-80'}
               focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
             `}
             aria-current={isActive ? 'page' : undefined}
@@ -188,7 +188,7 @@ export const TabList: React.FC<TabListProps> = ({
               className={`
                 font-medium
                 leading-[17.5px]
-                text-[#0a0a0a]
+                text-text-primary
                 ${index === 0 ? 'text-[12.25px]' : 'text-[12.5px]'}
                 text-center
                 whitespace-pre-wrap
