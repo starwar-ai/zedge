@@ -11,6 +11,7 @@ import LoginPage from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import { ImageManagementPage } from './pages/image-management'
 import { UserManagement } from './pages/UserManagement'
+import { MenuManagementPage } from './pages/MenuManagementPage'
 
 function HomePage() {
   return (
@@ -187,6 +188,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/images" element={<ImageManagementPage />} />
         <Route path="/users" element={<UserManagement />} />
+        <Route path="/menus" element={<MenuManagementPage />} />
       </Route>
 
       {/* Fallback */}
