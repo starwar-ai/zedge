@@ -545,7 +545,7 @@ Instance的资源分配是动态的，与Instance状态相关：
 
 ### 3.0 存储架构概述 (Storage Architecture Overview)
 
-**云电脑系统采用双层存储架构**，将实例的系统存储和持久化数据存储分离，提高灵活性和可靠性。
+**云电脑系统采用四层存储架构**，将实例的系统存储、私有数据存储、公共数据存储和共享文件存储分离，提高灵活性和可靠性。
 
 ---
 
@@ -622,30 +622,113 @@ Instance的资源分配是动态的，与Instance状态相关：
 
 ---
 
-#### 3.0.3 存储架构对比
+#### 3.0.3 公共磁盘 (Public Disk)
 
-| 特性 | 系统盘 (System Disk) | 私有数据盘 (Private Data Disk) |
-|------|---------------------|-------------------|
-| **存储位置** | 算力机本地存储 | Ceph RBD 集群存储池 |
-| **存储技术** | 本地磁盘/SSD | Ceph RBD (虚拟块设备) |
-| **生命周期** | 与实例绑定 | 独立于实例 |
-| **实例删除后** | 自动删除 | 保留 |
-| **挂载数量** | 1个（固定） | 多个（受挂载规则限制） |
-| **共享** | 不支持 | 支持（共享模式） |
-| **扩容** | 支持（停机） | 支持（在线） |
-| **缩容** | 不支持 | 不支持 |
-| **快照** | 通过镜像 | Ceph RBD 快照 |
-| **克隆** | 不支持 | 支持（从快照克隆） |
-| **配额字段** | `max_storage_gb` | `max_private_data_disk_gb` |
-| **性能** | 高（本地存储） | 可配置（standard/ssd/nvme） |
-| **用途** | OS、应用程序 | 用户数据、数据库、日志 |
-| **自动加载** | 不支持 | 支持（实例启动时自动挂载） |
+**定义**: 平台或组织共享的数据集和资源，基于 Ceph RBD 实现，多实例只读访问
+
+**实现技术**:
+- **存储后端**: Ceph RBD (RADOS Block Device)
+- **存储位置**: Ceph 集群的存储池（默认 `public-disks`）
+- **虚拟化**: 每个公共磁盘对应一个 Ceph RBD image（快照）
+- **共享方式**: 多实例只读（通过快照实现）
+
+**特性**:
+- **存储位置**: Ceph 集群存储池
+- **生命周期**: 独立于实例，由平台或组织管理
+- **容量来源**: 从 Ceph 存储池分配
+- **配额计算**: 不计入用户配额（平台资源）
+- **性能**: 支持多种存储类型（standard, ssd, nvme）
+- **备份**: 基于 Ceph RBD 快照
+- **访问模式**: 只读（防止数据被修改）
+
+**用途场景**:
+- 教学数据集、课程材料
+- 公共实验数据
+- 组织共享资源
 
 ---
 
-#### 3.0.4 存储配额计算
+#### 3.0.4 共享文件盘 (Shared File Volume)
 
-**用户存储配额分为两部分**:
+**定义**: 企业租户专用的共享可读写文件存储，基于 CephFS (Ceph File System) 实现，支持多实例并发读写
+
+**实现技术**:
+- **存储后端**: CephFS (Ceph File System)
+- **存储位置**: Ceph 集群的 CephFS 文件系统
+- **文件系统**: POSIX 兼容的分布式文件系统
+- **路径规则**: `/volumes/{volume_id}` 格式，系统自动生成
+
+**特性**:
+- **存储位置**: CephFS 文件系统（虚拟化存储，无需物理服务器）
+- **生命周期**: 独立于实例，实例删除后共享文件盘保留
+- **容量来源**: 从 CephFS 文件系统分配（支持动态扩容）
+- **配额计算**: 计入租户的 `max_shared_file_gb` 配额（仅企业租户）
+- **性能**: 支持 POSIX 多客户端并发读写，性能优秀
+- **备份**: 支持 CephFS snapshot 功能用于版本备份
+- **在线操作**: 支持在线扩容和热挂载/卸载
+- **多写支持**: ✅ 支持多实例并发读写（文件锁机制）
+
+**共享文件盘容量**:
+- 由共享文件盘的 `size_gb` 属性定义
+- 支持动态扩容（NULL 表示无限制，走租户总配额）
+- 不支持缩容（防止数据丢失）
+
+**存储分配流程**:
+```
+1. 企业租户用户创建共享文件盘，指定 size_gb 和 name
+2. 系统生成唯一的 volume_id 和 cephfs_path (/volumes/{volume_id})
+3. 在 CephFS 文件系统中创建对应的目录和配额
+4. 共享文件盘状态为 available
+5. 用户将共享文件盘挂载到实例（通过 instance_shared_file_attachments 表）
+6. 支持热挂载（实例运行中可挂载）
+7. 多个实例可同时挂载同一共享文件盘，支持并发读写
+8. 用户删除共享文件盘时删除对应的 CephFS 目录，释放存储容量
+```
+
+**CephFS 集成**:
+- **文件系统**: 基于 CephFS 的 POSIX 兼容分布式文件系统
+- **路径管理**: 系统自动管理 `/volumes/{volume_id}` 路径
+- **快照**: 使用 CephFS snapshot 功能
+- **扩容**: 使用 CephFS quota 管理容量配额
+- **并发访问**: 支持多客户端并发读写，内置文件锁机制
+
+**适用租户**: 仅企业租户（`tenant_type = 'enterprise'`）
+
+**用途场景**:
+- 开发团队共享 Git 仓库
+- 设计师共享素材库
+- 渲染农场共享纹理/模型
+- 数据库集群共享数据目录
+- 团队文档协作
+
+---
+
+#### 3.0.5 存储架构对比
+
+| 特性 | 系统盘 (System Disk) | 私有数据盘 (Private Data Disk) | 公共磁盘 (Public Disk) | 共享文件盘 (Shared File Volume) |
+|------|---------------------|-------------------|----------------------|-------------------------------|
+| **存储位置** | 算力机本地存储 | Ceph RBD 集群存储池 | Ceph RBD 集群存储池 | CephFS 文件系统 |
+| **存储技术** | 本地磁盘/SSD | Ceph RBD (虚拟块设备) | Ceph RBD (快照) | CephFS (分布式文件系统) |
+| **生命周期** | 与实例绑定 | 独立于实例 | 独立于实例 | 独立于实例 |
+| **实例删除后** | 自动删除 | 保留 | 保留 | 保留 |
+| **挂载数量** | 1个（固定） | 多个（受挂载规则限制） | 多个（只读） | 多个（并发读写） |
+| **共享** | 不支持 | 支持（共享模式） | 支持（多实例只读） | 支持（多实例并发读写） |
+| **多写支持** | - | × | × | ✅ |
+| **扩容** | 支持（停机） | 支持（在线） | 支持（在线） | 支持（在线） |
+| **缩容** | 不支持 | 不支持 | 不支持 | 不支持 |
+| **快照** | 通过镜像 | Ceph RBD 快照 | Ceph RBD 快照 | CephFS snapshot |
+| **克隆** | 不支持 | 支持（从快照克隆） | 支持（从快照克隆） | 不支持 |
+| **配额字段** | `max_storage_gb` | `max_private_data_disk_gb` | 不计入用户配额 | `max_shared_file_gb`（仅企业租户） |
+| **性能** | 高（本地存储） | 可配置（standard/ssd/nvme） | 可配置（standard/ssd/nvme） | 高（POSIX 并发读写） |
+| **用途** | OS、应用程序 | 用户数据、数据库、日志 | 教学数据集、课程材料 | 团队代码仓库、文档共享、渲染素材、共享数据库 |
+| **自动加载** | 不支持 | 支持（实例启动时自动挂载） | 支持（实例启动时自动挂载） | 不支持（需手动挂载） |
+| **适用租户** | 所有 | 所有 | 所有 | 仅企业租户 |
+
+---
+
+#### 3.0.6 存储配额计算
+
+**用户存储配额分为三部分**:
 
 1. **系统盘配额** (`max_storage_gb`):
    - 计算公式: Σ(所有实例的 allocated_storage_gb)
@@ -657,9 +740,15 @@ Instance的资源分配是动态的，与Instance状态相关：
    - 包括所有非deleted状态的私有数据盘
    - 无论私有数据盘是否挂载到实例都占用配额
 
+3. **共享文件盘配额** (`max_shared_file_gb`，仅企业租户):
+   - 计算公式: Σ(所有共享文件盘的 size_gb)
+   - 包括所有非deleted状态的共享文件盘
+   - 无论共享文件盘是否挂载到实例都占用配额
+   - NULL 值的共享文件盘不计入配额（走租户总配额）
+
 **示例**:
 ```
-用户A的配额:
+用户A的配额（普通租户）:
   - max_storage_gb: 500GB (系统盘总配额)
   - max_private_data_disk_gb: 2000GB (私有数据盘总配额)
 
@@ -677,6 +766,23 @@ Instance的资源分配是动态的，与Instance状态相关：
 
   私有数据盘使用: 500 + 1000 + 300 = 1800GB / 2000GB (90%)
   私有数据盘剩余: 200GB
+
+---
+
+企业租户B的配额:
+  - max_storage_gb: 5000GB (系统盘总配额)
+  - max_private_data_disk_gb: 10000GB (私有数据盘总配额)
+  - max_shared_file_gb: 10000GB (共享文件盘总配额，企业租户专用)
+
+企业租户B的资源使用:
+  系统盘使用: 2000GB / 5000GB (40%)
+  私有数据盘使用: 5000GB / 10000GB (50%)
+  共享文件盘1: size_gb = 2000GB (挂载到3个实例)
+  共享文件盘2: size_gb = 3000GB (挂载到5个实例)
+  共享文件盘3: size_gb = NULL (无限制，走租户总配额)
+
+  共享文件盘使用: 2000 + 3000 = 5000GB / 10000GB (50%)
+  共享文件盘剩余: 5000GB
 ```
 
 ---
@@ -688,6 +794,7 @@ Instance的资源分配是动态的，与Instance状态相关：
   - **公共磁盘 (Public Disk)**: 平台或组织共享的数据集和资源
   - **私有磁盘 (Private Disk)**: 用户个人拥有的数据盘
 - **文件 (File)**: 文件存储资源
+  - **共享文件盘 (Shared File Volume)**: 企业租户专用的共享可读写文件存储（基于 CephFS，支持多实例并发读写）
 
 ---
 
@@ -830,6 +937,75 @@ Instance的资源分配是动态的，与Instance状态相关：
 
 ---
 
+### 3.3 共享文件盘管理 (Shared File Volume Management)
+
+**功能**: 企业租户专用的共享可读写文件存储管理，支持多实例并发读写
+
+**共享文件盘属性**:
+- `volume_id`: 共享文件盘唯一标识 (UUID)
+- `tenant_id`: 所属租户ID（外键 → tenants.tenant_id，必须为 enterprise 类型）
+- `name`: 共享文件盘名称（租户内唯一）
+- `description`: 描述
+- `cephfs_path`: CephFS 内部路径（系统自动生成，如 `/volumes/{volume_id}`）
+- `size_gb`: 配额容量（GB），支持动态扩容，NULL 表示无限制（走租户总配额）
+- `status`: 状态 (creating, available, in_use, error, deleting)
+- `max_mounts`: 最大同时挂载实例数（默认无限制或 50）
+- `created_at`, `updated_at`: 时间戳
+- `created_by`: 创建者用户ID
+
+**约束条件**:
+- **租户类型限制**: 仅企业租户（`tenant_type = 'enterprise'`）可创建
+- **唯一性约束**: `UNIQUE(tenant_id, name)` - 租户内名称唯一
+- **配额计算**: 计入租户的 `max_shared_file_gb` 配额（NULL 值不计入）
+
+**共享文件盘与实例的挂载关系** (多对多关系表):
+
+通过关联表 `instance_shared_file_attachments` 管理共享文件盘与实例的挂载关系：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `attachment_id` | UUID | 挂载记录唯一标识 |
+| `instance_id` | UUID | 实例ID（外键 → instances.instance_id） |
+| `volume_id` | UUID | 共享文件盘ID（外键 → shared_file_volumes.volume_id） |
+| `mount_path` | VARCHAR(255) | 实例内挂载路径（默认 `/mnt/shared/{volume_name}`） |
+| `mounted_at` | TIMESTAMP | 挂载时间 |
+| `status` | ENUM | 挂载状态 (attaching, mounted, detaching, failed) |
+
+**约束条件**:
+- **唯一性约束**: `UNIQUE(instance_id, volume_id)` - 防止重复挂载
+- **热挂载支持**: 支持实例运行中挂载/卸载
+- **并发读写**: 多个实例可同时挂载同一共享文件盘，支持并发读写（POSIX 文件锁）
+
+**特性**:
+- 支持热挂载：可附加到运行中的实例
+- 多实例并发读写：基于 CephFS POSIX 文件系统，支持文件锁机制
+- 独立生命周期：共享文件盘生命周期独立于实例（实例删除时共享文件盘保留）
+- 独立备份：支持 CephFS snapshot 功能用于版本备份
+- 挂载前置检查：共享文件盘删除前必须先卸载所有挂载
+- 容量配额：支持动态扩容，NULL 表示无限制
+
+| 操作 | 说明 | 约束条件 | 实现方式 |
+|-----|------|---------|---------|
+| 创建共享文件盘 | 新建存储资源 | 企业租户、租户配额、CephFS容量 | 在CephFS中创建目录和配额 |
+| 挂载共享文件盘 | 绑定到实例 | 实例运行中、租户类型验证 | 通过CephFS客户端挂载到实例 |
+| 卸载共享文件盘 | 解除绑定 | 实例允许卸载 | 从实例卸载CephFS挂载点 |
+| 扩容 | 增加容量（在线扩容） | CephFS容量充足、租户配额充足 | 使用CephFS quota管理 |
+| 快照 | 创建版本备份 | 当前状态快照 | 使用CephFS snapshot功能 |
+| 删除共享文件盘 | 彻底删除 | 未挂载状态 | 删除CephFS目录和数据库记录 |
+
+**API 端点**:
+
+- `POST /api/v1/shared-file-volumes` - 创建共享文件盘
+- `GET /api/v1/shared-file-volumes` - 获取共享文件盘列表
+- `GET /api/v1/shared-file-volumes/:volume_id` - 获取共享文件盘详情
+- `DELETE /api/v1/shared-file-volumes/:volume_id` - 删除共享文件盘（需先卸载）
+- `POST /api/v1/shared-file-volumes/:volume_id/resize` - 扩容共享文件盘
+- `POST /api/v1/instances/:instance_id/shared-files/:volume_id/attach` - 挂载到实例
+- `POST /api/v1/instances/:instance_id/shared-files/:volume_id/detach` - 从实例卸载
+- `GET /api/v1/instances/:instance_id/shared-files` - 查看已挂载的共享文件盘列表
+
+---
+
 ## 4. 租户管理 (Tenant Management)
 
 ### 4.1 租户 (Tenant)
@@ -867,6 +1043,8 @@ Instance的资源分配是动态的，与Instance状态相关：
     - `ip_whitelist`: IP白名单（CIDR格式数组）
     - `compliance_requirements`: 合规要求数组 (gdpr, iso27001等)
     - `data_retention_days`: 数据保留天数（默认365天）
+    - `max_shared_file_gb`: 共享文件盘总容量配额（GB，企业租户专用）
+    - `max_shared_file_volumes`: 最大共享文件盘数量（企业租户专用）
 - `tenant_type`: 租户类型（可选，用于区分不同类型的租户）
   - `general`: 普通租户（默认）
   - `school`: 学校租户（支持排课自动化、积分计费等特殊功能）
@@ -906,6 +1084,7 @@ Instance的资源分配是动态的，与Instance状态相关：
 | 实例管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
 | 实例集管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
 | 私有数据盘管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
+| 共享文件盘管理 | ❌ | ❌ | ✅ | 仅企业租户 |
 | 镜像管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
 | 模板管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
 | VPC管理 | ✅ | ✅ | ✅ | 所有租户类型都支持 |
@@ -5054,6 +5233,162 @@ graph TD
 
 ---
 
+### 15.7 共享可读写文件盘 (Shared File Volume)
+
+**说明**: 企业租户专用的共享可读写文件存储功能，基于 CephFS 实现，支持多实例并发读写，满足企业多人协作场景需求。
+
+#### 15.7.1 功能概述
+
+**核心特性**:
+- **多实例并发读写**: 基于 CephFS POSIX 文件系统，支持多实例同时挂载并并发读写
+- **文件锁机制**: 内置 POSIX 文件锁，确保并发访问的数据一致性
+- **热挂载/卸载**: 支持实例运行中挂载和卸载，无需重启实例
+- **动态扩容**: 支持在线扩容，NULL 值表示无限制（走租户总配额）
+- **快照备份**: 支持 CephFS snapshot 功能用于版本备份
+- **权限控制**: 可结合实例的安全组或未来接入 LDAP/SSO 实现文件级权限（当前阶段先实现挂载级）
+
+#### 15.7.2 典型应用场景
+
+**场景1: 开发团队共享 Git 仓库**
+- 多个开发实例同时挂载共享文件盘
+- 团队成员可以并发提交代码、拉取更新
+- Git 仓库数据统一管理，避免同步问题
+
+**场景2: 设计师共享素材库**
+- 设计师团队共享设计素材、模板、资源文件
+- 支持多实例同时访问和编辑
+- 素材更新实时同步到所有实例
+
+**场景3: 渲染农场共享纹理/模型**
+- 渲染集群共享大型纹理文件和3D模型
+- 多个渲染节点并发读取资源文件
+- 避免重复存储，节省存储空间
+
+**场景4: 数据库集群共享数据目录**
+- 数据库集群共享数据目录和配置文件
+- 支持多数据库实例并发访问
+- 数据一致性由数据库自身保证
+
+**场景5: 团队文档协作**
+- 团队共享文档、报告、资料
+- 支持多用户同时编辑（通过文件锁机制）
+- 文档版本管理通过 CephFS snapshot 实现
+
+#### 15.7.3 技术实现
+
+**存储后端**: CephFS (Ceph File System)
+- **文件系统类型**: POSIX 兼容的分布式文件系统
+- **路径管理**: 系统自动管理 `/volumes/{volume_id}` 路径
+- **配额管理**: 通过 CephFS quota 管理容量配额
+- **快照功能**: 使用 CephFS snapshot 实现版本备份
+- **并发访问**: 支持多客户端并发读写，内置文件锁机制
+
+**挂载管理**:
+- 通过 `instance_shared_file_attachments` 表管理挂载关系
+- 支持热挂载（实例运行中可挂载）
+- 默认挂载路径: `/mnt/shared/{volume_name}`
+- 可自定义挂载路径
+
+**配额控制**:
+- 租户级配额: `max_shared_file_gb`（总容量配额）
+- 数量限制: `max_shared_file_volumes`（最大共享文件盘数量）
+- 配额计算: Σ(所有共享文件盘的 size_gb) ≤ max_shared_file_gb
+- NULL 值处理: size_gb 为 NULL 时不计入配额（走租户总配额）
+
+#### 15.7.4 权限与安全
+
+**租户类型限制**:
+- 仅企业租户（`tenant_type = 'enterprise'`）可见和可用
+- 学校租户和普通租户完全看不到此功能模块
+- 通过功能模块可见性控制实现
+
+**访问控制**:
+- **挂载级权限**: 当前阶段实现挂载级权限控制
+- **文件级权限**: 未来可结合 LDAP/SSO 实现文件级权限
+- **安全组集成**: 可结合实例的安全组实现访问控制
+
+**数据安全**:
+- 基于 CephFS 的数据冗余和容错机制
+- 支持快照备份，防止数据丢失
+- 支持数据加密（CephFS 支持加密）
+
+#### 15.7.5 使用流程
+
+**创建共享文件盘**:
+```
+1. 企业租户用户登录系统
+2. 进入共享文件盘管理页面
+3. 创建共享文件盘，指定名称、描述、容量（可选）
+4. 系统在 CephFS 中创建对应目录和配额
+5. 共享文件盘状态变为 available
+```
+
+**挂载到实例**:
+```
+1. 选择要挂载的实例（实例需处于运行状态）
+2. 选择要挂载的共享文件盘
+3. 指定挂载路径（可选，默认 /mnt/shared/{volume_name}）
+4. 系统执行挂载操作
+5. 挂载状态变为 mounted
+```
+
+**使用共享文件盘**:
+```
+1. 在实例中访问挂载路径
+2. 多个实例可同时挂载同一共享文件盘
+3. 支持并发读写操作（文件锁机制保证一致性）
+4. 文件修改实时同步到所有挂载实例
+```
+
+**卸载和删除**:
+```
+1. 从实例卸载共享文件盘（支持热卸载）
+2. 确保所有实例都已卸载
+3. 删除共享文件盘
+4. 系统删除 CephFS 目录，释放存储容量
+```
+
+#### 15.7.6 配额管理
+
+**配额配置**:
+- 在租户的 `enterprise_config` 中配置:
+  - `max_shared_file_gb`: 共享文件盘总容量配额（GB）
+  - `max_shared_file_volumes`: 最大共享文件盘数量
+
+**配额计算**:
+- 计算公式: Σ(所有共享文件盘的 size_gb) ≤ max_shared_file_gb
+- NULL 值的共享文件盘不计入配额（走租户总配额）
+- 无论共享文件盘是否挂载到实例都占用配额
+
+**配额限制**:
+- 创建共享文件盘时验证配额
+- 扩容时验证增量是否超过剩余配额
+- 配额超限时禁止创建或扩容
+
+#### 15.7.7 最佳实践
+
+**容量规划**:
+- 根据团队规模和项目需求合理规划容量
+- 预留一定的容量余量用于扩容
+- 定期监控配额使用情况
+
+**挂载路径规范**:
+- 使用统一的挂载路径命名规范
+- 建议使用 `/mnt/shared/{project_name}` 或 `/mnt/shared/{department_name}` 格式
+- 避免路径冲突
+
+**性能优化**:
+- 对于高频访问的共享文件盘，考虑使用 SSD 存储类型
+- 合理设置 `max_mounts` 限制，避免过度挂载
+- 定期清理无用文件，释放存储空间
+
+**备份策略**:
+- 定期创建 CephFS snapshot 进行版本备份
+- 重要数据建议定期备份到外部存储
+- 利用快照功能实现数据恢复
+
+---
+
 ## 16. 数据库约束与级联行为 (Database Constraints & Cascade Behavior)
 
 ### 16.1 外键级联删除行为 (Foreign Key Cascade Behavior)
@@ -5071,6 +5406,7 @@ graph TD
 | `places` | `tenant_id` | `tenants.tenant_id` | `CASCADE` | 租户删除时级联删除所有场所 |
 | `instances` | `tenant_id` | `tenants.tenant_id` | `RESTRICT` | 租户有实例时禁止删除租户 |
 | `private_data_disks` | `tenant_id` | `tenants.tenant_id` | `RESTRICT` | 租户有私有数据盘时禁止删除租户 |
+| `shared_file_volumes` | `tenant_id` | `tenants.tenant_id` | `RESTRICT` | 租户有共享文件盘时禁止删除租户 |
 
 #### 16.1.2 用户相关表 (User Related Tables)
 
@@ -5091,6 +5427,8 @@ graph TD
 | `instances` | `template_id` | `templates.template_id` | `SET NULL` | 模板删除时实例保留，template_id设为NULL |
 | `instance_private_data_disk_attachments` | `instance_id` | `instances.instance_id` | `CASCADE` | 实例删除时级联删除所有私有数据盘挂载关系 |
 | `instance_private_data_disk_attachments` | `disk_id` | `private_data_disks.disk_id` | `CASCADE` | 私有数据盘删除时级联删除所有挂载关系 |
+| `instance_shared_file_attachments` | `instance_id` | `instances.instance_id` | `CASCADE` | 实例删除时级联删除所有共享文件盘挂载关系 |
+| `instance_shared_file_attachments` | `volume_id` | `shared_file_volumes.volume_id` | `CASCADE` | 共享文件盘删除时级联删除所有挂载关系 |
 | `cloud_boxes` | `temporary_instance_id` | `instances.instance_id` | `SET NULL` | 实例删除时云盒的临时绑定设为NULL |
 
 #### 16.1.4 网络相关表 (Network Related Tables)
@@ -5135,6 +5473,8 @@ graph TD
 - `instances`: `UNIQUE(tenant_id, name)` - 租户内实例名称唯一（可选，根据业务需求）
 - `templates`: `UNIQUE(tenant_id, name)` - 租户内模板名称唯一
 - `instance_private_data_disk_attachments`: `UNIQUE(instance_id, disk_id)` - 防止重复挂载
+- `shared_file_volumes`: `UNIQUE(tenant_id, name)` - 租户内共享文件盘名称唯一
+- `instance_shared_file_attachments`: `UNIQUE(instance_id, volume_id)` - 防止重复挂载
 
 #### 16.2.3 网络
 
@@ -5149,6 +5489,7 @@ graph TD
 - `image_requirements`: `UNIQUE(image_id)` - 每个镜像只有一条资源要求记录
 - `private_data_disks`: `UNIQUE(user_id, name)` - 用户内私有数据盘名称唯一
 - `private_data_disks`: `UNIQUE(rbd_image_name)` - Ceph RBD image名称全局唯一
+- `shared_file_volumes`: `UNIQUE(cephfs_path)` - CephFS 路径全局唯一
 
 #### 16.2.5 边缘机房和设备
 
@@ -5176,6 +5517,10 @@ CHECK (hosts.allocated_storage_gb >= 0 AND hosts.allocated_storage_gb <= hosts.s
 -- 私有数据盘大小
 CHECK (private_data_disks.size_gb > 0)
 CHECK (private_data_disks.max_attachments > 0)
+
+-- 共享文件盘大小和挂载限制
+CHECK (shared_file_volumes.size_gb IS NULL OR shared_file_volumes.size_gb > 0)
+CHECK (shared_file_volumes.max_mounts IS NULL OR shared_file_volumes.max_mounts > 0)
 ```
 
 #### 16.3.2 镜像资源要求约束
@@ -5228,6 +5573,12 @@ CREATE INDEX idx_instances_resource_pool_id ON instances(resource_pool_id);
 CREATE INDEX idx_private_data_disks_user_id ON private_data_disks(user_id);
 CREATE INDEX idx_private_data_disks_tenant_id ON private_data_disks(tenant_id);
 CREATE INDEX idx_private_data_disks_status ON private_data_disks(status);
+
+-- 共享文件盘
+CREATE INDEX idx_shared_file_volumes_tenant_id ON shared_file_volumes(tenant_id);
+CREATE INDEX idx_shared_file_volumes_status ON shared_file_volumes(status);
+CREATE INDEX idx_instance_shared_file_attachments_instance_id ON instance_shared_file_attachments(instance_id);
+CREATE INDEX idx_instance_shared_file_attachments_volume_id ON instance_shared_file_attachments(volume_id);
 
 -- IP地址管理
 CREATE INDEX idx_ip_addresses_pool_status ON ip_addresses(ip_pool_id, status);
