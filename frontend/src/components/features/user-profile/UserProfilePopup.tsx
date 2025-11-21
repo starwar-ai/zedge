@@ -97,14 +97,14 @@ export const UserProfilePopup = React.forwardRef<HTMLDivElement, UserProfilePopu
     return (
       <div
         ref={ref}
-        className={`bg-[#1e1e1e] rounded-card p-card ${className}`}
+        className={`bg-[#1e1e1e] rounded-card p-card w-[250px] ${className}`}
         data-name="UserProfilePopup"
         data-node-id="553:9362"
       >
         {/* Main Content Container */}
         <div className="flex flex-col items-center p-card gap-page">
           {/* User Avatar */}
-          <div className="w-[52px] h-[52px] rounded-full overflow-hidden flex-shrink-0">
+          <div className="w-[35px] h-[35px] rounded-full overflow-hidden flex-shrink-0">
             <img
               src={userAvatar}
               alt={userName}

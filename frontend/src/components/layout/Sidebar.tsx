@@ -167,11 +167,47 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
 
     // State for user profile popup
     const [showProfilePopup, setShowProfilePopup] = useState(false)
+    const [popupPosition, setPopupPosition] = useState<{ bottom: number; left: number } | null>(null)
     const profileButtonRef = useRef<HTMLButtonElement>(null)
     const popupRef = useRef<HTMLDivElement>(null)
 
     // State for expandable menu items
     const [expandedMenus, setExpandedMenus] = useState<Set<number>>(new Set())
+
+    /**
+     * Calculate popup position when it should be shown
+     */
+    useEffect(() => {
+      if (showProfilePopup && profileButtonRef.current) {
+        const updatePosition = () => {
+          if (profileButtonRef.current) {
+            const rect = profileButtonRef.current.getBoundingClientRect()
+            // Show popup above the button
+            // Position: button's left edge + 14px margin, bottom is distance from viewport bottom to button top + margin
+            const marginLeft = 14
+            const marginBottom = 8
+            
+            setPopupPosition({
+              left: rect.left + marginLeft,
+              bottom: window.innerHeight - rect.top + marginBottom,
+            })
+          }
+        }
+
+        updatePosition()
+        
+        // Update position on window resize or scroll
+        window.addEventListener('resize', updatePosition)
+        window.addEventListener('scroll', updatePosition, true)
+        
+        return () => {
+          window.removeEventListener('resize', updatePosition)
+          window.removeEventListener('scroll', updatePosition, true)
+        }
+      } else {
+        setPopupPosition(null)
+      }
+    }, [showProfilePopup])
 
     /**
      * Close popup when clicking outside
@@ -438,11 +474,14 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
           style={{ height: 'var(--sidebar-user-profile-height)' }}
         >
           {/* User Profile Popup */}
-          {showProfilePopup && (
+          {showProfilePopup && popupPosition && (
             <div
               ref={popupRef}
-              className="absolute bottom-[60px] left-0 z-popover"
-              style={{ marginLeft: '14px', marginBottom: '8px' }}
+              className="fixed z-popover"
+              style={{
+                bottom: `${popupPosition.bottom}px`,
+                left: `${popupPosition.left}px`,
+              }}
             >
               <UserProfilePopup
                 userName={userProfile.name}
