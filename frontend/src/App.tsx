@@ -6,6 +6,7 @@ import { FormShowcase } from './components/features/form'
 import { IconShowcase } from './components/ui'
 import { TabListShowcase } from './components/features/page-components/TabListShowcase'
 import { PaginationShowcase } from './components/features/pagination/PaginationShowcase'
+import { UserProfilePopupShowcase } from './components/features/user-profile/UserProfilePopupShowcase'
 import { MainLayout } from './components/layout'
 import LoginPage from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -41,6 +42,13 @@ function HomePage() {
         <div className="mb-8">
           <div className="card">
             <IconShowcase />
+          </div>
+        </div>
+
+        {/* Figma User Profile Popup */}
+        <div className="mb-8">
+          <div className="card">
+            <UserProfilePopupShowcase />
           </div>
         </div>
 

@@ -13,7 +13,7 @@ import {
   SettingsIcon,
 } from './SidebarIcons'
 import { useAuth } from '@/hooks/useAuth'
-
+import logoContainer from '@/assets/images/logo-container.png'
 /**
  * Main Layout Component
  *
@@ -80,7 +80,7 @@ export const MainLayout: React.FC = () => {
           userProfile={userProfile}
           appTitle="DeskPro"
           appSubtitle="One Link Platform"
-          onProfileClick={handleProfileClick}
+          logoUrl={logoContainer}
         />
       </div>
 

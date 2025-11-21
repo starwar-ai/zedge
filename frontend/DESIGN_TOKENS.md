@@ -19,13 +19,13 @@ Background colors for surfaces and containers.
 
 ```tsx
 <div className="bg-surface-primary">Primary surface (white)</div>
-<div className="bg-surface-secondary">Secondary surface (netural-50)</div>
+<div className="bg-surface-secondary">Secondary surface (neutral-100)</div>
 ```
 
 | Token | Value | Figma Reference | Use Case |
 |-------|-------|-----------------|----------|
 | `surface-primary` | #ffffff | `{color.white}` | Primary backgrounds, cards |
-| `surface-secondary` | #f8fafc | `{color.netural.50}` | Secondary backgrounds, page backgrounds |
+| `surface-secondary` | #f5f5f5 | `{color.neutral.100}` | Secondary backgrounds, page backgrounds |
 
 #### Text Colors
 Text colors for content hierarchy.
@@ -38,8 +38,8 @@ Text colors for content hierarchy.
 
 | Token | Value | Figma Reference | Use Case |
 |-------|-------|-----------------|----------|
-| `text-primary` | #314158 | `{color.netural.700}` | Primary body text |
-| `text-secondary` | #90a1b9 | `{color.netural.400}` | Secondary/helper text |
+| `text-primary` | #314158 | `{color.slate.700}` | Primary body text |
+| `text-secondary` | #a1a1a1 | `{color.neutral.400}` | Secondary/helper text |
 | `text-alert` | #ff6467 | `{color.red.400}` | Alert/error messages |
 
 #### Button Colors
@@ -51,7 +51,7 @@ Text colors for content hierarchy.
 
 | Token | Value | Figma Reference | Use Case |
 |-------|-------|-----------------|----------|
-| `button-primary` | #1d293d | `{color.netural.800}` | Primary button background |
+| `button-primary` | #262626 | `{color.neutral.800}` | Primary button background |
 | `button-secondary` | #ffffff | `{color.white}` | Secondary button background |
 
 #### Tab Colors
@@ -64,7 +64,7 @@ Text colors for content hierarchy.
 | Token | Value | Figma Reference | Use Case |
 |-------|-------|-----------------|----------|
 | `tab-active` | #ffffff | `{color.white}` | Active tab background |
-| `tab-inactive` | #62748e | `{color.netural.500}` | Inactive tab background |
+| `tab-inactive` | #d4d4d4 | `{color.neutral.300}` | Inactive tab background |
 
 #### Status Colors
 
@@ -86,7 +86,7 @@ Text colors for content hierarchy.
 
 | Token | Value | Figma Reference | Use Case |
 |-------|-------|-----------------|----------|
-| `icon-primary` | #62748e | `{color.netural.500}` | Primary icon color |
+| `icon-primary` | #737373 | `{color.neutral.500}` | Primary icon color |
 
 #### Input Colors
 
@@ -97,7 +97,7 @@ Text colors for content hierarchy.
 | Token | Value | Figma Reference | Use Case |
 |-------|-------|-----------------|----------|
 | `input-primary` | #ffffff | `{color.white}` | Input background |
-| `input-secondary` | #cad5e2 | `{color.netural.300}` | Input border/placeholder |
+| `input-secondary` | #d4d4d4 | `{color.neutral.300}` | Input border/placeholder |
 
 #### Border Colors
 
@@ -107,7 +107,7 @@ Text colors for content hierarchy.
 
 | Token | Value | Figma Reference | Use Case |
 |-------|-------|-----------------|----------|
-| `border-default` | #f1f5f9 | `{color.netural.100}` | Default border color |
+| `border-default` | #f5f5f5 | `{color.neutral.100}` | Default border color |
 
 ---
 
@@ -115,26 +115,95 @@ Text colors for content hierarchy.
 
 Complete color palette from Figma. These are the base colors referenced by semantic tokens above.
 
-#### Netural (Primary Gray Scale)
+#### Slate (Primary Text/UI Scale)
 
 ```tsx
-<div className="bg-netural-50">Lightest netural</div>
-<div className="bg-netural-700 text-white">Dark netural</div>
+<div className="bg-slate-50">Lightest slate</div>
+<div className="bg-slate-700 text-white">Dark slate</div>
 ```
 
 | Token | Value | Use Case |
 |-------|-------|----------|
-| `netural-50` | #f8fafc | Lightest backgrounds |
-| `netural-100` | #f1f5f9 | Card backgrounds |
-| `netural-200` | #e2e8f0 | Borders, dividers |
-| `netural-300` | #cad5e2 | Input borders |
-| `netural-400` | #90a1b9 | Placeholder text, icons |
-| `netural-500` | #62748e | Secondary text, inactive states |
-| `netural-600` | #45556c | Emphasized secondary text |
-| `netural-700` | #314158 | **Primary body text** |
-| `netural-800` | #1d293d | Headers, buttons |
-| `netural-900` | #0f172b | Strong emphasis |
-| `netural-950` | #020618 | Darkest backgrounds |
+| `slate-50` | #f8fafc | Lightest backgrounds |
+| `slate-100` | #f1f5f9 | Card backgrounds |
+| `slate-200` | #e2e8f0 | Borders, dividers |
+| `slate-300` | #cad5e2 | Input borders |
+| `slate-400` | #90a1b9 | Placeholder text, icons |
+| `slate-500` | #62748e | Secondary text, inactive states |
+| `slate-600` | #45556c | Emphasized secondary text |
+| `slate-700` | #314158 | **Primary body text** |
+| `slate-800` | #1d293d | Headers, buttons |
+| `slate-900` | #0f172b | Strong emphasis |
+| `slate-950` | #020618 | Darkest backgrounds |
+
+#### Neutral (Semantic UI Scale)
+
+```tsx
+<div className="bg-neutral-50">Lightest neutral</div>
+<div className="bg-neutral-800 text-white">Dark neutral</div>
+```
+
+| Token | Value | Use Case |
+|-------|-------|----------|
+| `neutral-50` | #fafafa | Lightest backgrounds |
+| `neutral-100` | #f5f5f5 | **Surface secondary**, borders |
+| `neutral-200` | #e5e5e5 | Dividers |
+| `neutral-300` | #d4d4d4 | **Tab inactive**, input borders |
+| `neutral-400` | #a1a1a1 | **Text secondary**, placeholders |
+| `neutral-500` | #737373 | **Icon primary**, secondary text |
+| `neutral-600` | #525252 | Emphasized text |
+| `neutral-700` | #404040 | Strong text |
+| `neutral-800` | #262626 | **Button primary**, headers |
+| `neutral-900` | #171717 | Darkest text |
+| `neutral-950` | #0a0a0a | Pure dark |
+
+#### Gray
+
+| Token | Value |
+|-------|-------|
+| `gray-50` | #f9fafb |
+| `gray-100` | #f3f4f6 |
+| `gray-200` | #e5e7eb |
+| `gray-300` | #d1d5dc |
+| `gray-400` | #99a1af |
+| `gray-500` | #6a7282 |
+| `gray-600` | #4a5565 |
+| `gray-700` | #364153 |
+| `gray-800` | #1e2939 |
+| `gray-900` | #101828 |
+| `gray-950` | #030712 |
+
+#### Zinc
+
+| Token | Value |
+|-------|-------|
+| `zinc-50` | #fafafa |
+| `zinc-100` | #f4f4f5 |
+| `zinc-200` | #e4e4e7 |
+| `zinc-300` | #d4d4d8 |
+| `zinc-400` | #9f9fa9 |
+| `zinc-500` | #71717b |
+| `zinc-600` | #52525c |
+| `zinc-700` | #3f3f46 |
+| `zinc-800` | #27272a |
+| `zinc-900` | #18181b |
+| `zinc-950` | #09090b |
+
+#### Stone
+
+| Token | Value |
+|-------|-------|
+| `stone-50` | #fafaf9 |
+| `stone-100` | #f5f5f4 |
+| `stone-200` | #e7e5e4 |
+| `stone-300` | #d6d3d1 |
+| `stone-400` | #a6a09b |
+| `stone-500` | #79716b |
+| `stone-600` | #57534d |
+| `stone-700` | #44403b |
+| `stone-800` | #292524 |
+| `stone-900` | #1c1917 |
+| `stone-950` | #0c0a09 |
 
 #### Red (Error/Alert)
 
@@ -144,13 +213,61 @@ Complete color palette from Figma. These are the base colors referenced by seman
 | `red-100` | #ffe2e2 | Light error states |
 | `red-200` | #ffc9c9 | Error hover states |
 | `red-300` | #ffa2a2 | Error borders |
-| `red-400` | #ff6467 | **Error text, alerts** |
+| `red-400` | #ff6467 | **Error text, alerts, status abnormal** |
 | `red-500` | #fb2c36 | Error buttons |
 | `red-600` | #e7000b | Strong error actions |
 | `red-700` | #c10007 | Pressed error states |
 | `red-800` | #9f0712 | Dark error text |
 | `red-900` | #82181a | Darkest error |
 | `red-950` | #460809 | Error on dark backgrounds |
+
+#### Orange
+
+| Token | Value |
+|-------|-------|
+| `orange-50` | #fff7ed |
+| `orange-100` | #ffedd4 |
+| `orange-200` | #ffd6a8 |
+| `orange-300` | #ffb86a |
+| `orange-400` | #ff8904 |
+| `orange-500` | #ff6900 |
+| `orange-600` | #f54a00 |
+| `orange-700` | #ca3500 |
+| `orange-800` | #9f2d00 |
+| `orange-900` | #7e2a0c |
+| `orange-950` | #441306 |
+
+#### Amber
+
+| Token | Value |
+|-------|-------|
+| `amber-50` | #fffbeb |
+| `amber-100` | #fef3c6 |
+| `amber-200` | #fee685 |
+| `amber-300` | #ffd230 |
+| `amber-400` | #ffba00 |
+| `amber-500` | #fd9a00 |
+| `amber-600` | #e17100 |
+| `amber-700` | #bb4d00 |
+| `amber-800` | #973c00 |
+| `amber-900` | #7b3306 |
+| `amber-950` | #461901 |
+
+#### Yellow
+
+| Token | Value |
+|-------|-------|
+| `yellow-50` | #fefce8 |
+| `yellow-100` | #fef9c2 |
+| `yellow-200` | #fff085 |
+| `yellow-300` | #ffdf20 |
+| `yellow-400` | #fcc800 |
+| `yellow-500` | #efb100 |
+| `yellow-600` | #d08700 |
+| `yellow-700` | #a65f00 |
+| `yellow-800` | #894b00 |
+| `yellow-900` | #733e0a |
+| `yellow-950` | #432004 |
 
 #### Lime (Success/Normal)
 
@@ -168,6 +285,86 @@ Complete color palette from Figma. These are the base colors referenced by seman
 | `lime-900` | #35530e | Darkest success |
 | `lime-950` | #192e03 | Success on dark backgrounds |
 
+#### Green
+
+| Token | Value |
+|-------|-------|
+| `green-50` | #f0fdf4 |
+| `green-100` | #dcfce7 |
+| `green-200` | #b9f8cf |
+| `green-300` | #7bf1a8 |
+| `green-400` | #05df72 |
+| `green-500` | #00c951 |
+| `green-600` | #00a63e |
+| `green-700` | #008236 |
+| `green-800` | #016630 |
+| `green-900` | #0d542b |
+| `green-950` | #052e16 |
+
+#### Emerald
+
+| Token | Value |
+|-------|-------|
+| `emerald-50` | #ecfdf5 |
+| `emerald-100` | #d0fae5 |
+| `emerald-200` | #a4f4cf |
+| `emerald-300` | #5ee9b5 |
+| `emerald-400` | #00d492 |
+| `emerald-500` | #00bc7d |
+| `emerald-600` | #009966 |
+| `emerald-700` | #007a55 |
+| `emerald-800` | #006045 |
+| `emerald-900` | #004f3b |
+| `emerald-950` | #002c22 |
+
+#### Teal
+
+| Token | Value |
+|-------|-------|
+| `teal-50` | #f0fdfa |
+| `teal-100` | #cbfbf1 |
+| `teal-200` | #96f7e4 |
+| `teal-300` | #46ecd5 |
+| `teal-400` | #00d5be |
+| `teal-500` | #00bba7 |
+| `teal-600` | #009689 |
+| `teal-700` | #00786f |
+| `teal-800` | #005f5a |
+| `teal-900` | #0b4f4a |
+| `teal-950` | #022f2e |
+
+#### Cyan
+
+| Token | Value |
+|-------|-------|
+| `cyan-50` | #ecfeff |
+| `cyan-100` | #cefafe |
+| `cyan-200` | #a2f4fd |
+| `cyan-300` | #53eafd |
+| `cyan-400` | #00d3f2 |
+| `cyan-500` | #00b8db |
+| `cyan-600` | #0092b8 |
+| `cyan-700` | #007595 |
+| `cyan-800` | #005f78 |
+| `cyan-900` | #104e64 |
+| `cyan-950` | #053345 |
+
+#### Sky
+
+| Token | Value |
+|-------|-------|
+| `sky-50` | #f0f9ff |
+| `sky-100` | #dff2fe |
+| `sky-200` | #b8e6fe |
+| `sky-300` | #74d4ff |
+| `sky-400` | #00bcff |
+| `sky-500` | #00a6f4 |
+| `sky-600` | #0084d1 |
+| `sky-700` | #0069a8 |
+| `sky-800` | #00598a |
+| `sky-900` | #024a70 |
+| `sky-950` | #052f4a |
+
 #### Blue (Primary/Info)
 
 | Token | Value | Use Case |
@@ -184,7 +381,101 @@ Complete color palette from Figma. These are the base colors referenced by seman
 | `blue-900` | #1c398e | Darkest blue |
 | `blue-950` | #162456 | Blue on dark backgrounds |
 
-> **Note**: Additional color scales (Gray, Zinc, Neutral, Stone, Orange, Amber, Yellow, Green, Emerald, Teal, Cyan, Sky, Indigo, Violet, Purple, Fuchsia, Pink, Rose) are available in `tokens.json` primitives collection. Refer to the file for complete color values.
+#### Indigo
+
+| Token | Value |
+|-------|-------|
+| `indigo-50` | #eef2ff |
+| `indigo-100` | #e0e7ff |
+| `indigo-200` | #c6d2ff |
+| `indigo-300` | #a3b3ff |
+| `indigo-400` | #7c86ff |
+| `indigo-500` | #615fff |
+| `indigo-600` | #4f39f6 |
+| `indigo-700` | #432dd7 |
+| `indigo-800` | #372aac |
+| `indigo-900` | #312c85 |
+| `indigo-950` | #1e1a4d |
+
+#### Violet
+
+| Token | Value |
+|-------|-------|
+| `violet-50` | #f5f3ff |
+| `violet-100` | #ede9fe |
+| `violet-200` | #ddd6ff |
+| `violet-300` | #c4b4ff |
+| `violet-400` | #a684ff |
+| `violet-500` | #8e51ff |
+| `violet-600` | #7f22fe |
+| `violet-700` | #7008e7 |
+| `violet-800` | #5d0ec0 |
+| `violet-900` | #4d179a |
+| `violet-950` | #2f0d68 |
+
+#### Purple
+
+| Token | Value |
+|-------|-------|
+| `purple-50` | #faf5ff |
+| `purple-100` | #f3e8ff |
+| `purple-200` | #e9d4ff |
+| `purple-300` | #dab2ff |
+| `purple-400` | #c27aff |
+| `purple-500` | #ad46ff |
+| `purple-600` | #9810fa |
+| `purple-700` | #8200db |
+| `purple-800` | #6e11b0 |
+| `purple-900` | #59168b |
+| `purple-950` | #3c0366 |
+
+#### Fuchsia
+
+| Token | Value |
+|-------|-------|
+| `fuchsia-50` | #fdf4ff |
+| `fuchsia-100` | #fae8ff |
+| `fuchsia-200` | #f6cfff |
+| `fuchsia-300` | #f4a8ff |
+| `fuchsia-400` | #ed6bff |
+| `fuchsia-500` | #e12afb |
+| `fuchsia-600` | #c800de |
+| `fuchsia-700` | #a800b7 |
+| `fuchsia-800` | #8a0194 |
+| `fuchsia-900` | #721378 |
+| `fuchsia-950` | #4b004f |
+
+#### Pink
+
+| Token | Value |
+|-------|-------|
+| `pink-50` | #fdf2f8 |
+| `pink-100` | #fce7f3 |
+| `pink-200` | #fccee8 |
+| `pink-300` | #fda5d5 |
+| `pink-400` | #fb64b6 |
+| `pink-500` | #f6339a |
+| `pink-600` | #e60076 |
+| `pink-700` | #c6005c |
+| `pink-800` | #a3004c |
+| `pink-900` | #861043 |
+| `pink-950` | #510424 |
+
+#### Rose
+
+| Token | Value |
+|-------|-------|
+| `rose-50` | #fff1f2 |
+| `rose-100` | #ffe4e6 |
+| `rose-200` | #ffccd3 |
+| `rose-300` | #ffa1ad |
+| `rose-400` | #ff637e |
+| `rose-500` | #ff2056 |
+| `rose-600` | #ec003f |
+| `rose-700` | #c70036 |
+| `rose-800` | #a50036 |
+| `rose-900` | #8b0836 |
+| `rose-950` | #4d0218 |
 
 #### Special Colors
 
@@ -491,7 +782,7 @@ Base border radius scale from Figma.
 Container width tokens from Figma.
 
 ```tsx
-<div className="max-w-3xl">Container</div>
+<div className="max-w-container-3xl">Container</div>
 ```
 
 | Class | Value (px) | Use Case |
@@ -527,14 +818,23 @@ Opacity values from Figma primitives.
 | `opacity-0` | 0 | Invisible |
 | `opacity-5` | 5 | Nearly invisible |
 | `opacity-10` | 10 | Very faint |
+| `opacity-15` | 15 | Subtle |
 | `opacity-20` | 20 | Faint overlays |
+| `opacity-25` | 25 | Light overlays |
 | `opacity-30` | 30 | Light overlays |
+| `opacity-35` | 35 | Medium-light |
 | `opacity-40` | 40 | Medium-light overlays |
+| `opacity-45` | 45 | Medium |
 | `opacity-50` | 50 | **Half opacity** |
+| `opacity-55` | 55 | Medium-strong |
 | `opacity-60` | 60 | Medium-strong overlays |
+| `opacity-65` | 65 | Strong |
 | `opacity-70` | 70 | Strong overlays |
+| `opacity-75` | 75 | Very strong |
 | `opacity-80` | 80 | Very strong overlays |
+| `opacity-85` | 85 | Nearly opaque |
 | `opacity-90` | 90 | Nearly opaque |
+| `opacity-95` | 95 | Almost opaque |
 | `opacity-100` | 100 | **Fully opaque** (default) |
 
 ---
@@ -803,9 +1103,9 @@ React Components
 
 **Example Flow**:
 ```
-Primitive: color.netural.800 = #1d293d
+Primitive: color.neutral.800 = #262626
     ↓
-Semantic: button.primary = {color.netural.800}
+Semantic: button.primary = {color.neutral.800}
     ↓
 Tailwind: bg-button-primary
     ↓
@@ -818,14 +1118,14 @@ Component: <button className="bg-button-primary">Click</button>
 
 ✅ **Good**:
 ```tsx
-<button className="bg-button-primary text-sm p-button rounded-input">
+<button className="bg-button-primary text-button-medium p-button rounded-input">
   Click me
 </button>
 ```
 
 ❌ **Avoid**:
 ```tsx
-<button className="bg-netural-800 text-sm p-1 rounded-sm">
+<button className="bg-neutral-800 text-sm p-1 rounded-sm">
   Click me
 </button>
 ```
@@ -883,11 +1183,11 @@ When implementing Figma designs:
 | Figma Token | Tailwind Class | Use Case |
 |-------------|----------------|----------|
 | `{color.white}` | `bg-surface-primary` or `bg-white` | Primary backgrounds |
-| `{color.netural.50}` | `bg-surface-secondary` or `bg-netural-50` | Secondary backgrounds |
-| `{color.netural.700}` | `text-text-primary` or `text-netural-700` | Primary text |
-| `{color.netural.400}` | `text-text-secondary` or `text-netural-400` | Secondary text |
+| `{color.neutral.100}` | `bg-surface-secondary` or `bg-neutral-100` | Secondary backgrounds |
+| `{color.slate.700}` | `text-text-primary` or `text-slate-700` | Primary text |
+| `{color.neutral.400}` | `text-text-secondary` or `text-neutral-400` | Secondary text |
 | `{color.red.400}` | `text-text-alert` or `text-red-400` | Error messages |
-| `{color.netural.800}` | `bg-button-primary` or `bg-netural-800` | Button background |
+| `{color.neutral.800}` | `bg-button-primary` or `bg-neutral-800` | Button background |
 | `{color.lime.300}` | `bg-status-normal` or `bg-lime-300` | Success states |
 
 #### Spacing Mapping
@@ -923,11 +1223,8 @@ To update design tokens from Figma:
 
 1. **Export variables** from Figma (Design → Variables → Export)
 2. **Save as** `frontend/tokens.json` (replace existing file)
-3. **Run sync script** (if available):
-   ```bash
-   npm run sync-figma-tokens
-   ```
-4. **Update Tailwind config** if needed in `tailwind.config.js`
+3. **Update this documentation** to reflect new tokens
+4. **Update Tailwind config** in `tailwind.config.js`
 5. **Test components** to ensure token changes don't break UI
 
 ### Quick Reference

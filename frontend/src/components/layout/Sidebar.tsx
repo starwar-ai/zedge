@@ -1,7 +1,9 @@
-import React from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { ResourceType, PermissionAction } from '@/types/auth'
+import { UserProfilePopup, Organization } from '@/components/features/user-profile'
+import { ChevronRightIcon } from '@/components/ui/Icons'
 
 /**
  * Navigation menu item type
@@ -53,7 +55,12 @@ export interface UserProfile {
   name: string
 
   /**
-   * User role/title
+   * User email address
+   */
+  email: string
+
+  /**
+   * User role/title or organization name
    */
   role: string
 
@@ -61,6 +68,11 @@ export interface UserProfile {
    * Avatar URL (optional)
    */
   avatarUrl?: string
+
+  /**
+   * List of organizations user belongs to
+   */
+  organizations?: Organization[]
 }
 
 export interface SidebarProps {
@@ -90,9 +102,19 @@ export interface SidebarProps {
   appSubtitle?: string
 
   /**
-   * Callback when user profile is clicked
+   * Callback when settings is clicked in profile popup
    */
-  onProfileClick?: () => void
+  onSettingsClick?: () => void
+
+  /**
+   * Callback when logout is clicked in profile popup
+   */
+  onLogoutClick?: () => void
+
+  /**
+   * Callback when an organization is clicked in profile popup
+   */
+  onOrganizationClick?: (org: Organization) => void
 
   /**
    * Additional class names
@@ -130,9 +152,11 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
       menuItems,
       userProfile,
       logoUrl,
-      appTitle = 'DeskPro',
+      appTitle = 'Desk',
       appSubtitle = 'One Link Platform',
-      onProfileClick,
+      onSettingsClick,
+      onLogoutClick,
+      onOrganizationClick,
       className = '',
     },
     ref
@@ -140,6 +164,37 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
     const navigate = useNavigate()
     const location = useLocation()
     const { hasPermission } = useAuth()
+
+    // State for user profile popup
+    const [showProfilePopup, setShowProfilePopup] = useState(false)
+    const profileButtonRef = useRef<HTMLButtonElement>(null)
+    const popupRef = useRef<HTMLDivElement>(null)
+
+    // State for expandable menu items
+    const [expandedMenus, setExpandedMenus] = useState<Set<number>>(new Set())
+
+    /**
+     * Close popup when clicking outside
+     */
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          popupRef.current &&
+          !popupRef.current.contains(event.target as Node) &&
+          profileButtonRef.current &&
+          !profileButtonRef.current.contains(event.target as Node)
+        ) {
+          setShowProfilePopup(false)
+        }
+      }
+
+      if (showProfilePopup) {
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => {
+          document.removeEventListener('mousedown', handleClickOutside)
+        }
+      }
+    }, [showProfilePopup])
 
     /**
      * Check if a menu item should be visible based on RBAC
@@ -163,6 +218,37 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
       if (item.path) {
         navigate(item.path)
       }
+    }
+
+    /**
+     * Toggle expanded state for menu with children
+     */
+    const toggleMenuExpansion = (index: number) => {
+      const newExpanded = new Set(expandedMenus)
+      if (newExpanded.has(index)) {
+        newExpanded.delete(index)
+      } else {
+        newExpanded.add(index)
+      }
+      setExpandedMenus(newExpanded)
+    }
+
+    /**
+     * Handle profile popup actions
+     */
+    const handleSettingsClickInternal = () => {
+      setShowProfilePopup(false)
+      onSettingsClick?.()
+    }
+
+    const handleLogoutClickInternal = () => {
+      setShowProfilePopup(false)
+      onLogoutClick?.()
+    }
+
+    const handleOrganizationClickInternal = (org: Organization) => {
+      setShowProfilePopup(false)
+      onOrganizationClick?.(org)
     }
 
     return (
@@ -219,42 +305,115 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
           </div>
 
           {/* Navigation Menu */}
-          <nav className="flex flex-col gap-[7px] w-full h-[329px] items-start">
+          <nav className="flex flex-col gap-[7px] w-full items-start pt-[7px]">
             {menuItems.filter(isMenuItemVisible).map((item, index) => {
               const active = isActive(item.path)
+              const hasChildren = item.children && item.children.length > 0
+              const isExpanded = expandedMenus.has(index)
 
               return (
-                <div key={index} className="w-full h-[35px] relative">
-                  <button
-                    type="button"
-                    onClick={() => handleMenuClick(item)}
-                    className={`
-                      flex items-center gap-[10.5px]
-                      w-[195px] h-[35px]
-                      pl-[10.5px] pr-0 py-0
-                      rounded-[8.75px]
-                      transition-colors duration-200
-                      ${active ? 'bg-neutral-100' : 'hover:bg-neutral-100/50'}
-                      focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
-                    `}
-                    aria-current={active ? 'page' : undefined}
-                  >
-                    {/* Icon */}
-                    <div className="flex-shrink-0 w-[17.5px] h-[17.5px]">
-                      {item.icon}
-                    </div>
+                <div key={index} className="w-full flex flex-col gap-2">
+                  {/* Main menu item */}
+                  <div className="w-full h-[35px] relative">
+                    {hasChildren ? (
+                      // Parent menu item with submenu
+                      <button
+                        type="button"
+                        onClick={() => toggleMenuExpansion(index)}
+                        className={`
+                          flex items-center justify-between
+                          w-full h-[36px]
+                          px-[10.5px] py-0
+                          rounded-[8.75px]
+                          transition-colors duration-200
+                          ${active ? 'bg-neutral-100' : 'hover:bg-neutral-100/50'}
+                          focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
+                        `}
+                      >
+                        <div className="flex items-center gap-[11px]">
+                          {/* Icon */}
+                          <div className="flex-shrink-0 w-[17.5px] h-[17.5px]">
+                            {item.icon}
+                          </div>
 
-                    {/* Label */}
-                    <span
-                      className={`
-                        text-[12.5px] font-normal leading-[21px] tracking-[-0.1504px]
-                        ${active ? 'text-neutral-900' : 'text-neutral-950'}
-                      `}
-                      style={{ fontSize: 'var(--font/menu/sidebar/size, 12.5px)' }}
-                    >
-                      {item.label}
-                    </span>
-                  </button>
+                          {/* Label */}
+                          <span className="text-menu-sidebar font-normal leading-[21px] tracking-[-0.1504px] text-neutral-950">
+                            {item.label}
+                          </span>
+                        </div>
+
+                        {/* Dropdown arrow */}
+                        <div
+                          className={`
+                            w-6 h-6 flex items-center justify-center
+                            transition-transform duration-200
+                            ${isExpanded ? 'rotate-90' : ''}
+                          `}
+                        >
+                          <ChevronRightIcon size={12} color="#737373" />
+                        </div>
+                      </button>
+                    ) : (
+                      // Regular menu item
+                      <button
+                        type="button"
+                        onClick={() => handleMenuClick(item)}
+                        className={`
+                          flex items-center gap-[10.5px]
+                          w-[195px] h-[35px]
+                          pl-[10.5px] pr-0 py-0
+                          rounded-[8.75px]
+                          transition-colors duration-200
+                          ${active ? 'bg-neutral-100' : 'hover:bg-neutral-100/50'}
+                          focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
+                        `}
+                        aria-current={active ? 'page' : undefined}
+                      >
+                        {/* Icon */}
+                        <div className="flex-shrink-0 w-[17.5px] h-[17.5px]">
+                          {item.icon}
+                        </div>
+
+                        {/* Label */}
+                        <span className="text-menu-sidebar font-normal leading-[21px] tracking-[-0.1504px] text-neutral-950">
+                          {item.label}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Submenu items */}
+                  {hasChildren && isExpanded && (
+                    <div className="flex flex-col gap-[7px] pl-[28px]">
+                      {item.children!.filter(isMenuItemVisible).map((child, childIndex) => {
+                        const childActive = isActive(child.path)
+
+                        return (
+                          <div key={childIndex} className="w-full h-[35px] relative">
+                            <button
+                              type="button"
+                              onClick={() => handleMenuClick(child)}
+                              className={`
+                                flex items-center gap-[10.5px]
+                                w-[195px] h-[35px]
+                                pl-[10.5px] pr-0 py-0
+                                rounded-[8.75px]
+                                transition-colors duration-200
+                                ${childActive ? 'bg-neutral-100' : 'hover:bg-neutral-100/50'}
+                                focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
+                              `}
+                              aria-current={childActive ? 'page' : undefined}
+                            >
+                              {/* Label only for submenu items */}
+                              <span className="text-menu-sidebar font-normal leading-[21px] tracking-[-0.1504px] text-neutral-950">
+                                {child.label}
+                              </span>
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -267,10 +426,31 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
           w-full h-[60.5px]
           pt-[15px] px-[14px] pb-0
           border-t border-neutral-200
+          relative
         ">
+          {/* User Profile Popup */}
+          {showProfilePopup && (
+            <div
+              ref={popupRef}
+              className="absolute bottom-[60px] left-0 z-popover"
+              style={{ marginLeft: '14px', marginBottom: '8px' }}
+            >
+              <UserProfilePopup
+                userName={userProfile.name}
+                userEmail={userProfile.email}
+                userAvatar={userProfile.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${userProfile.initials}`}
+                organizations={userProfile.organizations || []}
+                onSettingsClick={handleSettingsClickInternal}
+                onLogoutClick={handleLogoutClickInternal}
+                onOrganizationClick={handleOrganizationClickInternal}
+              />
+            </div>
+          )}
+
           <button
+            ref={profileButtonRef}
             type="button"
-            onClick={onProfileClick}
+            onClick={() => setShowProfilePopup(!showProfilePopup)}
             className="
               flex items-center gap-[10.5px] w-full
               transition-colors duration-200
@@ -278,6 +458,7 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
               focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
             "
             aria-label="User profile"
+            aria-expanded={showProfilePopup}
           >
             {/* Avatar */}
             <div className="

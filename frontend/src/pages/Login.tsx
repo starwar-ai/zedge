@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SocialLoginButton, WeChatIcon, QQIcon, CampusIcon } from '@/components/features/auth'
-import logoContainer from '@/assets/images/login/logo-container.png'
+import logoContainer from '@/assets/images/logo-container.png'
 
 /**
  * Login Page Component

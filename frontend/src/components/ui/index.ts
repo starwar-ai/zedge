@@ -44,7 +44,15 @@ export type { SelectProps, SelectOption } from './Select'
 export { Pagination } from './Pagination'
 export type { PaginationProps } from './Pagination'
 
-export { AddIcon, FilterIcon, UndoIcon, IconShowcase } from './Icons'
+export {
+  AddIcon,
+  FilterIcon,
+  UndoIcon,
+  SettingsIcon,
+  LogoutIcon,
+  ChevronRightIcon,
+  IconShowcase
+} from './Icons'
 export type { IconProps } from './Icons'
 
 export {
