@@ -33,6 +33,7 @@ export type {
   TableDropdownCellProps,
   TableActionCellProps,
   TableEnumCellProps,
+  FixedPosition,
 } from './Table'
 
 export { Input } from './Input'
