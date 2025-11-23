@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Table,
   TableHead,
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui'
 import { User, UserStatus, UserStatusLabels } from '@/types/user'
 import { Plus } from 'lucide-react'
+import { usePageHeader } from '@/components/layout/MainLayout'
 
 /**
  * User Management Page
@@ -70,6 +71,8 @@ const mockUsers: User[] = [
 ]
 
 export function UserManagement() {
+  const { setHeader } = usePageHeader()
+  
   // Search state
   const [userIdSearch, setUserIdSearch] = useState('')
   const [usernameSearch, setUsernameSearch] = useState('')
@@ -126,13 +129,11 @@ export function UserManagement() {
     // TODO: Show context menu with edit, delete, etc.
   }
 
-  return (
-    <div className="flex flex-col gap-3 h-full">
-      {/* Header - Figma node: 2027:1436 */}
-      <div className="flex items-center justify-between h-[62.5px] px-6 py-3">
-        <h1 className="text-[18px] font-medium leading-[31.5px] text-[#314158]">
-          用户列表
-        </h1>
+  // Set page header actions
+  useEffect(() => {
+    setHeader({
+      // Title is automatically set based on route ('用户列表')
+      action: (
         <button
           onClick={handleCreate}
           className="flex items-center justify-center h-[28px] min-w-[100px] px-[11px] py-[7px] bg-[#262626] text-white rounded-[6.75px] text-[12.5px] font-medium tracking-[1px] leading-[17.5px] hover:bg-[#333] transition-colors"
@@ -140,8 +141,14 @@ export function UserManagement() {
           <Plus className="w-[14px] h-[14px] mr-1" />
           新建
         </button>
-      </div>
+      ),
+    })
+  }, [setHeader])
 
+  return (
+    <div className="flex flex-col gap-3 h-full">
+      {/* Header removed - managed by MainLayout */}
+      
       {/* Content - Figma node: 2027:1439 */}
       <div className="flex-1 px-6 pb-6">
         {/* Table Panel - Figma node: 2027:1442 */}

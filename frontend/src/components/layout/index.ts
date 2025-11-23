@@ -3,7 +3,7 @@
  * Barrel exports for layout-related components
  */
 
-export { MainLayout } from './MainLayout'
+export { MainLayout, usePageHeader } from './MainLayout'
 export { Sidebar, createDefaultMenuItems } from './Sidebar'
 export type { SidebarProps, MenuItem, UserProfile } from './Sidebar'
 export { PageHeader } from './PageHeader'

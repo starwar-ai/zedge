@@ -557,6 +557,7 @@ Sidebar.displayName = 'Sidebar'
  */
 export const createDefaultMenuItems = (icons: {
   dashboard: React.ReactNode
+  user: React.ReactNode
   imageManagement: React.ReactNode
   template: React.ReactNode
   instance: React.ReactNode
@@ -570,6 +571,13 @@ export const createDefaultMenuItems = (icons: {
     label: '操作台',
     path: '/dashboard',
     icon: icons.dashboard,
+  },
+  {
+    label: '用户列表',
+    path: '/users',
+    icon: icons.user,
+    resource: ResourceType.USER,
+    action: PermissionAction.READ,
   },
   {
     label: '镜像管理',

@@ -55,6 +55,35 @@ export const DashboardIcon: React.FC<IconProps> = ({ className = '' }) => (
 )
 
 /**
+ * User Icon (用户列表)
+ */
+export const UserIcon: React.FC<IconProps> = ({ className = '' }) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 18 18"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path
+      d="M14.5833 15.3125V13.8542C14.5833 13.0815 14.2763 12.3404 13.7299 11.794C13.1835 11.2476 12.4424 10.9406 11.6667 10.9406H6.33333C5.55761 10.9406 4.81652 11.2476 4.27009 11.794C3.72366 12.3404 3.41667 13.0815 3.41667 13.8542V15.3125"
+      stroke="currentColor"
+      strokeWidth="1.45833"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M9 8.02083C10.6108 8.02083 11.9167 6.71499 11.9167 5.10417C11.9167 3.49334 10.6108 2.1875 9 2.1875C7.38917 2.1875 6.08333 3.49334 6.08333 5.10417C6.08333 6.71499 7.38917 8.02083 9 8.02083Z"
+      stroke="currentColor"
+      strokeWidth="1.45833"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/**
  * Image Management Icon (镜像管理)
  */
 export const ImageManagementIcon: React.FC<IconProps> = ({ className = '' }) => (
