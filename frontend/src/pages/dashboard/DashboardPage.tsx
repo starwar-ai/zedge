@@ -13,7 +13,7 @@ import React from 'react'
  * - Header section with page title (Handled by MainLayout)
  * - White background for main content
  */
-export const Dashboard: React.FC = () => {
+export const DashboardPage: React.FC = () => {
   return (
     <main className="flex-1 w-full">
       {/* Dashboard content will go here */}
@@ -24,4 +24,4 @@ export const Dashboard: React.FC = () => {
   )
 }
 
-export default Dashboard
+export default DashboardPage

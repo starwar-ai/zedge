@@ -70,7 +70,7 @@ const mockUsers: User[] = [
   },
 ]
 
-export function UserManagement() {
+export function UserManagementPage() {
   const { setHeader } = usePageHeader()
   
   // Search state

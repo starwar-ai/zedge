@@ -11,8 +11,8 @@
  * - RBAC integration
  */
 
-import { useState, useEffect, useMemo } from 'react'
-import { Plus, Filter, RotateCcw } from 'lucide-react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Plus, Filter, RotateCcw, Settings } from 'lucide-react'
 import {
   Table,
   TableHead,
@@ -27,7 +27,8 @@ import {
   Button,
   Dialog
 } from '@/components/ui'
-import { NewMenuDialog } from '@/components/features/menu/NewMenuDialog'
+import { NewMenuDialog } from './NewMenuDialog'
+import { TableSettingDialog, ColumnDef, ColumnSetting } from '@/components/features/table/TableSettingDialog'
 import { usePageHeader } from '@/components/layout/MainLayout'
 
 // Menu data type
@@ -98,6 +99,46 @@ const mockMenuData: MenuData[] = [
 
 export function MenuManagementPage() {
   const { setHeader } = usePageHeader()
+
+  // Column definitions
+  const allColumns: ColumnDef[] = useMemo(() => [
+    { id: 'name', label: '菜单名称' },
+    { id: 'number', label: '编号' },
+    { id: 'status', label: '状态' },
+    { id: 'applicableUsers', label: '适用租户类型' },
+    { id: 'remarks', label: '备注' },
+    { id: 'path', label: '路径' },
+  ], [])
+
+  const defaultColumnSettings: ColumnSetting[] = useMemo(() => [
+    { id: 'name', fixed: 'left' },
+    { id: 'number' },
+    { id: 'status' },
+    { id: 'applicableUsers' },
+    { id: 'remarks' },
+    { id: 'path' },
+  ], [])
+
+  // Column settings state
+  const [columnSettings, setColumnSettings] = useState<ColumnSetting[]>(defaultColumnSettings)
+  const [isTableSettingOpen, setIsTableSettingOpen] = useState(false)
+
+  // Column width state
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
+    name: 150,
+    path: 70,
+    number: 111,
+    status: 80,
+    applicableUsers: 200,
+    remarks: 200 // Default width for remarks (previously 100%)
+  })
+
+  const handleColumnResize = useCallback((column: string, newWidth: number) => {
+    setColumnWidths(prev => ({
+      ...prev,
+      [column]: newWidth
+    }))
+  }, [])
 
   // Search state
   const [searchMenuId, setSearchMenuId] = useState('')
@@ -271,6 +312,14 @@ export function MenuManagementPage() {
               >
                 重置
               </Button>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => setIsTableSettingOpen(true)}
+                icon={<Settings className="w-[14px] h-[14px]" />}
+                className="w-[32px] px-0 min-w-0"
+                title="列设置"
+              />
             </div>
           </div>
 
@@ -278,7 +327,7 @@ export function MenuManagementPage() {
             <Table>
               <TableHead>
                 <TableRow>
-                  {/* Fixed left columns */}
+                  {/* Always Fixed Checkbox Column */}
                   <TableHeaderCell showDivider className="w-[36px]" fixed="left" fixedOffset={0}>
                     <input
                       type="checkbox"
@@ -290,16 +339,38 @@ export function MenuManagementPage() {
                       className="w-5 h-5 border border-[#767575] rounded-none cursor-pointer bg-white"
                     />
                   </TableHeaderCell>
-                  <TableHeaderCell className="w-[150px]" fixed="left" fixedOffset={36}>
-                    菜单名称
-                  </TableHeaderCell>
-                  {/* Scrollable columns */}
-                  <TableHeaderCell className="w-[111px]">编号</TableHeaderCell>
-                  <TableHeaderCell className="w-[80px]">状态</TableHeaderCell>
-                  <TableHeaderCell className="w-[200px]">适用租户类型</TableHeaderCell>
-                  <TableHeaderCell width="100%">备注</TableHeaderCell>
-                  <TableHeaderCell className="w-[70px]">路径</TableHeaderCell>
-                  {/* Fixed right column */}
+
+                  {/* Dynamic Columns */}
+                  {(() => {
+                    let currentLeftOffset = 36 // Start after checkbox
+                    return columnSettings.map((col) => {
+                      const colDef = allColumns.find((c) => c.id === col.id)
+                      if (!colDef) return null
+                      
+                      const width = columnWidths[col.id] || 100
+                      const isFixed = col.fixed === 'left'
+                      const offset = isFixed ? currentLeftOffset : undefined
+                      
+                      if (isFixed) {
+                        currentLeftOffset += width
+                      }
+
+                      return (
+                        <TableHeaderCell
+                          key={col.id}
+                          resizable
+                          width={width}
+                          onResize={(w) => handleColumnResize(col.id, w)}
+                          fixed={col.fixed}
+                          fixedOffset={offset}
+                        >
+                          {colDef.label}
+                        </TableHeaderCell>
+                      )
+                    })
+                  })()}
+
+                  {/* Fixed Actions Column */}
                   <TableHeaderCell showDivider={false} className="min-w-[150px]" fixed="right" fixedOffset={0}>
                     操作
                   </TableHeaderCell>
@@ -309,32 +380,74 @@ export function MenuManagementPage() {
               <TableBody>
                 {displayRows.map((menu) => (
                   <TableRow key={menu.id}>
-                    {/* Fixed left columns */}
+                    {/* Checkbox Cell */}
                     <TableSelectCell
                       checked={selectedMenus.has(menu.id)}
                       onCheckedChange={(checked) => handleSelectMenu(menu.id, checked)}
                       fixed="left"
                       fixedOffset={0}
                     />
-                    <TableTextCell 
-                      fixed="left" 
-                      fixedOffset={36}
-                      hasSubRows={menu.children && menu.children.length > 0}
-                      isExpanded={expandedMenus.has(menu.id)}
-                      onExpandChange={() => toggleExpand(menu.id)}
-                      indentLevel={menu.level}
-                    >
-                      {menu.name}
-                    </TableTextCell>
-                    {/* Scrollable columns */}
-                    <TableTextCell>{menu.number}</TableTextCell>
-                    <TableEnumCell variant={menu.status === '开启' ? 'success' : 'default'}>
-                      {menu.status}
-                    </TableEnumCell>
-                    <TableTextCell>{menu.applicableUsers}</TableTextCell>
-                    <TableTextCell>{menu.remarks}</TableTextCell>
-                    <TableTextCell>{menu.path}</TableTextCell>
-                    {/* Fixed right column */}
+
+                    {/* Dynamic Cells */}
+                    {(() => {
+                      let currentLeftOffset = 36
+                      return columnSettings.map((col) => {
+                        const width = columnWidths[col.id] || 100
+                        const isFixed = col.fixed === 'left'
+                        const offset = isFixed ? currentLeftOffset : undefined
+                        
+                        if (isFixed) {
+                          currentLeftOffset += width
+                        }
+
+                        // Render specific cell types based on column ID
+                        if (col.id === 'name') {
+                          return (
+                            <TableTextCell
+                              key={col.id}
+                              fixed={col.fixed}
+                              fixedOffset={offset}
+                              width={width}
+                              hasSubRows={menu.children && menu.children.length > 0}
+                              isExpanded={expandedMenus.has(menu.id)}
+                              onExpandChange={() => toggleExpand(menu.id)}
+                              indentLevel={menu.level}
+                            >
+                              {menu.name}
+                            </TableTextCell>
+                          )
+                        }
+
+                        if (col.id === 'status') {
+                          return (
+                            <TableEnumCell
+                              key={col.id}
+                              fixed={col.fixed}
+                              fixedOffset={offset}
+                              width={width}
+                              variant={menu.status === '开启' ? 'success' : 'default'}
+                            >
+                              {menu.status}
+                            </TableEnumCell>
+                          )
+                        }
+
+                        // Default Text Cell for other columns
+                        return (
+                          <TableTextCell
+                            key={col.id}
+                            fixed={col.fixed}
+                            fixedOffset={offset}
+                            width={width}
+                          >
+                            {/* @ts-ignore - Accessing dynamic property */}
+                            {menu[col.id]}
+                          </TableTextCell>
+                        )
+                      })
+                    })()}
+
+                    {/* Actions Cell */}
                     <TableActionCell
                       actionText="详情"
                       onAction={() => handleViewDetails(menu)}
@@ -370,6 +483,15 @@ export function MenuManagementPage() {
           onSave={handleSaveMenu}
         />
       </Dialog>
+      
+      <TableSettingDialog
+        open={isTableSettingOpen}
+        onOpenChange={setIsTableSettingOpen}
+        allColumns={allColumns}
+        value={columnSettings}
+        defaultValue={defaultColumnSettings}
+        onSave={setColumnSettings}
+      />
     </div>
   )
 }

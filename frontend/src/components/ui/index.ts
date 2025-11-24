@@ -52,7 +52,6 @@ export {
   SettingsIcon,
   LogoutIcon,
   ChevronRightIcon,
-  IconShowcase
 } from './Icons'
 export type { IconProps } from './Icons'
 

@@ -1,0 +1,2 @@
+export { MenuManagementPage } from './MenuManagementPage'
+

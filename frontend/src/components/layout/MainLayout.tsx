@@ -125,20 +125,22 @@ export const MainLayout: React.FC = () => {
           .toUpperCase(),
         name: user.username,
         role: user.role,
+        email: user.email,
       }
     : {
         initials: 'JD',
         name: '张小川',
         role: '教师',
+        email: 'zhangxiaochuan@example.com',
       }
 
+  const contextValue = useMemo(() => ({
+    setHeader: (state: PageHeaderState) => setCustomHeader(prev => ({ ...prev, ...state })),
+    resetHeader: () => setCustomHeader({})
+  }), [])
+
   return (
-    <PageHeaderContext.Provider 
-      value={{ 
-        setHeader: (state) => setCustomHeader(prev => ({ ...prev, ...state })),
-        resetHeader: () => setCustomHeader({}) 
-      }}
-    >
+    <PageHeaderContext.Provider value={contextValue}>
       <div className="flex items-start w-full h-screen bg-surface-primary overflow-hidden">
         {/* Sidebar Navigation - Fixed width, full height, no scroll */}
         <div

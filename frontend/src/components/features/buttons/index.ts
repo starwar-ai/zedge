@@ -1,4 +1,4 @@
 /**
  * Export all button components
  */
-export { CreateButton, FilterButton, ResetButton, FigmaButtonShowcase } from './FigmaButtons'
+export { CreateButton, FilterButton, ResetButton } from './FigmaButtons'

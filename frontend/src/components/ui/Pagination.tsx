@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 
 /**
@@ -127,6 +127,23 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
   ) => {
     const [gotoPage, setGotoPage] = useState('')
     const [isPageSizeOpen, setIsPageSizeOpen] = useState(false)
+    const pageSizeRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (pageSizeRef.current && !pageSizeRef.current.contains(event.target as Node)) {
+          setIsPageSizeOpen(false)
+        }
+      }
+
+      if (isPageSizeOpen) {
+        document.addEventListener('mousedown', handleClickOutside)
+      }
+
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }, [isPageSizeOpen])
 
     const isFirstPage = currentPage === 1
     const isLastPage = currentPage === totalPages
@@ -177,7 +194,7 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
         {showPageSize && (
           <div className="flex items-center gap-2 py-1">
             {/* Dropdown */}
-            <div className="relative w-[55px]">
+            <div ref={pageSizeRef} className="relative w-[55px]">
               <button
                 type="button"
                 onClick={() => setIsPageSizeOpen(!isPageSizeOpen)}

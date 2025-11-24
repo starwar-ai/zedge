@@ -4,7 +4,8 @@
  * Centralized exports for all page components
  */
 
-export { default as Dashboard } from './Dashboard'
-export { default as LoginPage } from './Login'
-export { UserManagement } from './UserManagement'
-export { ImageManagementPage, NewImagePage } from './image-management'
+export * from './dashboard'
+export * from './login'
+export * from './user-management'
+export * from './menu-management'
+export * from './image-management'

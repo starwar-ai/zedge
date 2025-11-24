@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { ChevronDown, MoreVertical, ChevronRight } from 'lucide-react'
 
 /**
@@ -94,6 +94,21 @@ export interface TableHeaderCellProps extends React.ThHTMLAttributes<HTMLTableCe
    * Custom width for the column
    */
   width?: string | number
+
+  /**
+   * Enable column resizing
+   */
+  resizable?: boolean
+
+  /**
+   * Callback when column is resized
+   */
+  onResize?: (width: number) => void
+
+  /**
+   * Minimum width for the column
+   */
+  minWidth?: number
 }
 
 /**
@@ -101,15 +116,94 @@ export interface TableHeaderCellProps extends React.ThHTMLAttributes<HTMLTableCe
  * Figma node-id: 105:2653
  */
 export const TableHeaderCell = React.forwardRef<HTMLTableCellElement, TableHeaderCellProps>(
-  ({ children, showDivider = true, sortable, sortDirection, onSort, fixed, fixedOffset, width, className = '', style, ...props }, ref) => {
+  ({ 
+    children, 
+    showDivider = true, 
+    sortable, 
+    sortDirection, 
+    onSort, 
+    fixed, 
+    fixedOffset, 
+    width, 
+    className = '', 
+    style, 
+    resizable,
+    onResize,
+    minWidth = 50,
+    ...props 
+  }, ref) => {
     const fixedStyles = getFixedStyles(fixed, fixedOffset)
     const fixedClass = getFixedClassName(fixed)
+    const thRef = useRef<HTMLTableCellElement>(null)
+    const [isResizing, setIsResizing] = useState(false)
+    
+    // Allow parent to attach ref while we use it internally
+    React.useImperativeHandle(ref, () => thRef.current!)
+
+    // Ref to store drag state without triggering re-renders during drag
+    const dragRef = useRef<{ startX: number; startWidth: number }>({ startX: 0, startWidth: 0 })
+
+    useEffect(() => {
+      if (!isResizing) return
+
+      const handleMouseMove = (e: MouseEvent) => {
+        const delta = e.clientX - dragRef.current.startX
+        const newWidth = Math.max(minWidth, dragRef.current.startWidth + delta)
+        
+        // Direct DOM manipulation for performance
+        if (thRef.current) {
+          thRef.current.style.width = `${newWidth}px`
+        }
+      }
+
+      const handleMouseUp = (e: MouseEvent) => {
+        // Calculate final width to report back
+        const delta = e.clientX - dragRef.current.startX
+        const newWidth = Math.max(minWidth, dragRef.current.startWidth + delta)
+        
+        setIsResizing(false)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+        
+        onResize?.(newWidth)
+      }
+
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      
+      // Set global cursor and prevent selection
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
+    }, [isResizing, minWidth, onResize])
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+      // Only trigger with left mouse button
+      if (e.button !== 0) return
+      
+      e.preventDefault()
+      e.stopPropagation()
+      
+      if (thRef.current) {
+        dragRef.current = {
+          startX: e.clientX,
+          startWidth: thRef.current.offsetWidth
+        }
+        setIsResizing(true)
+      }
+    }
 
     return (
       <th
-        ref={ref}
-        className={`bg-white border-b border-[#f5f5f5] h-[46px] pl-2 pr-0 py-4 whitespace-nowrap ${fixedClass} ${className}`}
-        style={{ ...fixedStyles, width, ...style }}
+        ref={thRef}
+        className={`bg-white border-b border-[#f5f5f5] h-[46px] pl-2 pr-0 py-4 whitespace-nowrap relative ${fixedClass} ${className}`}
+        style={{ ...fixedStyles, width, minWidth: width, ...style }}
         {...props}
       >
         <div className="flex items-center justify-between h-full">
@@ -120,6 +214,18 @@ export const TableHeaderCell = React.forwardRef<HTMLTableCellElement, TableHeade
             <div className="w-px h-[15px] bg-[#f5f5f5] shrink-0" />
           )}
         </div>
+
+        {resizable && (
+          <div
+            title="拖动调整列宽"
+            className="absolute top-0 right-0 h-full w-6 cursor-col-resize flex justify-center items-center z-10 touch-none select-none"
+            style={{ transform: 'translateX(50%)' }}
+            onMouseDown={handleMouseDown}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Optional: Active state indicator could go here */}
+          </div>
+        )}
       </th>
     )
   }
