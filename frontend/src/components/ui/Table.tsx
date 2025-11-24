@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ChevronDown, MoreVertical } from 'lucide-react'
+import { ChevronDown, MoreVertical, ChevronRight } from 'lucide-react'
 
 /**
  * Table component matching Figma DeskPro design system
@@ -137,6 +137,26 @@ export interface TableTextCellProps extends React.TdHTMLAttributes<HTMLTableCell
    * Offset for sticky positioning (in pixels)
    */
   fixedOffset?: number
+
+  /**
+   * Whether the row contains sub-rows
+   */
+  hasSubRows?: boolean
+
+  /**
+   * Whether the sub-rows are expanded
+   */
+  isExpanded?: boolean
+
+  /**
+   * Callback when expansion state changes
+   */
+  onExpandChange?: () => void
+
+  /**
+   * Indentation level (0, 1, 2...) for nested rows
+   */
+  indentLevel?: number
 }
 
 /**
@@ -144,7 +164,7 @@ export interface TableTextCellProps extends React.TdHTMLAttributes<HTMLTableCell
  * Figma node-id: 105:2657
  */
 export const TableTextCell = React.forwardRef<HTMLTableCellElement, TableTextCellProps>(
-  ({ children, fixed, fixedOffset, className = '', style, ...props }, ref) => {
+  ({ children, fixed, fixedOffset, hasSubRows, isExpanded, onExpandChange, indentLevel = 0, className = '', style, ...props }, ref) => {
     const fixedStyles = getFixedStyles(fixed, fixedOffset)
     const fixedClass = getFixedClassName(fixed)
 
@@ -155,9 +175,30 @@ export const TableTextCell = React.forwardRef<HTMLTableCellElement, TableTextCel
         style={{ ...fixedStyles, ...style }}
         {...props}
       >
-        <span className="text-[14px] font-normal text-black leading-[14px] tracking-[-0.1504px]">
-          {children}
-        </span>
+        <div className="flex items-center" style={{ paddingLeft: indentLevel ? `${indentLevel * 24}px` : undefined }}>
+          {hasSubRows && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onExpandChange?.()
+              }}
+              className="mr-1 p-0.5 hover:bg-neutral-100 rounded flex items-center justify-center transition-colors"
+            >
+              <ChevronRight
+                className={`w-4 h-4 text-[#737373] transition-transform duration-200 ${
+                  isExpanded ? 'rotate-90' : 'rotate-0'
+                }`}
+              />
+            </button>
+          )}
+          {!hasSubRows && indentLevel > 0 && (
+            <div className="w-[24px] shrink-0" />
+          )}
+          <span className="text-[14px] font-normal text-black leading-[14px] tracking-[-0.1504px]">
+            {children}
+          </span>
+        </div>
       </td>
     )
   }
