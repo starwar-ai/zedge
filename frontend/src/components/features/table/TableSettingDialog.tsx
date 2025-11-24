@@ -13,7 +13,7 @@ export interface ColumnSetting {
   visible?: boolean // Optional, if we use a separate list for visible
 }
 
-interface TableSettingDialogProps {
+export interface TableSettingDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   allColumns: ColumnDef[]

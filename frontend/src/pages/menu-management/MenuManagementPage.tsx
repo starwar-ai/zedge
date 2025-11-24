@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Plus, Filter, RotateCcw, Settings } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import {
   Table,
   TableHead,
@@ -24,11 +24,12 @@ import {
   TableActionCell,
   TableEnumCell,
   Pagination,
-  Button,
   Dialog
 } from '@/components/ui'
 import { NewMenuDialog } from './NewMenuDialog'
-import { TableSettingDialog, ColumnDef, ColumnSetting } from '@/components/features/table/TableSettingDialog'
+import { ColumnDef, ColumnSetting } from '@/components/features/table/TableSettingDialog'
+import { FilterCondition } from '@/components/features/table/AdvancedFilterPopup'
+import { TableToolbar } from '@/components/features/table/TableToolbar'
 import { usePageHeader } from '@/components/layout/MainLayout'
 
 // Menu data type
@@ -121,7 +122,6 @@ export function MenuManagementPage() {
 
   // Column settings state
   const [columnSettings, setColumnSettings] = useState<ColumnSetting[]>(defaultColumnSettings)
-  const [isTableSettingOpen, setIsTableSettingOpen] = useState(false)
 
   // Column width state
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
@@ -144,6 +144,9 @@ export function MenuManagementPage() {
   const [searchMenuId, setSearchMenuId] = useState('')
   const [searchMenuName, setSearchMenuName] = useState('')
 
+  // Advanced filter state
+  const [advancedFilters, setAdvancedFilters] = useState<FilterCondition[]>([])
+
   // Table state
   const [selectedMenus, setSelectedMenus] = useState<Set<string>>(new Set())
   const [menus] = useState<MenuData[]>(mockMenuData)
@@ -159,9 +162,30 @@ export function MenuManagementPage() {
     return menus.filter(menu => {
       const matchId = menu.number.toLowerCase().includes(searchMenuId.toLowerCase())
       const matchName = menu.name.toLowerCase().includes(searchMenuName.toLowerCase())
-      return matchId && matchName
+      
+      // Advanced Filter
+      let matchAdvanced = true
+      if (advancedFilters.length > 0) {
+        matchAdvanced = advancedFilters.every(condition => {
+          const { columnId, operator, value } = condition
+          // @ts-ignore - Accessing dynamic property for demo
+          const itemValue = String(menu[columnId] || '').toLowerCase()
+          const filterValue = value.toLowerCase()
+
+          switch (operator) {
+            case 'eq': return itemValue === filterValue
+            case 'neq': return itemValue !== filterValue
+            case 'contains': return itemValue.includes(filterValue)
+            case 'startsWith': return itemValue.startsWith(filterValue)
+            case 'endsWith': return itemValue.endsWith(filterValue)
+            default: return true
+          }
+        })
+      }
+
+      return matchId && matchName && matchAdvanced
     })
-  }, [menus, searchMenuId, searchMenuName])
+  }, [menus, searchMenuId, searchMenuName, advancedFilters])
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredMenus.length / pageSize)
@@ -233,15 +257,10 @@ export function MenuManagementPage() {
     // TODO: Navigate to details page or open modal
   }
 
-  const handleFilter = () => {
-    // Trigger filter - currently automatic via state
-    console.log('Filter applied')
-    setCurrentPage(1)
-  }
-
   const handleReset = () => {
     setSearchMenuId('')
     setSearchMenuName('')
+    setAdvancedFilters([])
     setCurrentPage(1)
   }
 
@@ -269,59 +288,49 @@ export function MenuManagementPage() {
       <div className="flex-1">
         {/* Table Panel - Figma node: 544:46907 */}
         <div className="border border-[#f5f5f5] rounded-[10px] p-3">
-          {/* Search Bar - Figma node: 544:46908 */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              {/* Search Input 1 - 菜单编号 */}
-              <div className="flex items-center gap-[10px] h-[30px] px-2 py-1 bg-white border border-[#f5f5f5] rounded-[4px] w-[169px]">
-                <input
-                  type="text"
-                  placeholder="菜单编号"
-                  value={searchMenuId}
-                  onChange={(e) => setSearchMenuId(e.target.value)}
-                  className="flex-1 text-[12.5px] leading-[22px] text-[#314158] placeholder:text-[#a1a1a1] outline-none bg-transparent"
-                />
-              </div>
-              {/* Search Input 2 - 菜单名称 */}
-              <div className="flex items-center gap-[10px] h-[30px] px-2 py-1 bg-white border border-[#f5f5f5] rounded-[4px] w-[169px]">
-                <input
-                  type="text"
-                  placeholder="菜单名称"
-                  value={searchMenuName}
-                  onChange={(e) => setSearchMenuName(e.target.value)}
-                  className="flex-1 text-[12.5px] leading-[22px] text-[#314158] placeholder:text-[#a1a1a1] outline-none bg-transparent"
-                />
-              </div>
-              
-              {/* Action Buttons - Figma node: 544:46912 */}
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                onClick={handleFilter}
-                icon={<Filter className="w-[14px] h-[14px]" />}
-                className="w-[88px]"
-              >
-                筛选
-              </Button>
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                onClick={handleReset}
-                icon={<RotateCcw className="w-[14px] h-[14px]" />}
-                className="w-[88px]"
-              >
-                重置
-              </Button>
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                onClick={() => setIsTableSettingOpen(true)}
-                icon={<Settings className="w-[14px] h-[14px]" />}
-                className="w-[32px] px-0 min-w-0"
-                title="列设置"
+          {/* Table Toolbar */}
+          <TableToolbar
+            onReset={handleReset}
+            onRefresh={() => {
+              // Add refresh logic here if needed
+              console.log('Refresh clicked')
+            }}
+            filterProps={{
+              columns: allColumns,
+              onFilter: (conditions) => {
+                setAdvancedFilters(conditions)
+                setCurrentPage(1)
+              },
+              initialConditions: advancedFilters,
+            }}
+            settingProps={{
+              allColumns,
+              value: columnSettings,
+              defaultValue: defaultColumnSettings,
+              onSave: setColumnSettings,
+            }}
+          >
+             {/* Search Input 1 - 菜单编号 */}
+             <div className="flex items-center gap-[10px] h-[30px] px-2 py-1 bg-white border border-[#f5f5f5] rounded-[4px] w-[169px]">
+              <input
+                type="text"
+                placeholder="菜单编号"
+                value={searchMenuId}
+                onChange={(e) => setSearchMenuId(e.target.value)}
+                className="flex-1 text-[12.5px] leading-[22px] text-[#314158] placeholder:text-[#a1a1a1] outline-none bg-transparent"
               />
             </div>
-          </div>
+            {/* Search Input 2 - 菜单名称 */}
+            <div className="flex items-center gap-[10px] h-[30px] px-2 py-1 bg-white border border-[#f5f5f5] rounded-[4px] w-[169px]">
+              <input
+                type="text"
+                placeholder="菜单名称"
+                value={searchMenuName}
+                onChange={(e) => setSearchMenuName(e.target.value)}
+                className="flex-1 text-[12.5px] leading-[22px] text-[#314158] placeholder:text-[#a1a1a1] outline-none bg-transparent"
+              />
+            </div>
+          </TableToolbar>
 
           {/* Menu Table - Figma node: 544:46915 */}
             <Table>
@@ -484,14 +493,6 @@ export function MenuManagementPage() {
         />
       </Dialog>
       
-      <TableSettingDialog
-        open={isTableSettingOpen}
-        onOpenChange={setIsTableSettingOpen}
-        allColumns={allColumns}
-        value={columnSettings}
-        defaultValue={defaultColumnSettings}
-        onSave={setColumnSettings}
-      />
     </div>
   )
 }

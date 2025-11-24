@@ -539,7 +539,7 @@ export const TableActionCell = React.forwardRef<HTMLTableCellElement, TableActio
                 onClick={onMore}
                 className="text-[#737373] hover:text-black transition-colors"
               >
-                <MoreVertical className="w-[3.5px] h-[14px]" />
+                <MoreVertical  />
               </button>
             </>
           )}
