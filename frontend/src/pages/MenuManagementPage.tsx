@@ -11,7 +11,7 @@
  * - RBAC integration
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import {
   Table,
@@ -24,6 +24,7 @@ import {
   TableActionCell,
   TableEnumCell,
   Pagination,
+  Button
 } from '@/components/ui'
 import { usePageHeader } from '@/components/layout/MainLayout'
 
@@ -49,6 +50,26 @@ const mockMenuData: MenuData[] = [
     applicableUsers: '学校、企业、个人',
     remarks: '菜单说明',
     path: 'tenant',
+    children: [
+      {
+        id: '1-1',
+        name: '用户管理',
+        number: 'ID001-1',
+        status: '开启',
+        applicableUsers: '学校、企业、个人',
+        remarks: '菜单说明',
+        path: 'tenant/user',
+      },
+      {
+        id: '1-2',
+        name: '费用管理',
+        number: 'ID001-2',
+        status: '开启',
+        applicableUsers: '学校、企业、个人',
+        remarks: '菜单说明',
+        path: 'tenant/cost',
+      },
+    ]
   },
   {
     id: '2',
@@ -58,6 +79,7 @@ const mockMenuData: MenuData[] = [
     applicableUsers: '学校、企业、个人',
     remarks: '菜单说明',
     path: 'platform',
+    children: []
   },
   {
     id: '3',
@@ -67,6 +89,7 @@ const mockMenuData: MenuData[] = [
     applicableUsers: '学校、企业、个人',
     remarks: '菜单说明',
     path: 'user',
+    children: []
   },
   {
     id: '4',
@@ -76,6 +99,7 @@ const mockMenuData: MenuData[] = [
     applicableUsers: '管理员',
     remarks: '系统配置菜单',
     path: 'system',
+    children: []
   },
 ]
 
@@ -90,21 +114,46 @@ export function MenuManagementPage() {
   // Table state
   const [selectedMenus, setSelectedMenus] = useState<Set<string>>(new Set())
   const [menus] = useState<MenuData[]>(mockMenuData)
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set(['1'])) // Default expand '租户管理'
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
+  // Filter logic (simple root level filtering for demo)
+  const filteredMenus = useMemo(() => {
+    return menus.filter(menu => {
+      const matchId = menu.number.toLowerCase().includes(searchMenuId.toLowerCase())
+      const matchName = menu.name.toLowerCase().includes(searchMenuName.toLowerCase())
+      return matchId && matchName
+    })
+  }, [menus, searchMenuId, searchMenuName])
+
   // Calculate pagination
-  const totalPages = Math.ceil(menus.length / pageSize)
+  const totalPages = Math.ceil(filteredMenus.length / pageSize)
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = startIndex + pageSize
-  const currentMenus = menus.slice(startIndex, endIndex)
+  const currentRootMenus = filteredMenus.slice(startIndex, endIndex)
+
+  // Flatten logic for display
+  const getDisplayRows = (nodes: MenuData[], expandedIds: Set<string>, level = 0): Array<MenuData & { level: number }> => {
+    let rows: Array<MenuData & { level: number }> = []
+    nodes.forEach(node => {
+      rows.push({ ...node, level })
+      if (node.children && node.children.length > 0 && expandedIds.has(node.id)) {
+        rows = rows.concat(getDisplayRows(node.children, expandedIds, level + 1))
+      }
+    })
+    return rows
+  }
+
+  const displayRows = useMemo(() => getDisplayRows(currentRootMenus, expandedMenus), [currentRootMenus, expandedMenus])
 
   // Selection handlers
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedMenus(new Set(currentMenus.map((m) => m.id)))
+      // Select all visible rows (including expanded children)
+      setSelectedMenus(new Set(displayRows.map((m) => m.id)))
     } else {
       setSelectedMenus(new Set())
     }
@@ -120,8 +169,19 @@ export function MenuManagementPage() {
     setSelectedMenus(newSelected)
   }
 
-  const allSelected = currentMenus.length > 0 && currentMenus.every((m) => selectedMenus.has(m.id))
-  const someSelected = currentMenus.some((m) => selectedMenus.has(m.id)) && !allSelected
+  // Expand handlers
+  const toggleExpand = (menuId: string) => {
+    const newExpanded = new Set(expandedMenus)
+    if (newExpanded.has(menuId)) {
+      newExpanded.delete(menuId)
+    } else {
+      newExpanded.add(menuId)
+    }
+    setExpandedMenus(newExpanded)
+  }
+
+  const allSelected = displayRows.length > 0 && displayRows.every((m) => selectedMenus.has(m.id))
+  const someSelected = displayRows.some((m) => selectedMenus.has(m.id)) && !allSelected
 
   // Action handlers
   const handleCreate = () => {
@@ -132,6 +192,18 @@ export function MenuManagementPage() {
   const handleViewDetails = (menu: MenuData) => {
     console.log('View details:', menu)
     // TODO: Navigate to details page or open modal
+  }
+
+  const handleFilter = () => {
+    // Trigger filter - currently automatic via state
+    console.log('Filter applied')
+    setCurrentPage(1)
+  }
+
+  const handleReset = () => {
+    setSearchMenuId('')
+    setSearchMenuName('')
+    setCurrentPage(1)
   }
 
   // Set page header actions
@@ -181,9 +253,15 @@ export function MenuManagementPage() {
                   className="flex-1 text-[12.5px] leading-[22px] text-[#a1a1a1] placeholder:text-[#a1a1a1] outline-none bg-transparent"
                 />
               </div>
+              
+              {/* Action Buttons */}
+              <Button variant="secondary" size="sm" onClick={handleFilter}>
+                筛选
+              </Button>
+              <Button variant="secondary" size="sm" onClick={handleReset}>
+                重置
+              </Button>
             </div>
-            {/* Empty space for buttons area - Figma shows empty */}
-            <div className="w-[100px] h-[28px]" />
           </div>
 
           {/* Menu Table - Figma node: 2027:1987 */}
@@ -204,7 +282,7 @@ export function MenuManagementPage() {
                       className="w-5 h-5 border border-[#767575] rounded-none cursor-pointer bg-white"
                     />
                   </TableHeaderCell>
-                  <TableHeaderCell className="w-[111px]" fixed="left" fixedOffset={36}>
+                  <TableHeaderCell className="w-[200px]" fixed="left" fixedOffset={36}>
                     菜单名称
                   </TableHeaderCell>
                   {/* Scrollable columns */}
@@ -221,7 +299,7 @@ export function MenuManagementPage() {
               </TableHead>
 
               <TableBody>
-                {currentMenus.map((menu) => (
+                {displayRows.map((menu) => (
                   <TableRow key={menu.id}>
                     {/* Fixed left columns */}
                     <TableSelectCell
@@ -230,7 +308,14 @@ export function MenuManagementPage() {
                       fixed="left"
                       fixedOffset={0}
                     />
-                    <TableTextCell fixed="left" fixedOffset={36}>
+                    <TableTextCell 
+                      fixed="left" 
+                      fixedOffset={36}
+                      hasSubRows={menu.children && menu.children.length > 0}
+                      isExpanded={expandedMenus.has(menu.id)}
+                      onExpandChange={() => toggleExpand(menu.id)}
+                      indentLevel={menu.level}
+                    >
                       {menu.name}
                     </TableTextCell>
                     {/* Scrollable columns */}
