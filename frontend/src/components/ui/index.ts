@@ -75,3 +75,5 @@ export type {
   FormGroupProps,
   FormSelectOption,
 } from './Form'
+
+export { Dialog } from './Dialog'

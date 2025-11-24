@@ -183,7 +183,6 @@ export function UserManagement() {
 
           {/* User Table - Figma node: 2027:1987 */}
           {/* Fixed columns: checkbox + 用户编号 + 用户名 on left, 操作 on right */}
-          <div className="overflow-x-auto w-full">
             <Table>
               <TableHead>
                 <TableRow>
@@ -210,7 +209,7 @@ export function UserManagement() {
                   <TableHeaderCell className="w-[63px]">状态</TableHeaderCell>
                   <TableHeaderCell className="w-[150px]">角色</TableHeaderCell>
                   <TableHeaderCell className="w-[150px]">租户</TableHeaderCell>
-                  <TableHeaderCell className="w-[145px]">用户组</TableHeaderCell>
+                  <TableHeaderCell>用户组</TableHeaderCell>
                   <TableHeaderCell className="w-[166px]">最近登录时间</TableHeaderCell>
                   {/* Fixed right column */}
                   <TableHeaderCell showDivider={false} className="w-[111px]" fixed="right" fixedOffset={0}>
@@ -256,7 +255,6 @@ export function UserManagement() {
                 ))}
               </TableBody>
             </Table>
-          </div>
 
           {/* Pagination Footer - Figma node: 2027:1585 */}
           <div className="flex justify-end p-3">

@@ -173,7 +173,7 @@ export const MainLayout: React.FC = () => {
 
           {/* Scrollable content area */}
           <div
-            className="flex-1 flex flex-col items-start overflow-y-auto overflow-x-hidden p-page gap-card"
+            className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden p-page gap-card"
           >
             <Outlet />
           </div>

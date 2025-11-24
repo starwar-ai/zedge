@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Filter, RotateCcw } from 'lucide-react'
 import {
   Table,
   TableHead,
@@ -24,8 +24,10 @@ import {
   TableActionCell,
   TableEnumCell,
   Pagination,
-  Button
+  Button,
+  Dialog
 } from '@/components/ui'
+import { NewMenuDialog } from '@/components/features/menu/NewMenuDialog'
 import { usePageHeader } from '@/components/layout/MainLayout'
 
 // Menu data type
@@ -47,25 +49,25 @@ const mockMenuData: MenuData[] = [
     name: '租户管理',
     number: 'ID001',
     status: '开启',
-    applicableUsers: '学校、企业、个人',
+    applicableUsers: '学校，企业，个人',
     remarks: '菜单说明',
-    path: 'tenant',
+    path: '',
     children: [
       {
         id: '1-1',
         name: '用户管理',
-        number: 'ID001-1',
+        number: 'ID001',
         status: '开启',
-        applicableUsers: '学校、企业、个人',
+        applicableUsers: '学校，企业，个人',
         remarks: '菜单说明',
-        path: 'tenant/user',
+        path: 'tenant/userlist',
       },
       {
         id: '1-2',
         name: '费用管理',
-        number: 'ID001-2',
+        number: 'ID001',
         status: '开启',
-        applicableUsers: '学校、企业、个人',
+        applicableUsers: '学校，企业，个人',
         remarks: '菜单说明',
         path: 'tenant/cost',
       },
@@ -74,31 +76,21 @@ const mockMenuData: MenuData[] = [
   {
     id: '2',
     name: '平台管理',
-    number: 'ID002',
+    number: 'ID001',
     status: '开启',
-    applicableUsers: '学校、企业、个人',
+    applicableUsers: '学校，企业，个人',
     remarks: '菜单说明',
-    path: 'platform',
+    path: '',
     children: []
   },
   {
     id: '3',
     name: '用户管理',
-    number: 'ID003',
+    number: 'ID001',
     status: '开启',
-    applicableUsers: '学校、企业、个人',
+    applicableUsers: '学校，企业，个人',
     remarks: '菜单说明',
-    path: 'user',
-    children: []
-  },
-  {
-    id: '4',
-    name: '系统设置',
-    number: 'ID004',
-    status: '关闭',
-    applicableUsers: '管理员',
-    remarks: '系统配置菜单',
-    path: 'system',
+    path: '',
     children: []
   },
 ]
@@ -115,6 +107,7 @@ export function MenuManagementPage() {
   const [selectedMenus, setSelectedMenus] = useState<Set<string>>(new Set())
   const [menus] = useState<MenuData[]>(mockMenuData)
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set(['1'])) // Default expand '租户管理'
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -185,8 +178,13 @@ export function MenuManagementPage() {
 
   // Action handlers
   const handleCreate = () => {
-    console.log('Create new menu')
-    // TODO: Navigate to create page or open modal
+    setIsCreateDialogOpen(true)
+  }
+
+  const handleSaveMenu = (data: any) => {
+    console.log('New menu data:', data)
+    // TODO: Implement API call to save menu
+    setIsCreateDialogOpen(false)
   }
 
   const handleViewDetails = (menu: MenuData) => {
@@ -209,7 +207,7 @@ export function MenuManagementPage() {
   // Set page header actions
   useEffect(() => {
     setHeader({
-      // Title is automatically set based on route ('菜单管理')
+      title: '菜单管理',
       action: (
         <button
           onClick={handleCreate}
@@ -226,11 +224,11 @@ export function MenuManagementPage() {
     <div className="flex flex-col gap-3 h-full">
       {/* Header removed - managed by MainLayout */}
 
-      {/* Content - Figma node: 2027:1439 */}
+      {/* Content - Figma node: 544:46906 */}
       <div className="flex-1">
-        {/* Table Panel - Figma node: 2027:1442 */}
+        {/* Table Panel - Figma node: 544:46907 */}
         <div className="border border-[#f5f5f5] rounded-[10px] p-3">
-          {/* Search Bar - Figma node: 2027:1443 */}
+          {/* Search Bar - Figma node: 544:46908 */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               {/* Search Input 1 - 菜单编号 */}
@@ -240,7 +238,7 @@ export function MenuManagementPage() {
                   placeholder="菜单编号"
                   value={searchMenuId}
                   onChange={(e) => setSearchMenuId(e.target.value)}
-                  className="flex-1 text-[12.5px] leading-[22px] text-[#a1a1a1] placeholder:text-[#a1a1a1] outline-none bg-transparent"
+                  className="flex-1 text-[12.5px] leading-[22px] text-[#314158] placeholder:text-[#a1a1a1] outline-none bg-transparent"
                 />
               </div>
               {/* Search Input 2 - 菜单名称 */}
@@ -250,23 +248,33 @@ export function MenuManagementPage() {
                   placeholder="菜单名称"
                   value={searchMenuName}
                   onChange={(e) => setSearchMenuName(e.target.value)}
-                  className="flex-1 text-[12.5px] leading-[22px] text-[#a1a1a1] placeholder:text-[#a1a1a1] outline-none bg-transparent"
+                  className="flex-1 text-[12.5px] leading-[22px] text-[#314158] placeholder:text-[#a1a1a1] outline-none bg-transparent"
                 />
               </div>
               
-              {/* Action Buttons */}
-              <Button variant="secondary" size="sm" onClick={handleFilter}>
+              {/* Action Buttons - Figma node: 544:46912 */}
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={handleFilter}
+                icon={<Filter className="w-[14px] h-[14px]" />}
+                className="w-[88px]"
+              >
                 筛选
               </Button>
-              <Button variant="secondary" size="sm" onClick={handleReset}>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={handleReset}
+                icon={<RotateCcw className="w-[14px] h-[14px]" />}
+                className="w-[88px]"
+              >
                 重置
               </Button>
             </div>
           </div>
 
-          {/* Menu Table - Figma node: 2027:1987 */}
-          {/* Fixed columns: checkbox + 菜单名称 on left, 操作 on right */}
-          <div className="overflow-x-auto w-full">
+          {/* Menu Table - Figma node: 544:46915 */}
             <Table>
               <TableHead>
                 <TableRow>
@@ -282,17 +290,17 @@ export function MenuManagementPage() {
                       className="w-5 h-5 border border-[#767575] rounded-none cursor-pointer bg-white"
                     />
                   </TableHeaderCell>
-                  <TableHeaderCell className="w-[200px]" fixed="left" fixedOffset={36}>
+                  <TableHeaderCell className="w-[150px]" fixed="left" fixedOffset={36}>
                     菜单名称
                   </TableHeaderCell>
                   {/* Scrollable columns */}
-                  <TableHeaderCell className="w-[124px]">编号</TableHeaderCell>
-                  <TableHeaderCell className="w-[63px]">状态</TableHeaderCell>
-                  <TableHeaderCell className="w-[150px]">适用用户类型</TableHeaderCell>
-                  <TableHeaderCell className="w-[145px]">备注</TableHeaderCell>
-                  <TableHeaderCell className="w-[166px]">路径</TableHeaderCell>
+                  <TableHeaderCell className="w-[111px]">编号</TableHeaderCell>
+                  <TableHeaderCell className="w-[80px]">状态</TableHeaderCell>
+                  <TableHeaderCell className="w-[200px]">适用租户类型</TableHeaderCell>
+                  <TableHeaderCell width="100%">备注</TableHeaderCell>
+                  <TableHeaderCell className="w-[70px]">路径</TableHeaderCell>
                   {/* Fixed right column */}
-                  <TableHeaderCell showDivider={false} className="w-[111px]" fixed="right" fixedOffset={0}>
+                  <TableHeaderCell showDivider={false} className="min-w-[150px]" fixed="right" fixedOffset={0}>
                     操作
                   </TableHeaderCell>
                 </TableRow>
@@ -320,7 +328,7 @@ export function MenuManagementPage() {
                     </TableTextCell>
                     {/* Scrollable columns */}
                     <TableTextCell>{menu.number}</TableTextCell>
-                    <TableEnumCell variant="default">
+                    <TableEnumCell variant={menu.status === '开启' ? 'success' : 'default'}>
                       {menu.status}
                     </TableEnumCell>
                     <TableTextCell>{menu.applicableUsers}</TableTextCell>
@@ -337,9 +345,8 @@ export function MenuManagementPage() {
                 ))}
               </TableBody>
             </Table>
-          </div>
 
-          {/* Pagination Footer - Figma node: 2027:1585 */}
+          {/* Pagination Footer - Figma node: 544:47038 */}
           <div className="flex justify-end p-3">
             <Pagination
               currentPage={currentPage}
@@ -356,6 +363,13 @@ export function MenuManagementPage() {
           </div>
         </div>
       </div>
+      {/* Create Menu Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <NewMenuDialog 
+          onCancel={() => setIsCreateDialogOpen(false)}
+          onSave={handleSaveMenu}
+        />
+      </Dialog>
     </div>
   )
 }

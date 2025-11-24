@@ -625,6 +625,11 @@ export const createDefaultMenuItems = (icons: {
     action: PermissionAction.READ,
   },
   {
+    label: '菜单管理',
+    path: '/menus',
+    icon: icons.settings,
+  },
+  {
     label: '系统设置',
     path: '/settings',
     icon: icons.settings,

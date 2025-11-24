@@ -89,6 +89,11 @@ export interface TableHeaderCellProps extends React.ThHTMLAttributes<HTMLTableCe
    * Use this when you have multiple fixed columns
    */
   fixedOffset?: number
+
+  /**
+   * Custom width for the column
+   */
+  width?: string | number
 }
 
 /**
@@ -96,7 +101,7 @@ export interface TableHeaderCellProps extends React.ThHTMLAttributes<HTMLTableCe
  * Figma node-id: 105:2653
  */
 export const TableHeaderCell = React.forwardRef<HTMLTableCellElement, TableHeaderCellProps>(
-  ({ children, showDivider = true, sortable, sortDirection, onSort, fixed, fixedOffset, className = '', style, ...props }, ref) => {
+  ({ children, showDivider = true, sortable, sortDirection, onSort, fixed, fixedOffset, width, className = '', style, ...props }, ref) => {
     const fixedStyles = getFixedStyles(fixed, fixedOffset)
     const fixedClass = getFixedClassName(fixed)
 
@@ -104,7 +109,7 @@ export const TableHeaderCell = React.forwardRef<HTMLTableCellElement, TableHeade
       <th
         ref={ref}
         className={`bg-white border-b border-[#f5f5f5] h-[46px] pl-2 pr-0 py-4 whitespace-nowrap ${fixedClass} ${className}`}
-        style={{ ...fixedStyles, ...style }}
+        style={{ ...fixedStyles, width, ...style }}
         {...props}
       >
         <div className="flex items-center justify-between h-full">
@@ -157,6 +162,11 @@ export interface TableTextCellProps extends React.TdHTMLAttributes<HTMLTableCell
    * Indentation level (0, 1, 2...) for nested rows
    */
   indentLevel?: number
+
+  /**
+   * Custom width for the column
+   */
+  width?: string | number
 }
 
 /**
@@ -164,7 +174,7 @@ export interface TableTextCellProps extends React.TdHTMLAttributes<HTMLTableCell
  * Figma node-id: 105:2657
  */
 export const TableTextCell = React.forwardRef<HTMLTableCellElement, TableTextCellProps>(
-  ({ children, fixed, fixedOffset, hasSubRows, isExpanded, onExpandChange, indentLevel = 0, className = '', style, ...props }, ref) => {
+  ({ children, fixed, fixedOffset, hasSubRows, isExpanded, onExpandChange, indentLevel = 0, width, className = '', style, ...props }, ref) => {
     const fixedStyles = getFixedStyles(fixed, fixedOffset)
     const fixedClass = getFixedClassName(fixed)
 
@@ -172,7 +182,7 @@ export const TableTextCell = React.forwardRef<HTMLTableCellElement, TableTextCel
       <td
         ref={ref}
         className={`border-b border-[#f5f5f5] p-2 whitespace-nowrap ${fixedClass} ${className}`}
-        style={{ ...fixedStyles, ...style }}
+        style={{ ...fixedStyles, width, ...style }}
         {...props}
       >
         <div className="flex items-center" style={{ paddingLeft: indentLevel ? `${indentLevel * 24}px` : undefined }}>
@@ -230,6 +240,11 @@ export interface TableSelectCellProps extends React.TdHTMLAttributes<HTMLTableCe
    * Offset for sticky positioning (in pixels)
    */
   fixedOffset?: number
+
+  /**
+   * Custom width for the column
+   */
+  width?: string | number
 }
 
 /**
@@ -237,7 +252,7 @@ export interface TableSelectCellProps extends React.TdHTMLAttributes<HTMLTableCe
  * Figma node-id: 197:724
  */
 export const TableSelectCell = React.forwardRef<HTMLTableCellElement, TableSelectCellProps>(
-  ({ checked = false, onCheckedChange, indeterminate = false, fixed, fixedOffset, className = '', style, ...props }, ref) => {
+  ({ checked = false, onCheckedChange, indeterminate = false, fixed, fixedOffset, width, className = '', style, ...props }, ref) => {
     const fixedStyles = getFixedStyles(fixed, fixedOffset)
     const fixedClass = getFixedClassName(fixed)
 
@@ -245,7 +260,7 @@ export const TableSelectCell = React.forwardRef<HTMLTableCellElement, TableSelec
       <td
         ref={ref}
         className={`border-b border-[#f5f5f5] p-2 text-center whitespace-nowrap ${fixedClass} ${className}`}
-        style={{ ...fixedStyles, ...style }}
+        style={{ ...fixedStyles, width, ...style }}
         {...props}
       >
         <input
@@ -288,6 +303,11 @@ export interface TableDropdownCellProps extends Omit<React.TdHTMLAttributes<HTML
    * Offset for sticky positioning (in pixels)
    */
   fixedOffset?: number
+
+  /**
+   * Custom width for the column
+   */
+  width?: string | number
 }
 
 /**
@@ -295,7 +315,7 @@ export interface TableDropdownCellProps extends Omit<React.TdHTMLAttributes<HTML
  * Figma node-id: 279:1076
  */
 export const TableDropdownCell = React.forwardRef<HTMLTableCellElement, TableDropdownCellProps>(
-  ({ value, options = [], onChange, fixed, fixedOffset, className = '', style, ...props }, ref) => {
+  ({ value, options = [], onChange, fixed, fixedOffset, width, className = '', style, ...props }, ref) => {
     const [isOpen, setIsOpen] = useState(false)
     const fixedStyles = getFixedStyles(fixed, fixedOffset)
     const fixedClass = getFixedClassName(fixed)
@@ -304,7 +324,7 @@ export const TableDropdownCell = React.forwardRef<HTMLTableCellElement, TableDro
       <td
         ref={ref}
         className={`border-b border-[#f5f5f5] p-2 whitespace-nowrap ${fixedClass} ${className}`}
-        style={{ ...fixedStyles, ...style }}
+        style={{ ...fixedStyles, width, ...style }}
         {...props}
       >
         <div className="relative">
@@ -373,6 +393,11 @@ export interface TableActionCellProps extends React.TdHTMLAttributes<HTMLTableCe
    * Offset for sticky positioning (in pixels)
    */
   fixedOffset?: number
+
+  /**
+   * Custom width for the column
+   */
+  width?: string | number
 }
 
 /**
@@ -380,7 +405,7 @@ export interface TableActionCellProps extends React.TdHTMLAttributes<HTMLTableCe
  * Figma node-id: 389:1274
  */
 export const TableActionCell = React.forwardRef<HTMLTableCellElement, TableActionCellProps>(
-  ({ actionText = '详情', onAction, showMore = true, onMore, fixed, fixedOffset, className = '', style, ...props }, ref) => {
+  ({ actionText = '详情', onAction, showMore = true, onMore, fixed, fixedOffset, width, className = '', style, ...props }, ref) => {
     const fixedStyles = getFixedStyles(fixed, fixedOffset)
     const fixedClass = getFixedClassName(fixed)
 
@@ -388,7 +413,7 @@ export const TableActionCell = React.forwardRef<HTMLTableCellElement, TableActio
       <td
         ref={ref}
         className={`border-b border-[#f5f5f5] h-[30px] text-center whitespace-nowrap ${fixedClass} ${className}`}
-        style={{ ...fixedStyles, ...style }}
+        style={{ ...fixedStyles, width, ...style }}
         {...props}
       >
         <div className="flex items-center justify-center gap-2">
@@ -439,6 +464,11 @@ export interface TableEnumCellProps extends React.TdHTMLAttributes<HTMLTableCell
    * Offset for sticky positioning (in pixels)
    */
   fixedOffset?: number
+
+  /**
+   * Custom width for the column
+   */
+  width?: string | number
 }
 
 /**
@@ -446,7 +476,7 @@ export interface TableEnumCellProps extends React.TdHTMLAttributes<HTMLTableCell
  * Figma node-id: 448:1318
  */
 export const TableEnumCell = React.forwardRef<HTMLTableCellElement, TableEnumCellProps>(
-  ({ children, variant = 'default', fixed, fixedOffset, className = '', style, ...props }, ref) => {
+  ({ children, variant = 'default', fixed, fixedOffset, width, className = '', style, ...props }, ref) => {
     const fixedStyles = getFixedStyles(fixed, fixedOffset)
     const fixedClass = getFixedClassName(fixed)
 
