@@ -1,16 +1,22 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Dialog } from '../../ui/Dialog'
-import { Search, ArrowUp, Pin, XCircle } from 'lucide-react'
+import { Search, ArrowUp, ArrowDown, Pin, XCircle, GripVertical, PinOff } from 'lucide-react'
 
 export interface ColumnDef {
   id: string
   label: string
+  /** Whether the column can be hidden */
+  hideable?: boolean
+  /** Whether the column can be fixed */
+  fixable?: boolean
 }
 
 export interface ColumnSetting {
   id: string
   fixed?: 'left' | 'right'
   visible?: boolean // Optional, if we use a separate list for visible
+  /** Custom width for the column */
+  width?: number
 }
 
 export interface TableSettingDialogProps {
@@ -26,6 +32,14 @@ export interface TableSettingDialogProps {
    */
   defaultValue?: ColumnSetting[]
   onSave: (settings: ColumnSetting[]) => void
+  /**
+   * Enable drag and drop reordering
+   */
+  enableDragSort?: boolean
+  /**
+   * Show preview of the table with the current settings
+   */
+  showPreview?: boolean
 }
 
 export function TableSettingDialog({
@@ -35,10 +49,13 @@ export function TableSettingDialog({
   value,
   defaultValue,
   onSave,
+  enableDragSort = true,
 }: TableSettingDialogProps) {
   // State for the currently edited settings (ordered list of visible columns)
   const [currentSettings, setCurrentSettings] = useState<ColumnSetting[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   // Initialize state when opening
   useEffect(() => {
@@ -69,16 +86,31 @@ export function TableSettingDialog({
     })
   }
 
-  const handleTogglePin = (index: number) => {
+  const handleMoveDown = (index: number) => {
+    if (index >= currentSettings.length - 1) return
+    setCurrentSettings((prev) => {
+      const newSettings = [...prev]
+      const item = newSettings[index]
+      newSettings[index] = newSettings[index + 1]
+      newSettings[index + 1] = item
+      return newSettings
+    })
+  }
+
+  const handleCyclePin = (index: number) => {
     setCurrentSettings((prev) => {
       const newSettings = [...prev]
       const col = newSettings[index]
-      // Toggle between fixed='left' and undefined
-      // If we wanted to support right fix, we'd need more complex logic
-      newSettings[index] = {
-        ...col,
-        fixed: col.fixed ? undefined : 'left',
+      // Cycle through: undefined -> 'left' -> 'right' -> undefined
+      let newFixed: 'left' | 'right' | undefined
+      if (!col.fixed) {
+        newFixed = 'left'
+      } else if (col.fixed === 'left') {
+        newFixed = 'right'
+      } else {
+        newFixed = undefined
       }
+      newSettings[index] = { ...col, fixed: newFixed }
       return newSettings
     })
   }
@@ -98,11 +130,63 @@ export function TableSettingDialog({
     onOpenChange(false)
   }
 
+  // Drag and Drop handlers
+  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
+    setDraggedIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+    // Add a slight delay to show the drag preview
+    const target = e.target as HTMLElement
+    target.style.opacity = '0.5'
+  }, [])
+
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    const target = e.target as HTMLElement
+    target.style.opacity = '1'
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverIndex(index)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault()
+    if (draggedIndex === null || draggedIndex === dropIndex) return
+
+    setCurrentSettings((prev) => {
+      const newSettings = [...prev]
+      const [draggedItem] = newSettings.splice(draggedIndex, 1)
+      newSettings.splice(dropIndex, 0, draggedItem)
+      return newSettings
+    })
+
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }, [draggedIndex])
+
   // Filter visible columns for the right panel
   const filteredSettings = currentSettings.filter((setting) => {
     const colDef = allColumns.find((c) => c.id === setting.id)
     return colDef?.label.toLowerCase().includes(searchQuery.toLowerCase())
   })
+
+  // Get fixed status label
+  const getFixedLabel = (fixed?: 'left' | 'right') => {
+    if (fixed === 'left') return '固定左侧'
+    if (fixed === 'right') return '固定右侧'
+    return '不固定'
+  }
+
+  // Get fixed icon
+  const getFixedIcon = (fixed?: 'left' | 'right') => {
+    if (fixed) {
+      return <Pin className={`w-3.5 h-3.5 fill-current ${fixed === 'right' ? 'rotate-90' : ''}`} />
+    }
+    return <PinOff className="w-3.5 h-3.5" />
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} className="w-[800px] max-w-[95vw]">
@@ -183,22 +267,45 @@ export function TableSettingDialog({
 
                 // Find the actual index in the full settings list to handle moves correctly even when filtered
                 const actualIndex = currentSettings.findIndex(s => s.id === setting.id)
+                const isDragOver = dragOverIndex === actualIndex
+                const isDragging = draggedIndex === actualIndex
 
                 return (
                   <div
                     key={setting.id}
-                    className="flex items-center justify-between py-2 hover:bg-gray-50 group"
+                    className={`
+                      flex items-center justify-between py-2 px-2 rounded group transition-all
+                      ${isDragOver ? 'bg-primary-50 border-t-2 border-primary-400' : 'hover:bg-gray-50'}
+                      ${isDragging ? 'opacity-50' : ''}
+                    `}
+                    draggable={enableDragSort}
+                    onDragStart={(e) => handleDragStart(e, actualIndex)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => handleDragOver(e, actualIndex)}
+                    onDrop={(e) => handleDrop(e, actualIndex)}
                   >
-                    <span className="text-[12.5px] text-[#314158] tracking-wide">
-                      {colDef.label}
-                    </span>
-                    <div className="flex items-center gap-3 opacity-100 transition-opacity">
+                    <div className="flex items-center gap-2">
+                      {enableDragSort && (
+                        <GripVertical className="w-3.5 h-3.5 text-gray-400 cursor-grab active:cursor-grabbing" />
+                      )}
+                      <span className="text-[12.5px] text-[#314158] tracking-wide">
+                        {colDef.label}
+                      </span>
+                      {setting.fixed && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                          setting.fixed === 'left' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                        }`}>
+                          {setting.fixed === 'left' ? '左' : '右'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         type="button"
                         onClick={() => handleMoveUp(actualIndex)}
                         disabled={actualIndex === 0}
                         className={`p-1 hover:bg-gray-100 rounded ${
-                          actualIndex === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-black'
+                          actualIndex === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-black'
                         }`}
                         title="上移"
                       >
@@ -206,22 +313,29 @@ export function TableSettingDialog({
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleTogglePin(actualIndex)}
+                        onClick={() => handleMoveDown(actualIndex)}
+                        disabled={actualIndex === currentSettings.length - 1}
                         className={`p-1 hover:bg-gray-100 rounded ${
-                          setting.fixed ? 'text-black' : 'text-gray-400 hover:text-black'
+                          actualIndex === currentSettings.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-black'
                         }`}
-                        title={setting.fixed ? '取消固定' : '固定在左侧'}
+                        title="下移"
                       >
-                        {setting.fixed ? (
-                          <Pin className="w-3.5 h-3.5 fill-current" />
-                        ) : (
-                          <Pin className="w-3.5 h-3.5" />
-                        )}
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCyclePin(actualIndex)}
+                        className={`p-1 hover:bg-gray-100 rounded ${
+                          setting.fixed ? 'text-primary-600' : 'text-gray-400 hover:text-black'
+                        }`}
+                        title={getFixedLabel(setting.fixed)}
+                      >
+                        {getFixedIcon(setting.fixed)}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleRemove(actualIndex)}
-                        className="p-1 hover:bg-gray-100 rounded text-black hover:text-red-600"
+                        className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-red-600"
                         title="隐藏"
                       >
                         <XCircle className="w-3.5 h-3.5" />
@@ -230,7 +344,7 @@ export function TableSettingDialog({
                   </div>
                 )
               })}
-              
+
               {filteredSettings.length === 0 && (
                 <div className="text-center text-gray-400 text-xs py-4">
                   无匹配列

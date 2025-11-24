@@ -24,15 +24,24 @@ export {
   TableDropdownCell,
   TableActionCell,
   TableEnumCell,
+  TableLoading,
+  TableEmpty,
+  TableFooter,
+  TableCaption,
 } from './Table'
 export type {
   TableProps,
+  TableRowProps,
   TableHeaderCellProps,
   TableTextCellProps,
   TableSelectCellProps,
   TableDropdownCellProps,
   TableActionCellProps,
   TableEnumCellProps,
+  TableLoadingProps,
+  TableEmptyProps,
+  TableFooterProps,
+  TableCaptionProps,
   FixedPosition,
 } from './Table'
 

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { ChevronDown, MoreVertical, ChevronRight } from 'lucide-react'
+import { ChevronDown, MoreVertical, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Loader2, Inbox } from 'lucide-react'
 
 /**
  * Table component matching Figma DeskPro design system
@@ -199,17 +199,36 @@ export const TableHeaderCell = React.forwardRef<HTMLTableCellElement, TableHeade
       }
     }
 
+    const renderSortIcon = () => {
+      if (!sortable) return null
+
+      const iconClass = "w-3.5 h-3.5 ml-1 flex-shrink-0"
+
+      if (sortDirection === 'asc') {
+        return <ArrowUp className={`${iconClass} text-primary-600`} />
+      }
+      if (sortDirection === 'desc') {
+        return <ArrowDown className={`${iconClass} text-primary-600`} />
+      }
+      return <ArrowUpDown className={`${iconClass} text-neutral-400`} />
+    }
+
     return (
       <th
         ref={thRef}
-        className={`bg-white border-b border-[#f5f5f5] h-[46px] pl-2 pr-0 py-4 whitespace-nowrap relative ${fixedClass} ${className}`}
+        className={`bg-white border-b border-[#f5f5f5] h-[46px] pl-2 pr-0 py-4 whitespace-nowrap relative ${fixedClass} ${sortable ? 'cursor-pointer select-none hover:bg-neutral-50' : ''} ${className}`}
         style={{ ...fixedStyles, width, minWidth: width, ...style }}
+        onClick={sortable ? onSort : undefined}
+        aria-sort={sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : undefined}
         {...props}
       >
         <div className="flex items-center justify-between h-full">
-          <span className="text-[14px] font-bold text-black text-center leading-[14px] tracking-[0px]">
-            {children}
-          </span>
+          <div className="flex items-center">
+            <span className="text-[14px] font-bold text-black text-center leading-[14px] tracking-[0px]">
+              {children}
+            </span>
+            {renderSortIcon()}
+          </div>
           {showDivider && (
             <div className="w-px h-[15px] bg-[#f5f5f5] shrink-0" />
           )}
@@ -423,8 +442,37 @@ export interface TableDropdownCellProps extends Omit<React.TdHTMLAttributes<HTML
 export const TableDropdownCell = React.forwardRef<HTMLTableCellElement, TableDropdownCellProps>(
   ({ value, options = [], onChange, fixed, fixedOffset, width, className = '', style, ...props }, ref) => {
     const [isOpen, setIsOpen] = useState(false)
+    const dropdownRef = useRef<HTMLDivElement>(null)
     const fixedStyles = getFixedStyles(fixed, fixedOffset)
     const fixedClass = getFixedClassName(fixed)
+
+    // Handle click outside to close dropdown
+    useEffect(() => {
+      if (!isOpen) return
+
+      const handleClickOutside = (event: MouseEvent) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+          setIsOpen(false)
+        }
+      }
+
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [isOpen])
+
+    // Handle Escape key to close dropdown
+    useEffect(() => {
+      if (!isOpen) return
+
+      const handleEscape = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') {
+          setIsOpen(false)
+        }
+      }
+
+      document.addEventListener('keydown', handleEscape)
+      return () => document.removeEventListener('keydown', handleEscape)
+    }, [isOpen])
 
     return (
       <td
@@ -433,29 +481,36 @@ export const TableDropdownCell = React.forwardRef<HTMLTableCellElement, TableDro
         style={{ ...fixedStyles, width, ...style }}
         {...props}
       >
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
+            aria-expanded={isOpen}
+            aria-haspopup="listbox"
             className="w-full bg-[#eceef2] border border-transparent rounded-lg px-[9px] py-px flex items-center justify-between min-h-[22px] hover:bg-neutral-200 transition-colors"
           >
             <span className="text-[14px] font-normal text-black leading-5 tracking-[-0.1504px]">
               {value}
             </span>
-            <ChevronDown className="w-4 h-4 text-[#737373]" />
+            <ChevronDown className={`w-4 h-4 text-[#737373] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {isOpen && options.length > 0 && (
-            <div className="absolute top-full left-0 mt-1 w-full bg-white border border-[#f5f5f5] rounded-lg shadow-lg z-dropdown">
+            <div
+              className="absolute top-full left-0 mt-1 w-full bg-white border border-[#f5f5f5] rounded-lg shadow-lg z-dropdown"
+              role="listbox"
+            >
               {options.map((option, index) => (
                 <button
                   key={index}
                   type="button"
+                  role="option"
+                  aria-selected={value === option}
                   onClick={() => {
                     onChange?.(option)
                     setIsOpen(false)
                   }}
-                  className="w-full text-left px-[9px] py-1.5 text-[14px] hover:bg-[#f5f5f5] first:rounded-t-lg last:rounded-b-lg"
+                  className={`w-full text-left px-[9px] py-1.5 text-[14px] hover:bg-[#f5f5f5] first:rounded-t-lg last:rounded-b-lg ${value === option ? 'bg-[#f5f5f5]' : ''}`}
                 >
                   {option}
                 </button>
@@ -666,15 +721,198 @@ export const TableBody: React.FC<React.HTMLAttributes<HTMLTableSectionElement>> 
 }
 TableBody.displayName = 'TableBody'
 
-export const TableRow: React.FC<React.HTMLAttributes<HTMLTableRowElement>> = ({
+export interface TableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
+  /**
+   * Whether the row is selected
+   */
+  selected?: boolean
+  /**
+   * Whether clicking the row should trigger selection
+   */
+  clickable?: boolean
+}
+
+export const TableRow = React.forwardRef<HTMLTableRowElement, TableRowProps>(
+  ({ children, className = '', selected, clickable, ...props }, ref) => {
+    return (
+      <tr
+        ref={ref}
+        className={`
+          hover:bg-surface-secondary transition-colors
+          ${selected ? 'bg-primary-50' : ''}
+          ${clickable ? 'cursor-pointer' : ''}
+          ${className}
+        `}
+        {...props}
+      >
+        {children}
+      </tr>
+    )
+  }
+)
+TableRow.displayName = 'TableRow'
+
+// ============================================================================
+// Table Loading State
+// ============================================================================
+
+export interface TableLoadingProps {
+  /**
+   * Number of skeleton rows to show
+   */
+  rows?: number
+  /**
+   * Number of columns for the skeleton
+   */
+  columns?: number
+  /**
+   * Custom loading message
+   */
+  message?: string
+}
+
+/**
+ * Table Loading Skeleton
+ */
+export const TableLoading: React.FC<TableLoadingProps> = ({
+  rows = 5,
+  columns = 6,
+  message = '加载中...'
+}) => {
+  return (
+    <div className="w-full">
+      {/* Optional loading indicator */}
+      <div className="flex items-center justify-center py-4 text-neutral-500">
+        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+        <span className="text-sm">{message}</span>
+      </div>
+
+      {/* Skeleton rows */}
+      <table className="w-full border-collapse">
+        <tbody>
+          {Array.from({ length: rows }).map((_, rowIndex) => (
+            <tr key={rowIndex} className="border-b border-[#f5f5f5]">
+              {Array.from({ length: columns }).map((_, colIndex) => (
+                <td key={colIndex} className="p-2">
+                  <div
+                    className="h-4 bg-neutral-100 rounded animate-pulse"
+                    style={{ width: `${60 + Math.random() * 30}%` }}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+TableLoading.displayName = 'TableLoading'
+
+// ============================================================================
+// Table Empty State
+// ============================================================================
+
+export interface TableEmptyProps {
+  /**
+   * Custom icon to display
+   */
+  icon?: React.ReactNode
+  /**
+   * Title text
+   */
+  title?: string
+  /**
+   * Description text
+   */
+  description?: string
+  /**
+   * Action button/element
+   */
+  action?: React.ReactNode
+  /**
+   * Number of columns to span
+   */
+  colSpan?: number
+}
+
+/**
+ * Table Empty State
+ */
+export const TableEmpty: React.FC<TableEmptyProps> = ({
+  icon,
+  title = '暂无数据',
+  description = '没有找到符合条件的数据',
+  action,
+  colSpan = 1
+}) => {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="py-16 text-center">
+        <div className="flex flex-col items-center gap-3">
+          {icon || (
+            <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center">
+              <Inbox className="w-8 h-8 text-neutral-400" />
+            </div>
+          )}
+          <div className="space-y-1">
+            <h3 className="text-base font-medium text-neutral-900">{title}</h3>
+            {description && (
+              <p className="text-sm text-neutral-500">{description}</p>
+            )}
+          </div>
+          {action && <div className="mt-2">{action}</div>}
+        </div>
+      </td>
+    </tr>
+  )
+}
+TableEmpty.displayName = 'TableEmpty'
+
+// ============================================================================
+// Table Footer
+// ============================================================================
+
+export interface TableFooterProps extends React.HTMLAttributes<HTMLTableSectionElement> {
+  children: React.ReactNode
+}
+
+/**
+ * Table Footer
+ */
+export const TableFooter: React.FC<TableFooterProps> = ({
   children,
   className = '',
   ...props
 }) => {
-    return (
-      <tr className={`hover:bg-surface-secondary transition-colors ${className}`} {...props}>
-        {children}
-      </tr>
-    )
+  return (
+    <tfoot className={`bg-neutral-50 ${className}`} {...props}>
+      {children}
+    </tfoot>
+  )
 }
-TableRow.displayName = 'TableRow'
+TableFooter.displayName = 'TableFooter'
+
+// ============================================================================
+// Table Caption
+// ============================================================================
+
+export interface TableCaptionProps extends React.HTMLAttributes<HTMLTableCaptionElement> {
+  children: React.ReactNode
+}
+
+/**
+ * Table Caption for accessibility
+ */
+export const TableCaption: React.FC<TableCaptionProps> = ({
+  children,
+  className = '',
+  ...props
+}) => {
+  return (
+    <caption className={`sr-only ${className}`} {...props}>
+      {children}
+    </caption>
+  )
+}
+TableCaption.displayName = 'TableCaption'
