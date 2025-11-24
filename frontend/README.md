@@ -44,16 +44,28 @@ npm run preview
 ```
 frontend/
 ├── src/
-│   ├── components/          # React components
+│   ├── assets/             # Static assets (icons, images)
+│   ├── components/         # React components
 │   │   ├── ui/             # Base UI components
 │   │   ├── features/       # Feature-specific components
-│   │   └── layout/         # Layout components
+│   │   │   ├── auth/       # Authentication components
+│   │   │   ├── buttons/    # Button components
+│   │   │   ├── table/      # Table components
+│   │   │   └── user-profile/ # User profile components
+│   │   ├── layout/         # Layout components
+│   │   └── PermissionGuard.tsx # RBAC Permission Guard
 │   ├── hooks/              # Custom React hooks
 │   │   └── useAuth.ts      # Authentication hook
-│   ├── services/           # API service layer
+│   ├── pages/              # Application pages
+│   │   ├── dashboard/      # Dashboard page
+│   │   ├── image-management/ # Image management page
+│   │   ├── login/          # Login page
+│   │   ├── menu-management/ # Menu management page
+│   │   └── user-management/ # User management page
 │   ├── types/              # TypeScript type definitions
-│   │   └── auth.ts         # Auth types
-│   ├── utils/              # Utility functions
+│   │   ├── auth.ts         # Auth types
+│   │   ├── image.ts        # Image types
+│   │   └── user.ts         # User types
 │   ├── styles/             # Global styles
 │   │   └── global.css      # Tailwind + custom styles
 │   ├── App.tsx             # Main app component
@@ -65,6 +77,27 @@ frontend/
 ├── DESIGN_TOKENS.md        # Design token documentation
 └── package.json            # Dependencies and scripts
 ```
+
+## Feature Documentation
+
+Detailed implementation documentation for specific features can be found in the following files:
+
+- **Design System & Figma**:
+  - `DESIGN_TOKENS.md`: Design tokens documentation
+  - `FIGMA_IMPLEMENTATION.md`: General Figma implementation guide
+  - `FIGMA_VARIABLES_NAMING.md`: Variable naming conventions
+  - `FIGMA_IMAGE_MANAGEMENT.md`: Image management specific implementation
+
+- **Components & Pages**:
+  - `LOGIN_PAGE_IMPLEMENTATION.md`: Login page details
+  - `MENU_MANAGEMENT_IMPLEMENTATION.md`: Menu management details
+  - `SIDEBAR_IMPLEMENTATION.md`: Sidebar component details
+  - `STICKY_HEADER_GUIDE.md`: Sticky header implementation guide
+  - `USER_MANAGEMENT_IMPLEMENTATION.md`: User management details
+  - `USER_PROFILE_POPUP_IMPLEMENTATION.md`: User profile popup details
+
+- **Development**:
+  - `REFACTORING_NOTES.md`: Notes on code refactoring and improvements
 
 ## Design System
 
@@ -185,23 +218,9 @@ function MyComponent() {
 
 ## API Integration
 
-API calls should go through the service layer:
+The frontend is configured to proxy API requests to the backend server during development.
 
-```tsx
-// src/services/instanceService.ts
-import { apiService } from './api'
-
-export const instanceService = {
-  async getAll() {
-    return apiService.get('/api/v1/instances')
-  },
-  async create(data) {
-    return apiService.post('/api/v1/instances', data)
-  },
-}
-```
-
-The Vite dev server proxies `/api` requests to `http://localhost:3000` (backend).
+The Vite dev server (`vite.config.ts`) proxies `/api` requests to `http://localhost:3000`.
 
 ## Scripts
 
