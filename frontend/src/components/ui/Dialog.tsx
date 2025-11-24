@@ -19,15 +19,15 @@ export function Dialog({ open, onOpenChange, children, className = '' }: DialogP
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    <div className="fixed inset-0 z-modal-backdrop flex items-center justify-center">
       {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black/50 transition-opacity" 
+      <div
+        className="fixed inset-0 bg-black/50 transition-opacity"
         onClick={() => onOpenChange(false)}
       />
-      
+
       {/* Dialog Content Container */}
-      <div className={`relative z-[101] bg-white rounded-[12px] shadow-xl overflow-hidden ${className}`}>
+      <div className={`relative z-modal bg-white rounded-[12px] shadow-xl overflow-hidden ${className}`}>
          {children}
       </div>
     </div>

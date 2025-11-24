@@ -118,18 +118,31 @@ export function AdvancedFilterPopup({
   const [conditions, setConditions] = useState<FilterCondition[]>([])
   const [logic, setLogic] = useState<'and' | 'or'>(initialLogic)
   const popupRef = useRef<HTMLDivElement>(null)
+  // Track previous open state to detect open transition
+  const prevOpenRef = useRef(false)
 
   // Get column definition by id
   const getColumnDef = useCallback((columnId: string) => {
     return columns.find(c => c.id === columnId)
   }, [columns])
 
+  // Initialize conditions only when popup opens (false -> true transition)
   useEffect(() => {
-    if (open) {
+    const wasOpen = prevOpenRef.current
+    prevOpenRef.current = open
+
+    // Only initialize when transitioning from closed to open
+    if (open && !wasOpen) {
       if (initialConditions.length > 0) {
         setConditions(initialConditions)
       } else {
-        handleAddCondition()
+        // Add a default empty condition
+        setConditions([{
+          id: Math.random().toString(36).substring(2, 11),
+          columnId: '',
+          operator: 'eq',
+          value: '',
+        }])
       }
       setLogic(initialLogic)
     }
