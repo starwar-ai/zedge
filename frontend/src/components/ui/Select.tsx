@@ -206,6 +206,7 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
         return createPortal(
           <div
             ref={dropdownRef}
+            data-select-dropdown="true"
             className="bg-surface-primary border border-input-secondary rounded-input shadow-lg overflow-y-auto"
             style={{
               position: 'fixed',

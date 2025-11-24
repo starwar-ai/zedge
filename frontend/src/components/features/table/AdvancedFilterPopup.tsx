@@ -151,14 +151,18 @@ export function AdvancedFilterPopup({
   // Handle click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        popupRef.current && 
-        !popupRef.current.contains(event.target as Node) &&
-        anchorEl &&
-        !anchorEl.contains(event.target as Node)
-      ) {
-        onOpenChange(false)
-      }
+      const target = event.target as HTMLElement
+
+      // Ignore clicks inside popup
+      if (popupRef.current?.contains(target)) return
+
+      // Ignore clicks on anchor element
+      if (anchorEl?.contains(target)) return
+
+      // Ignore clicks inside Select dropdowns (rendered via Portal)
+      if (target.closest('[data-select-dropdown="true"]')) return
+
+      onOpenChange(false)
     }
 
     if (open) {
