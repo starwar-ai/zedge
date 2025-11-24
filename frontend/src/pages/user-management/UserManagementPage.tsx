@@ -10,9 +10,10 @@ import {
   TableEnumCell,
   TableActionCell,
   Pagination,
+  SearchInput,
 } from '@/components/ui'
-import { User, UserStatus, UserStatusLabels } from '@/types/user'
-import { Plus } from 'lucide-react'
+import { User, UserStatus, UserStatusLabels, UserRoleType, UserRoleLabels } from '@/types/user'
+import { CreateButton } from '@/components/features/buttons/FigmaButtons'
 import { usePageHeader } from '@/components/layout/MainLayout'
 
 /**
@@ -33,7 +34,7 @@ const mockUsers: User[] = [
     username: '学生001',
     phone: '13818216424',
     status: UserStatus.ACTIVE,
-    role: '教职工' as any,
+    role: UserRoleType.OPERATOR,
     organization: '山东科技大学',
     userGroup: '计算机学院/2022年级',
     lastLoginTime: '2025-11-10 12:00',
@@ -43,7 +44,7 @@ const mockUsers: User[] = [
     username: '学生002',
     phone: '13818216425',
     status: UserStatus.ACTIVE,
-    role: '教职工' as any,
+    role: UserRoleType.OPERATOR,
     organization: '山东科技大学',
     userGroup: '电子工程学院/2022年级',
     lastLoginTime: '2025-12-15 14:00',
@@ -53,7 +54,7 @@ const mockUsers: User[] = [
     username: '学生003',
     phone: '13818216426',
     status: UserStatus.ACTIVE,
-    role: '教职工' as any,
+    role: UserRoleType.OPERATOR,
     organization: '山东科技大学',
     userGroup: '机械工程学院/2022年级',
     lastLoginTime: '2025-09-20 10:30',
@@ -63,7 +64,7 @@ const mockUsers: User[] = [
     username: '学生004',
     phone: '13818216427',
     status: UserStatus.ACTIVE,
-    role: '教职工' as any,
+    role: UserRoleType.OPERATOR,
     organization: '山东科技大学',
     userGroup: '土木工程学院/2022年级',
     lastLoginTime: '2025-08-05 15:45',
@@ -115,17 +116,14 @@ export function UserManagementPage() {
 
   // Action handlers
   const handleCreate = () => {
-    console.log('Create new user')
     // TODO: Open create user modal
   }
 
-  const handleUserAction = (userId: string) => {
-    console.log('View user details:', userId)
+  const handleUserAction = (_userId: string) => {
     // TODO: Open user details modal/page
   }
 
-  const handleUserMore = (userId: string) => {
-    console.log('Show more options for user:', userId)
+  const handleUserMore = (_userId: string) => {
     // TODO: Show context menu with edit, delete, etc.
   }
 
@@ -133,15 +131,7 @@ export function UserManagementPage() {
   useEffect(() => {
     setHeader({
       // Title is automatically set based on route ('用户列表')
-      action: (
-        <button
-          onClick={handleCreate}
-          className="flex items-center justify-center h-[28px] min-w-[100px] px-[11px] py-[7px] bg-[#262626] text-white rounded-[6.75px] text-[12.5px] font-medium tracking-[1px] leading-[17.5px] hover:bg-[#333] transition-colors"
-        >
-          <Plus className="w-[14px] h-[14px] mr-1" />
-          新建
-        </button>
-      ),
+      action: <CreateButton onClick={handleCreate}>新建</CreateButton>,
     })
   }, [setHeader])
 
@@ -156,26 +146,16 @@ export function UserManagementPage() {
           {/* Search Bar - Figma node: 2027:1443 */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              {/* Search Input 1 - 用户编号 */}
-              <div className="flex items-center gap-[10px] h-[30px] px-2 py-1 bg-white border border-[#f5f5f5] rounded-[4px] w-[169px]">
-                <input
-                  type="text"
-                  placeholder="用户编号"
-                  value={userIdSearch}
-                  onChange={(e) => setUserIdSearch(e.target.value)}
-                  className="flex-1 text-[12.5px] leading-[22px] text-[#a1a1a1] placeholder:text-[#a1a1a1] outline-none bg-transparent"
-                />
-              </div>
-              {/* Search Input 2 - 用户名称 */}
-              <div className="flex items-center gap-[10px] h-[30px] px-2 py-1 bg-white border border-[#f5f5f5] rounded-[4px] w-[169px]">
-                <input
-                  type="text"
-                  placeholder="用户名称"
-                  value={usernameSearch}
-                  onChange={(e) => setUsernameSearch(e.target.value)}
-                  className="flex-1 text-[12.5px] leading-[22px] text-[#a1a1a1] placeholder:text-[#a1a1a1] outline-none bg-transparent"
-                />
-              </div>
+              <SearchInput
+                placeholder="用户编号"
+                value={userIdSearch}
+                onChange={(e) => setUserIdSearch(e.target.value)}
+              />
+              <SearchInput
+                placeholder="用户名称"
+                value={usernameSearch}
+                onChange={(e) => setUsernameSearch(e.target.value)}
+              />
             </div>
             {/* Empty space for buttons area - Figma shows empty */}
             <div className="w-[100px] h-[28px]" />
@@ -196,6 +176,7 @@ export function UserManagementPage() {
                       }}
                       onChange={(e) => handleSelectAll(e.target.checked)}
                       className="w-5 h-5 border border-[#767575] rounded-none cursor-pointer bg-white"
+                      aria-label="全选所有行"
                     />
                   </TableHeaderCell>
                   <TableHeaderCell className="w-[111px]" fixed="left" fixedOffset={36}>
@@ -239,7 +220,7 @@ export function UserManagementPage() {
                     <TableEnumCell variant={user.status === UserStatus.ACTIVE ? 'default' : 'default'}>
                       {UserStatusLabels[user.status]}
                     </TableEnumCell>
-                    <TableTextCell>{user.role}</TableTextCell>
+                    <TableTextCell>{UserRoleLabels[user.role]}</TableTextCell>
                     <TableTextCell>{user.organization}</TableTextCell>
                     <TableTextCell>{user.userGroup}</TableTextCell>
                     <TableTextCell>{user.lastLoginTime}</TableTextCell>

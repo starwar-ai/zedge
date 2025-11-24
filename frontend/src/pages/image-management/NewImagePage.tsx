@@ -138,13 +138,11 @@ export function NewImagePage() {
 
   // Handle save
   const handleSave = () => {
-    console.log('Saving new image:', formData)
-    // TODO: Implement API call
+    // TODO: Implement API call to save image
   }
 
   // Handle cancel
   const handleCancel = () => {
-    console.log('Canceling')
     // TODO: Navigate back or show confirmation
   }
 
@@ -410,7 +408,9 @@ function SoftwareSelectionTable({
                 <TableDropdownCell
                   value={sw.version}
                   options={['24.0.7', '24.0.6', '24.0.5']}
-                  onChange={(value) => console.log('Version changed:', value)}
+                  onChange={() => {
+                    // TODO: Handle version change
+                  }}
                 />
                 <TableTextCell>{sw.status}</TableTextCell>
               </TableRow>

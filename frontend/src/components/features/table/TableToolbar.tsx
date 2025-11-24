@@ -50,25 +50,27 @@ export function TableToolbar({
         
         {actions.filter && (
           <div ref={filterButtonRef}>
-            <Button 
-              variant="secondary" 
-              size="sm" 
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={handleFilterClick}
               icon={<Filter className="w-[14px] h-[14px]" />}
               className="w-[32px] px-0 min-w-0"
-              title='筛选'
+              title="筛选"
+              aria-label="高级筛选"
             />
           </div>
         )}
-        
+
         {actions.reset && (
           <Button
-            variant="secondary" 
-            size="sm" 
+            variant="secondary"
+            size="sm"
             onClick={onReset}
             icon={<Brush className="w-[14px] h-[14px]" />}
             className="w-[32px] px-0 min-w-0"
             title="重置"
+            aria-label="重置筛选条件"
           />
         )}
       </div>
@@ -76,24 +78,26 @@ export function TableToolbar({
       {/* Right side: Refresh + Settings */}
       <div className="flex items-center gap-2">
         {actions.refresh && (
-          <Button 
-            variant="secondary" 
-            size="sm" 
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={onRefresh}
             icon={<RotateCcw className="w-[14px] h-[14px]" />}
             className="w-[32px] px-0 min-w-0"
-            title='刷新'
+            title="刷新"
+            aria-label="刷新数据"
           />
         )}
-        
+
         {actions.settings && (
-          <Button 
-            variant="secondary" 
-            size="sm" 
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setIsTableSettingOpen(true)}
             icon={<Settings className="w-[14px] h-[14px]" />}
             className="w-[32px] px-0 min-w-0"
             title="列设置"
+            aria-label="表格列设置"
           />
         )}
       </div>
