@@ -55,7 +55,6 @@ export const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
           flex items-center justify-between
           w-full h-8
           bg-surface-primary
-          shadow-xs
           ${className}
         `}
       >

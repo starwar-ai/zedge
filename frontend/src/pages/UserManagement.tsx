@@ -150,7 +150,7 @@ export function UserManagement() {
       {/* Header removed - managed by MainLayout */}
       
       {/* Content - Figma node: 2027:1439 */}
-      <div className="flex-1 px-6 pb-6">
+      <div className="flex-1">
         {/* Table Panel - Figma node: 2027:1442 */}
         <div className="border border-[#f5f5f5] rounded-[10px] p-3">
           {/* Search Bar - Figma node: 2027:1443 */}
