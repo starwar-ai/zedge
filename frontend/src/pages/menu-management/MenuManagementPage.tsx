@@ -12,7 +12,6 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Plus } from 'lucide-react'
 import {
   Table,
   TableHead,
@@ -24,8 +23,10 @@ import {
   TableActionCell,
   TableEnumCell,
   Pagination,
-  Dialog
+  Dialog,
+  SearchInput,
 } from '@/components/ui'
+import { CreateButton } from '@/components/features/buttons/FigmaButtons'
 import { NewMenuDialog } from './NewMenuDialog'
 import { ColumnDef, ColumnSetting } from '@/components/features/table/TableSettingDialog'
 import { FilterCondition } from '@/components/features/table/AdvancedFilterPopup'
@@ -42,6 +43,18 @@ export interface MenuData {
   remarks: string
   path: string
   children?: MenuData[]
+}
+
+// Display row type with level for tree rendering
+interface MenuDisplayRow extends MenuData {
+  level: number
+}
+
+// Helper to get menu value by column id
+const getMenuValue = (menu: MenuData, columnId: string): string => {
+  const value = menu[columnId as keyof MenuData]
+  if (typeof value === 'string') return value
+  return ''
 }
 
 // Mock data for demonstration - matching Figma design exactly
@@ -168,8 +181,7 @@ export function MenuManagementPage() {
       if (advancedFilters.length > 0) {
         matchAdvanced = advancedFilters.every(condition => {
           const { columnId, operator, value } = condition
-          // @ts-ignore - Accessing dynamic property for demo
-          const itemValue = String(menu[columnId] || '').toLowerCase()
+          const itemValue = getMenuValue(menu, columnId).toLowerCase()
           const filterValue = value.toLowerCase()
 
           switch (operator) {
@@ -194,8 +206,8 @@ export function MenuManagementPage() {
   const currentRootMenus = filteredMenus.slice(startIndex, endIndex)
 
   // Flatten logic for display
-  const getDisplayRows = (nodes: MenuData[], expandedIds: Set<string>, level = 0): Array<MenuData & { level: number }> => {
-    let rows: Array<MenuData & { level: number }> = []
+  const getDisplayRows = (nodes: MenuData[], expandedIds: Set<string>, level = 0): MenuDisplayRow[] => {
+    let rows: MenuDisplayRow[] = []
     nodes.forEach(node => {
       rows.push({ ...node, level })
       if (node.children && node.children.length > 0 && expandedIds.has(node.id)) {
@@ -246,14 +258,12 @@ export function MenuManagementPage() {
     setIsCreateDialogOpen(true)
   }
 
-  const handleSaveMenu = (data: any) => {
-    console.log('New menu data:', data)
+  const handleSaveMenu = (_data: Partial<MenuData>) => {
     // TODO: Implement API call to save menu
     setIsCreateDialogOpen(false)
   }
 
-  const handleViewDetails = (menu: MenuData) => {
-    console.log('View details:', menu)
+  const handleViewDetails = (_menu: MenuData) => {
     // TODO: Navigate to details page or open modal
   }
 
@@ -268,15 +278,7 @@ export function MenuManagementPage() {
   useEffect(() => {
     setHeader({
       title: '菜单管理',
-      action: (
-        <button
-          onClick={handleCreate}
-          className="flex items-center justify-center h-[28px] min-w-[100px] px-[11px] py-[7px] bg-[#262626] text-white rounded-[6.75px] text-[12.5px] font-medium tracking-[1px] leading-[17.5px] hover:bg-[#333] transition-colors"
-        >
-          <Plus className="w-[14px] h-[14px] mr-1" />
-          新建
-        </button>
-      ),
+      action: <CreateButton onClick={handleCreate}>新建</CreateButton>,
     })
   }, [setHeader])
 
@@ -292,8 +294,7 @@ export function MenuManagementPage() {
           <TableToolbar
             onReset={handleReset}
             onRefresh={() => {
-              // Add refresh logic here if needed
-              console.log('Refresh clicked')
+              // TODO: Add refresh logic here if needed
             }}
             filterProps={{
               columns: allColumns,
@@ -310,26 +311,16 @@ export function MenuManagementPage() {
               onSave: setColumnSettings,
             }}
           >
-             {/* Search Input 1 - 菜单编号 */}
-             <div className="flex items-center gap-[10px] h-[30px] px-2 py-1 bg-white border border-[#f5f5f5] rounded-[4px] w-[169px]">
-              <input
-                type="text"
-                placeholder="菜单编号"
-                value={searchMenuId}
-                onChange={(e) => setSearchMenuId(e.target.value)}
-                className="flex-1 text-[12.5px] leading-[22px] text-[#314158] placeholder:text-[#a1a1a1] outline-none bg-transparent"
-              />
-            </div>
-            {/* Search Input 2 - 菜单名称 */}
-            <div className="flex items-center gap-[10px] h-[30px] px-2 py-1 bg-white border border-[#f5f5f5] rounded-[4px] w-[169px]">
-              <input
-                type="text"
-                placeholder="菜单名称"
-                value={searchMenuName}
-                onChange={(e) => setSearchMenuName(e.target.value)}
-                className="flex-1 text-[12.5px] leading-[22px] text-[#314158] placeholder:text-[#a1a1a1] outline-none bg-transparent"
-              />
-            </div>
+            <SearchInput
+              placeholder="菜单编号"
+              value={searchMenuId}
+              onChange={(e) => setSearchMenuId(e.target.value)}
+            />
+            <SearchInput
+              placeholder="菜单名称"
+              value={searchMenuName}
+              onChange={(e) => setSearchMenuName(e.target.value)}
+            />
           </TableToolbar>
 
           {/* Menu Table - Figma node: 544:46915 */}
@@ -346,6 +337,7 @@ export function MenuManagementPage() {
                       }}
                       onChange={(e) => handleSelectAll(e.target.checked)}
                       className="w-5 h-5 border border-[#767575] rounded-none cursor-pointer bg-white"
+                      aria-label="全选所有行"
                     />
                   </TableHeaderCell>
 
@@ -449,8 +441,7 @@ export function MenuManagementPage() {
                             fixedOffset={offset}
                             width={width}
                           >
-                            {/* @ts-ignore - Accessing dynamic property */}
-                            {menu[col.id]}
+                            {getMenuValue(menu, col.id)}
                           </TableTextCell>
                         )
                       })

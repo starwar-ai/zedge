@@ -21,8 +21,7 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
 
-    // TODO: Implement actual login logic
-    console.log('Login attempt:', { email, password })
+    // TODO: Implement actual login logic with API call
 
     // Simulate API call
     setTimeout(() => {
@@ -30,8 +29,7 @@ export default function LoginPage() {
     }, 1000)
   }
 
-  const handleSocialLogin = (provider: string) => {
-    console.log(`Social login with ${provider}`)
+  const handleSocialLogin = (_provider: string) => {
     // TODO: Implement social login
   }
 
@@ -101,7 +99,9 @@ export default function LoginPage() {
                     <button
                       type="button"
                       className="text-text font-normal text-text-secondary hover:text-text-primary transition-colors leading-[24px]"
-                      onClick={() => console.log('Forgot password')}
+                      onClick={() => {
+                        // TODO: Navigate to forgot password page
+                      }}
                     >
                       忘记密码？
                     </button>
@@ -166,7 +166,9 @@ export default function LoginPage() {
                 <button
                   type="button"
                   className="font-['Inter'] font-normal text-text leading-[18.75px] text-text-primary ml-1 hover:underline"
-                  onClick={() => console.log('Navigate to register')}
+                  onClick={() => {
+                    // TODO: Navigate to register page
+                  }}
                 >
                   立即注册
                 </button>

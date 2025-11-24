@@ -135,24 +135,20 @@ export function ImageManagementPage() {
 
   // Handle search
   const handleFilter = () => {
-    console.log('Filtering:', { searchImageId, searchImageName })
-    // Implement filtering logic here
+    // TODO: Implement filtering logic here
   }
 
   const handleReset = () => {
     setSearchImageId('')
     setSearchImageName('')
-    console.log('Filters reset')
   }
 
   const handleCreate = () => {
-    console.log('Create new image')
-    // Navigate to create page or open modal
+    // TODO: Navigate to create page or open modal
   }
 
-  const handleViewDetails = (image: ImageData) => {
-    console.log('View details:', image)
-    // Navigate to details page or open modal
+  const handleViewDetails = (_image: ImageData) => {
+    // TODO: Navigate to details page or open modal
   }
 
   // Calculate pagination
