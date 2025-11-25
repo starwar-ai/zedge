@@ -4,6 +4,7 @@ import { User, UserStatus, UserStatusLabels, UserRoleType, UserRoleLabels } from
 import { CreateButton } from '@/components/features/buttons/FigmaButtons'
 import { usePageHeader } from '@/components/layout/MainLayout'
 import { DataTable, DataTableColumn, DataTableAction } from '@/components/features/table/DataTable'
+import { useUsersQuery } from '@/services/users'
 
 /**
  * User Management Page
@@ -17,70 +18,6 @@ import { DataTable, DataTableColumn, DataTableAction } from '@/components/featur
  * - Action menu for each user
  */
 
-// Mock data for demonstration - matching Figma design exactly
-const mockUsers: User[] = [
-  {
-    id: '009-33',
-    username: '学生001',
-    phone: '13818216424',
-    status: UserStatus.ACTIVE,
-    role: UserRoleType.OPERATOR,
-    organization: '山东科技大学',
-    userGroup: '计算机学院/2022年级',
-    lastLoginTime: '2025-11-10 12:00',
-  },
-  {
-    id: '009-34',
-    username: '学生002',
-    phone: '13818216425',
-    status: UserStatus.ACTIVE,
-    role: UserRoleType.OPERATOR,
-    organization: '山东科技大学',
-    userGroup: '电子工程学院/2022年级',
-    lastLoginTime: '2025-12-15 14:00',
-  },
-  {
-    id: '009-35',
-    username: '学生003',
-    phone: '13818216426',
-    status: UserStatus.INACTIVE,
-    role: UserRoleType.OPERATOR,
-    organization: '山东科技大学',
-    userGroup: '机械工程学院/2022年级',
-    lastLoginTime: '2025-09-20 10:30',
-  },
-  {
-    id: '009-36',
-    username: '学生004',
-    phone: '13818216427',
-    status: UserStatus.ACTIVE,
-    role: UserRoleType.ADMIN,
-    organization: '山东科技大学',
-    userGroup: '土木工程学院/2022年级',
-    lastLoginTime: '2025-08-05 15:45',
-  },
-  {
-    id: '009-37',
-    username: '学生005',
-    phone: '13818216428',
-    status: UserStatus.ACTIVE,
-    role: UserRoleType.USER,
-    organization: '清华大学',
-    userGroup: '软件学院/2023年级',
-    lastLoginTime: '2025-10-12 09:30',
-  },
-  {
-    id: '009-38',
-    username: '学生006',
-    phone: '13818216429',
-    status: UserStatus.INACTIVE,
-    role: UserRoleType.TENANT_ADMIN,
-    organization: '北京大学',
-    userGroup: '信息学院/2021年级',
-    lastLoginTime: '2025-07-22 16:20',
-  },
-]
-
 // Type for User with index signature for DataTable compatibility
 type UserRecord = User & Record<string, unknown>
 
@@ -93,6 +30,17 @@ export function UserManagementPage() {
 
   // Selection state
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([])
+
+  const {
+    data: users = [],
+    isLoading,
+    isFetching,
+    refetch,
+    error,
+  } = useUsersQuery({
+    searchId: userIdSearch,
+    searchName: usernameSearch,
+  })
 
   // Action handlers
   const handleCreate = () => {
@@ -120,8 +68,7 @@ export function UserManagementPage() {
   }
 
   const handleRefresh = () => {
-    // TODO: Refresh user list from API
-    console.log('Refresh user list')
+    refetch()
   }
 
   // Set page header actions
@@ -130,15 +77,6 @@ export function UserManagementPage() {
       action: <CreateButton onClick={handleCreate}>新建</CreateButton>,
     })
   }, [setHeader])
-
-  // Filter data based on search
-  const filteredUsers = useMemo(() => {
-    return mockUsers.filter((user) => {
-      const matchesId = !userIdSearch || user.id.toLowerCase().includes(userIdSearch.toLowerCase())
-      const matchesName = !usernameSearch || user.username.toLowerCase().includes(usernameSearch.toLowerCase())
-      return matchesId && matchesName
-    })
-  }, [userIdSearch, usernameSearch])
 
   // Column definitions
   const columns: DataTableColumn<UserRecord>[] = useMemo(
@@ -268,7 +206,7 @@ export function UserManagementPage() {
       {/* Table Panel */}
       <div className="border border-[#f5f5f5] rounded-[10px] p-3 flex-1">
         <DataTable<UserRecord>
-          data={filteredUsers as UserRecord[]}
+          data={users as UserRecord[]}
           columns={columns}
           rowKey="id"
           selectable
@@ -276,6 +214,8 @@ export function UserManagementPage() {
           onSelectionChange={handleSelectionChange}
           actions={actions}
           toolbar={toolbar}
+          loading={isLoading || isFetching}
+          error={error instanceof Error ? error.message : null}
           onRefresh={handleRefresh}
           filterable
           columnSettings

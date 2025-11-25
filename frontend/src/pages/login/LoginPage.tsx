@@ -1,8 +1,25 @@
-import React, { useState } from 'react'
+import React, { useCallback } from 'react'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SocialLoginButton, WeChatIcon, QQIcon, CampusIcon } from '@/components/features/auth'
+import { ControlledForm, FormField, FormInputField } from '@/components/form'
+import { useFormSubmit } from '@/hooks/useFormHelpers'
 import logoContainer from '@/assets/images/logo-container.png'
+
+const loginSchema = z.object({
+  email: z
+    .string({ required_error: '请输入邮箱' })
+    .min(1, '请输入邮箱')
+    .email('请输入合法邮箱'),
+  password: z
+    .string({ required_error: '请输入密码' })
+    .min(6, '密码至少 6 位'),
+})
+
+type LoginFormValues = z.infer<typeof loginSchema>
 
 /**
  * Login Page Component
@@ -13,21 +30,21 @@ import logoContainer from '@/assets/images/logo-container.png'
  * - Right: Login form with email/password and social login options
  */
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+  const methods = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  })
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
+  const loginHandler = useCallback(async (values: LoginFormValues) => {
     // TODO: Implement actual login logic with API call
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    console.log('Login payload', values)
+  }, [])
 
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false)
-    }, 1000)
-  }
+  const { submitting, onSubmit } = useFormSubmit(methods, loginHandler)
 
   const handleSocialLogin = (_provider: string) => {
     // TODO: Implement social login
@@ -76,46 +93,49 @@ export default function LoginPage() {
             </div>
 
             {/* Login Form */}
-            <form onSubmit={handleLogin} className="px-6 py-0">
+            <ControlledForm methods={methods} onSubmit={onSubmit} className="px-6 py-0">
               <div className="space-y-2">
                 {/* Email Input */}
-                <Input
+                <FormInputField
+                  name="email"
                   type="email"
                   size="md"
                   label="邮箱"
                   placeholder="请输入邮箱"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                   fullWidth
-                  required
                 />
 
                 {/* Password Input */}
-                <div>
-                  <div className="flex items-center justify-between mb-2 h-[24px]">
-                    <label className="block text-label font-medium text-text-primary leading-[14px]">
-                      密码
-                    </label>
-                    <button
-                      type="button"
-                      className="text-text font-normal text-text-secondary hover:text-text-primary transition-colors leading-[24px]"
-                      onClick={() => {
-                        // TODO: Navigate to forgot password page
-                      }}
-                    >
-                      忘记密码？
-                    </button>
-                  </div>
-                  <Input
-                    type="password"
-                    size="md"
-                    placeholder="请输入密码"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    fullWidth
-                    required
-                  />
-                </div>
+                <FormField
+                  name="password"
+                  render={({ field, fieldState }) => (
+                    <div>
+                      <div className="flex items-center justify-between mb-2 h-[24px]">
+                        <label className="block text-label font-medium text-text-primary leading-[14px]">
+                          密码
+                        </label>
+                        <button
+                          type="button"
+                          className="text-text font-normal text-text-secondary hover:text-text-primary transition-colors leading-[24px]"
+                          onClick={() => {
+                            // TODO: Navigate to forgot password page
+                          }}
+                        >
+                          忘记密码？
+                        </button>
+                      </div>
+                      <Input
+                        type="password"
+                        size="md"
+                        placeholder="请输入密码"
+                        fullWidth
+                        {...field}
+                        value={field.value ?? ''}
+                        error={fieldState.error?.message}
+                      />
+                    </div>
+                  )}
+                />
 
                 {/* Login Button */}
                 <Button
@@ -123,7 +143,7 @@ export default function LoginPage() {
                   variant="primary"
                   size="sm"
                   fullWidth
-                  loading={loading}
+                  loading={submitting}
                   className="h-[28px] rounded-[6.75px] text-[12.5px] font-medium tracking-[1px] leading-[17.5px]"
                 >
                   登录
@@ -173,7 +193,7 @@ export default function LoginPage() {
                   立即注册
                 </button>
               </div>
-            </form>
+            </ControlledForm>
           </div>
         </div>
       </div>
