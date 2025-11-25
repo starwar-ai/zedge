@@ -6,7 +6,7 @@ const QUERY_KEYS = {
   users: ['users'] as const,
 }
 
-const mockUsers: User[] = [
+export const mockUsers: User[] = [
   {
     id: '009-33',
     username: '学生001',

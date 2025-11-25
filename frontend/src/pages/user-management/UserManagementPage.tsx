@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { SearchInput } from '@/components/ui'
+import { createColumnHelper } from '@tanstack/react-table'
+import { SearchInput, TableTextCell, TableEnumCell } from '@/components/ui'
 import { User, UserStatus, UserStatusLabels, UserRoleType, UserRoleLabels } from '@/types/user'
 import { CreateButton } from '@/components/features/buttons/FigmaButtons'
 import { usePageHeader } from '@/components/layout/MainLayout'
-import { DataTable, DataTableColumn, DataTableAction } from '@/components/features/table/DataTable'
+import { TanStackDataTable } from '@/components/features/table'
 import { useUsersQuery } from '@/services/users'
 
 /**
@@ -18,8 +19,10 @@ import { useUsersQuery } from '@/services/users'
  * - Action menu for each user
  */
 
-// Type for User with index signature for DataTable compatibility
+// Type for User with index signature for table compatibility
 type UserRecord = User & Record<string, unknown>
+
+const columnHelper = createColumnHelper<UserRecord>()
 
 export function UserManagementPage() {
   const { setHeader } = usePageHeader()
@@ -78,106 +81,104 @@ export function UserManagementPage() {
     })
   }, [setHeader])
 
-  // Column definitions
-  const columns: DataTableColumn<UserRecord>[] = useMemo(
+  const columns = useMemo(
     () => [
-      {
-        id: 'id',
-        key: 'id',
-        label: '用户编号',
-        width: 120,
-        sortable: true,
-        type: 'text',
-      },
-      {
-        id: 'username',
-        key: 'username',
-        label: '用户名',
-        width: 120,
-        sortable: true,
-        type: 'text',
-      },
-      {
-        id: 'phone',
-        key: 'phone',
-        label: '联系手机',
-        width: 140,
-        type: 'text',
-      },
-      {
-        id: 'status',
-        key: 'status',
-        label: '状态',
-        width: 80,
-        type: 'enum',
-        enumOptions: [
-          { label: UserStatusLabels[UserStatus.ACTIVE], value: UserStatus.ACTIVE },
-          { label: UserStatusLabels[UserStatus.INACTIVE], value: UserStatus.INACTIVE },
-        ],
-        enumVariant: (value) => (value === UserStatus.ACTIVE ? 'success' : 'default'),
-        render: (value) => UserStatusLabels[value as UserStatus] || String(value),
-      },
-      {
-        id: 'role',
-        key: 'role',
-        label: '角色',
-        width: 120,
-        type: 'enum',
-        enumOptions: [
-          { label: UserRoleLabels[UserRoleType.ADMIN], value: UserRoleType.ADMIN },
-          { label: UserRoleLabels[UserRoleType.TENANT_ADMIN], value: UserRoleType.TENANT_ADMIN },
-          { label: UserRoleLabels[UserRoleType.OPERATOR], value: UserRoleType.OPERATOR },
-          { label: UserRoleLabels[UserRoleType.USER], value: UserRoleType.USER },
-        ],
-        render: (value) => UserRoleLabels[value as UserRoleType] || String(value),
-      },
-      {
-        id: 'organization',
-        key: 'organization',
-        label: '租户',
-        width: 150,
-        type: 'text',
-        sortable: true,
-      },
-      {
-        id: 'userGroup',
-        key: 'userGroup',
-        label: '用户组',
-        width: 200,
-        type: 'text',
-      },
-      {
-        id: 'lastLoginTime',
-        key: 'lastLoginTime',
-        label: '最近登录时间',
-        width: 170,
-        type: 'date',
-        sortable: true,
-      },
+      columnHelper.accessor('id', {
+        header: () => '用户编号',
+        enableSorting: true,
+        cell: ({ getValue }) => (
+          <TableTextCell>{getValue() as string}</TableTextCell>
+        ),
+      }),
+      columnHelper.accessor('username', {
+        header: () => '用户名',
+        enableSorting: true,
+        cell: ({ getValue }) => (
+          <TableTextCell>{getValue() as string}</TableTextCell>
+        ),
+      }),
+      columnHelper.accessor('phone', {
+        header: () => '联系手机',
+        cell: ({ getValue }) => (
+          <TableTextCell>{getValue() as string}</TableTextCell>
+        ),
+      }),
+      columnHelper.accessor('status', {
+        header: () => '状态',
+        enableSorting: true,
+        cell: ({ getValue }) => {
+          const status = getValue() as UserStatus
+          return (
+            <TableEnumCell variant={status === UserStatus.ACTIVE ? 'success' : 'default'}>
+              {UserStatusLabels[status]}
+            </TableEnumCell>
+          )
+        },
+      }),
+      columnHelper.accessor('role', {
+        header: () => '角色',
+        cell: ({ getValue }) => {
+          const role = getValue() as UserRoleType
+          return (
+            <TableTextCell>{UserRoleLabels[role]}</TableTextCell>
+          )
+        },
+      }),
+      columnHelper.accessor('organization', {
+        header: () => '租户',
+        enableSorting: true,
+        cell: ({ getValue }) => (
+          <TableTextCell>{getValue() as string}</TableTextCell>
+        ),
+      }),
+      columnHelper.accessor('userGroup', {
+        header: () => '用户组',
+        cell: ({ getValue }) => (
+          <TableTextCell>{getValue() as string}</TableTextCell>
+        ),
+      }),
+      columnHelper.accessor('lastLoginTime', {
+        header: () => '最近登录时间',
+        enableSorting: true,
+        cell: ({ getValue }) => (
+          <TableTextCell>{getValue() as string}</TableTextCell>
+        ),
+      }),
+      columnHelper.display({
+        id: 'actions',
+        header: () => '操作',
+        cell: ({ row }) => (
+          <TableTextCell>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleUserDetail(row.original)}
+                className="text-[14px] text-black hover:text-primary-600 transition-colors"
+              >
+                详情
+              </button>
+              <div className="w-px h-[11px] bg-[#d9d9d9]" />
+              <button
+                type="button"
+                onClick={() => handleUserEdit(row.original)}
+                className="text-[14px] text-black hover:text-primary-600 transition-colors"
+              >
+                编辑
+              </button>
+              <div className="w-px h-[11px] bg-[#d9d9d9]" />
+              <button
+                type="button"
+                onClick={() => handleUserDelete(row.original)}
+                className="text-[14px] text-black hover:text-error-600 transition-colors"
+              >
+                删除
+              </button>
+            </div>
+          </TableTextCell>
+        ),
+      }),
     ],
-    []
-  )
-
-  // Row actions
-  const actions: DataTableAction<UserRecord>[] = useMemo(
-    () => [
-      {
-        key: 'detail',
-        label: '详情',
-        onClick: handleUserDetail,
-      },
-      {
-        key: 'edit',
-        label: '编辑',
-        onClick: handleUserEdit,
-      },
-      {
-        key: 'delete',
-        label: '删除',
-        onClick: handleUserDelete,
-      },
-    ],
-    []
+    [handleUserDelete, handleUserDetail, handleUserEdit]
   )
 
   // Selection change handler
@@ -205,20 +206,17 @@ export function UserManagementPage() {
     <div className="flex flex-col gap-3 h-full">
       {/* Table Panel */}
       <div className="border border-[#f5f5f5] rounded-[10px] p-3 flex-1">
-        <DataTable<UserRecord>
+        <TanStackDataTable<UserRecord>
           data={users as UserRecord[]}
           columns={columns}
           rowKey="id"
           selectable
           selectedRowKeys={selectedRowKeys}
           onSelectionChange={handleSelectionChange}
-          actions={actions}
           toolbar={toolbar}
           loading={isLoading || isFetching}
           error={error instanceof Error ? error.message : null}
           onRefresh={handleRefresh}
-          filterable
-          columnSettings
           batchActions={[
             {
               key: 'delete',

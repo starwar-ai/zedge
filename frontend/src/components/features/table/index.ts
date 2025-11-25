@@ -18,3 +18,7 @@ export type {
 // DataTable - High-level table component
 export { DataTable } from './DataTable'
 export type { DataTableProps, DataTableColumn, DataTableAction } from './DataTable'
+
+// TanStack-based table for new pages
+export { TanStackDataTable } from './TanStackDataTable'
+export type { TanStackDataTableProps } from './TanStackDataTable'

@@ -20,13 +20,35 @@ const queryClient = new QueryClient({
   },
 })
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
-  </React.StrictMode>,
-)
+async function enableMocking() {
+  if (
+    import.meta.env.VITE_ENABLE_MSW !== 'true' ||
+    import.meta.env.PROD
+  ) {
+    return
+  }
+
+  const { worker } = await import('./mocks/browser')
+  await worker.start({
+    onUnhandledRequest: 'bypass',
+  })
+}
+
+const rootElement = document.getElementById('root')!
+const root = ReactDOM.createRoot(rootElement)
+
+const renderApp = () => {
+  root.render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </React.StrictMode>,
+  )
+}
+
+enableMocking().finally(renderApp)
+

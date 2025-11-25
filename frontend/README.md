@@ -39,6 +39,26 @@ npm run build
 npm run preview
 ```
 
+### Run Unit Tests
+
+```bash
+npm run test
+```
+
+Run in watch mode during development:
+
+```bash
+npm run test:watch
+```
+
+### Analyze Bundle Size
+
+Generate a production build and open the interactive bundle report:
+
+```bash
+npm run build && npm run analyze
+```
+
 ## Project Structure
 
 ```
@@ -229,6 +249,18 @@ The Vite dev server (`vite.config.ts`) proxies `/api` requests to `http://localh
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
 - `npm run format` - Format code with Prettier
+- `npm run test` - Run Vitest test suite once
+- `npm run test:watch` - Run Vitest in watch mode
+- `npm run analyze` - Inspect bundle output via `source-map-explorer`
+
+## Testing & Mocking
+
+- **Vitest + Testing Library**: Unit tests live alongside source files (e.g. `src/services/http.test.ts`). JSDOM is configured globally via `src/setupTests.ts`.
+- **MSW (Mock Service Worker)**: In development you can proxy API requests to local mocks by setting `VITE_ENABLE_MSW=true` before running `npm run dev`. MSW handlers are in `src/mocks/handlers.ts`.
+  ```bash
+  VITE_ENABLE_MSW=true npm run dev
+  ```
+  This boots `src/mocks/browser.ts` and serves the same mock data that our React Query hooks use in tests.
 
 ## Environment Variables
 
@@ -236,6 +268,8 @@ Create a `.env` file for environment-specific configuration:
 
 ```env
 VITE_API_URL=http://localhost:3000/api/v1
+# Optional: enable MSW during local development
+VITE_ENABLE_MSW=true
 ```
 
 Access in code:
