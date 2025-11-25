@@ -425,7 +425,7 @@ export function MenuManagementPage() {
   return (
     <div className="flex flex-col gap-3 h-full">
       <div className="flex-1">
-        <div className="border border-[#f5f5f5] rounded-[10px] p-3">
+        <div className="border border-border-default rounded-[10px] p-3">
           {/* Enhanced Table Toolbar */}
           <TableToolbar
             onReset={handleReset}
@@ -513,7 +513,7 @@ export function MenuManagementPage() {
                         if (el) el.indeterminate = someSelected
                       }}
                       onChange={(e) => handleSelectAll(e.target.checked)}
-                      className="w-5 h-5 border border-[#767575] rounded-none cursor-pointer bg-white"
+                      className="w-5 h-5 border border-neutral-500 rounded-none cursor-pointer bg-white"
                       aria-label="全选所有行"
                     />
                   </TableHeaderCell>

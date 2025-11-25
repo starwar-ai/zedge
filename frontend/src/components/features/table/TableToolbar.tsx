@@ -325,7 +325,7 @@ function ExportDropdown({ formats, onExport, onClose }: ExportDropdownProps) {
   return (
     <div
       ref={ref}
-      className="absolute right-0 top-full mt-1 bg-white border border-[#f5f5f5] rounded-lg shadow-lg z-50 min-w-[160px]"
+      className="absolute right-0 top-full mt-1 bg-white border border-border-default rounded-lg shadow-lg z-50 min-w-[160px]"
     >
       {formats.map((format) => (
         <button

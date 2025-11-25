@@ -216,7 +216,7 @@ export const TableHeaderCell = React.forwardRef<HTMLTableCellElement, TableHeade
     return (
       <th
         ref={thRef}
-        className={`bg-white border-b border-[#f5f5f5] h-[46px] pl-2 pr-0 py-4 whitespace-nowrap relative ${fixedClass} ${sortable ? 'cursor-pointer select-none hover:bg-neutral-50' : ''} ${className}`}
+        className={`bg-white border-b border-border-default h-[46px] pl-2 pr-0 py-4 whitespace-nowrap relative ${fixedClass} ${sortable ? 'cursor-pointer select-none hover:bg-neutral-50' : ''} ${className}`}
         style={{ ...fixedStyles, width, minWidth: width, ...style }}
         onClick={sortable ? onSort : undefined}
         aria-sort={sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : undefined}
@@ -230,7 +230,7 @@ export const TableHeaderCell = React.forwardRef<HTMLTableCellElement, TableHeade
             {renderSortIcon()}
           </div>
           {showDivider && (
-            <div className="w-px h-[15px] bg-[#f5f5f5] shrink-0" />
+            <div className="w-px h-[15px] bg-border-default shrink-0" />
           )}
         </div>
 
@@ -306,7 +306,7 @@ export const TableTextCell = React.forwardRef<HTMLTableCellElement, TableTextCel
     return (
       <td
         ref={ref}
-        className={`border-b border-[#f5f5f5] p-2 whitespace-nowrap ${fixedClass} ${className}`}
+        className={`border-b border-border-default p-2 whitespace-nowrap ${fixedClass} ${className}`}
         style={{ ...fixedStyles, width, ...style }}
         {...props}
       >
@@ -321,7 +321,7 @@ export const TableTextCell = React.forwardRef<HTMLTableCellElement, TableTextCel
               className="mr-1 p-0.5 hover:bg-neutral-100 rounded flex items-center justify-center transition-colors"
             >
               <ChevronRight
-                className={`w-4 h-4 text-[#737373] transition-transform duration-200 ${
+                className={`w-4 h-4 text-icon-primary transition-transform duration-200 ${
                   isExpanded ? 'rotate-90' : 'rotate-0'
                 }`}
               />
@@ -384,7 +384,7 @@ export const TableSelectCell = React.forwardRef<HTMLTableCellElement, TableSelec
     return (
       <td
         ref={ref}
-        className={`border-b border-[#f5f5f5] p-2 text-center whitespace-nowrap ${fixedClass} ${className}`}
+        className={`border-b border-border-default p-2 text-center whitespace-nowrap ${fixedClass} ${className}`}
         style={{ ...fixedStyles, width, ...style }}
         {...props}
       >
@@ -395,7 +395,7 @@ export const TableSelectCell = React.forwardRef<HTMLTableCellElement, TableSelec
             if (el) el.indeterminate = indeterminate
           }}
           onChange={(e) => onCheckedChange?.(e.target.checked)}
-          className="w-5 h-5 border border-[#767575] rounded-none cursor-pointer bg-white"
+          className="w-5 h-5 border border-neutral-500 rounded-none cursor-pointer bg-white"
         />
       </td>
     )
@@ -477,7 +477,7 @@ export const TableDropdownCell = React.forwardRef<HTMLTableCellElement, TableDro
     return (
       <td
         ref={ref}
-        className={`border-b border-[#f5f5f5] p-2 whitespace-nowrap ${fixedClass} ${className}`}
+        className={`border-b border-border-default p-2 whitespace-nowrap ${fixedClass} ${className}`}
         style={{ ...fixedStyles, width, ...style }}
         {...props}
       >
@@ -487,17 +487,17 @@ export const TableDropdownCell = React.forwardRef<HTMLTableCellElement, TableDro
             onClick={() => setIsOpen(!isOpen)}
             aria-expanded={isOpen}
             aria-haspopup="listbox"
-            className="w-full bg-[#eceef2] border border-transparent rounded-lg px-[9px] py-px flex items-center justify-between min-h-[22px] hover:bg-neutral-200 transition-colors"
+            className="w-full bg-slate-100 border border-transparent rounded-lg px-[9px] py-px flex items-center justify-between min-h-[22px] hover:bg-neutral-200 transition-colors"
           >
             <span className="text-[14px] font-normal text-black leading-5 tracking-[-0.1504px]">
               {value}
             </span>
-            <ChevronDown className={`w-4 h-4 text-[#737373] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-icon-primary transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {isOpen && options.length > 0 && (
             <div
-              className="absolute top-full left-0 mt-1 w-full bg-white border border-[#f5f5f5] rounded-lg shadow-lg z-dropdown"
+              className="absolute top-full left-0 mt-1 w-full bg-white border border-border-default rounded-lg shadow-lg z-dropdown"
               role="listbox"
             >
               {options.map((option, index) => (
@@ -510,7 +510,7 @@ export const TableDropdownCell = React.forwardRef<HTMLTableCellElement, TableDro
                     onChange?.(option)
                     setIsOpen(false)
                   }}
-                  className={`w-full text-left px-[9px] py-1.5 text-[14px] hover:bg-[#f5f5f5] first:rounded-t-lg last:rounded-b-lg ${value === option ? 'bg-[#f5f5f5]' : ''}`}
+                  className={`w-full text-left px-[9px] py-1.5 text-[14px] hover:bg-surface-secondary first:rounded-t-lg last:rounded-b-lg ${value === option ? 'bg-surface-secondary' : ''}`}
                 >
                   {option}
                 </button>
@@ -573,7 +573,7 @@ export const TableActionCell = React.forwardRef<HTMLTableCellElement, TableActio
     return (
       <td
         ref={ref}
-        className={`border-b border-[#f5f5f5] h-[30px] text-center whitespace-nowrap ${fixedClass} ${className}`}
+        className={`border-b border-border-default h-[30px] text-center whitespace-nowrap ${fixedClass} ${className}`}
         style={{ ...fixedStyles, width, ...style }}
         {...props}
       >
@@ -588,11 +588,11 @@ export const TableActionCell = React.forwardRef<HTMLTableCellElement, TableActio
 
           {showMore && (
             <>
-              <div className="w-px h-[11px] bg-[#d9d9d9]" />
+              <div className="w-px h-[11px] bg-neutral-300" />
               <button
                 type="button"
                 onClick={onMore}
-                className="text-[#737373] hover:text-black transition-colors"
+                className="text-icon-primary hover:text-black transition-colors"
               >
                 <MoreVertical  />
               </button>
@@ -642,7 +642,7 @@ export const TableEnumCell = React.forwardRef<HTMLTableCellElement, TableEnumCel
     const fixedClass = getFixedClassName(fixed)
 
     const variantStyles = {
-      default: 'bg-[#eceef2] text-[#030213]',
+      default: 'bg-slate-100 text-neutral-900',
       success: 'bg-success-100 text-success-800',
       warning: 'bg-warning-100 text-warning-800',
       error: 'bg-error-100 text-error-800',
@@ -652,7 +652,7 @@ export const TableEnumCell = React.forwardRef<HTMLTableCellElement, TableEnumCel
     return (
       <td
         ref={ref}
-        className={`border-b border-[#f5f5f5] h-[30px] text-center whitespace-nowrap ${fixedClass} ${className}`}
+        className={`border-b border-border-default h-[30px] text-center whitespace-nowrap ${fixedClass} ${className}`}
         style={{ ...fixedStyles, ...style }}
         {...props}
       >
@@ -791,7 +791,7 @@ export const TableLoading: React.FC<TableLoadingProps> = ({
       <table className="w-full border-collapse">
         <tbody>
           {Array.from({ length: rows }).map((_, rowIndex) => (
-            <tr key={rowIndex} className="border-b border-[#f5f5f5]">
+            <tr key={rowIndex} className="border-b border-border-default">
               {Array.from({ length: columns }).map((_, colIndex) => (
                 <td key={colIndex} className="p-2">
                   <div
