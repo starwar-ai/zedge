@@ -17,7 +17,6 @@ import {
   TableBody,
   TableRow,
   TableHeaderCell,
-  TableTextCell,
   TableSelectCell,
   TableLoading,
   TableEmpty,
@@ -257,46 +256,47 @@ export function TanStackDataTable<TData extends Record<string, unknown>>({
       ) : (
         <Table>
           <TableHead>
-            <TableRow>
-              {selectable && (
-                <TableHeaderCell className="w-[36px]" fixed="left">
-                  <input
-                    type="checkbox"
-                    checked={table.getIsAllPageRowsSelected()}
-                    ref={(el) => {
-                      if (el) {
-                        el.indeterminate =
-                          table.getIsSomePageRowsSelected() &&
-                          !table.getIsAllPageRowsSelected()
-                      }
-                    }}
-                    onChange={table.getToggleAllPageRowsSelectedHandler()}
-                    className="w-5 h-5 border border-[#767575] rounded-none cursor-pointer bg-white"
-                    aria-label="全选"
-                  />
-                </TableHeaderCell>
-              )}
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {selectable && (
+                  <TableHeaderCell className="w-[36px]" fixed="left">
+                    <input
+                      type="checkbox"
+                      checked={table.getIsAllPageRowsSelected()}
+                      ref={(el) => {
+                        if (el) {
+                          el.indeterminate =
+                            table.getIsSomePageRowsSelected() &&
+                            !table.getIsAllPageRowsSelected()
+                        }
+                      }}
+                      onChange={table.getToggleAllPageRowsSelectedHandler()}
+                      className="w-5 h-5 border border-neutral-500 rounded-none cursor-pointer bg-white"
+                      aria-label="全选"
+                    />
+                  </TableHeaderCell>
+                )}
 
-              {table.getLeafColumns().map((column) => (
-                <TableHeaderCell
-                  key={column.id}
-                  sortable={column.getCanSort()}
-                  sortDirection={
-                    column.getIsSorted() === 'desc'
-                      ? 'desc'
-                      : column.getIsSorted() === 'asc'
-                        ? 'asc'
-                        : null
-                  }
-                  onSort={column.getToggleSortingHandler()}
-                >
-                  {flexRender(
-                    column.columnDef.header,
-                    column.getContext(),
-                  )}
-                </TableHeaderCell>
-              ))}
-            </TableRow>
+                {headerGroup.headers.map((header) => (
+                  <TableHeaderCell
+                    key={header.id}
+                    sortable={header.column.getCanSort()}
+                    sortDirection={
+                      header.column.getIsSorted() === 'desc'
+                        ? 'desc'
+                        : header.column.getIsSorted() === 'asc'
+                          ? 'asc'
+                          : null
+                    }
+                    onSort={() => header.column.toggleSorting()}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHeaderCell>
+                ))}
+              </TableRow>
+            ))}
           </TableHead>
 
           <TableBody>

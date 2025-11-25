@@ -37,6 +37,7 @@ export type {
   TableSelectCellProps,
   TableDropdownCellProps,
   TableActionCellProps,
+  TableActionItem,
   TableEnumCellProps,
   TableLoadingProps,
   TableEmptyProps,

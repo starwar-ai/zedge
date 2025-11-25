@@ -524,24 +524,69 @@ export const TableDropdownCell = React.forwardRef<HTMLTableCellElement, TableDro
 )
 TableDropdownCell.displayName = 'TableDropdownCell'
 
+/**
+ * Action item definition for table actions
+ */
+export interface TableActionItem {
+  /**
+   * Unique key for the action
+   */
+  key: string
+
+  /**
+   * Display label for the action
+   */
+  label: string
+
+  /**
+   * Optional icon to display
+   */
+  icon?: React.ReactNode
+
+  /**
+   * Click handler for the action
+   */
+  onClick?: () => void
+
+  /**
+   * Whether the action is disabled
+   */
+  disabled?: boolean
+
+  /**
+   * Whether to show danger styling
+   */
+  danger?: boolean
+}
+
 export interface TableActionCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   /**
-   * Primary action text
+   * Primary action text (legacy support)
    */
   actionText?: string
 
   /**
-   * Primary action handler
+   * Primary action handler (legacy support)
    */
   onAction?: () => void
 
   /**
-   * Show more options menu
+   * Actions to display directly in the cell
+   */
+  actions?: TableActionItem[]
+
+  /**
+   * Actions to display in the "more" dropdown menu
+   */
+  moreActions?: TableActionItem[]
+
+  /**
+   * Show more options menu (legacy support, auto-enabled if moreActions provided)
    */
   showMore?: boolean
 
   /**
-   * More options handler
+   * More options handler (legacy support)
    */
   onMore?: () => void
 
@@ -564,11 +609,85 @@ export interface TableActionCellProps extends React.TdHTMLAttributes<HTMLTableCe
 /**
  * Table Action Cell
  * Figma node-id: 389:1274
+ * 
+ * Supports:
+ * - Single action (legacy): actionText + onAction
+ * - Multiple actions: actions array for visible buttons
+ * - More actions dropdown: moreActions array for dropdown menu
  */
 export const TableActionCell = React.forwardRef<HTMLTableCellElement, TableActionCellProps>(
-  ({ actionText = '详情', onAction, showMore = true, onMore, fixed, fixedOffset, width, className = '', style, ...props }, ref) => {
+  ({ 
+    actionText, 
+    onAction, 
+    actions = [], 
+    moreActions = [], 
+    showMore, 
+    onMore, 
+    fixed, 
+    fixedOffset, 
+    width, 
+    className = '', 
+    style, 
+    ...props 
+  }, ref) => {
+    const [isMoreOpen, setIsMoreOpen] = useState(false)
+    const moreRef = useRef<HTMLDivElement>(null)
     const fixedStyles = getFixedStyles(fixed, fixedOffset)
     const fixedClass = getFixedClassName(fixed)
+
+    // Determine if we should show the more button
+    const hasMoreActions = moreActions.length > 0
+    const shouldShowMore = showMore ?? hasMoreActions
+
+    // Build the visible actions list
+    // If using legacy props, create a single action item
+    const visibleActions: TableActionItem[] = actions.length > 0 
+      ? actions 
+      : actionText 
+        ? [{ key: 'primary', label: actionText, onClick: onAction }]
+        : []
+
+    // Handle click outside to close dropdown
+    useEffect(() => {
+      if (!isMoreOpen) return
+
+      const handleClickOutside = (event: MouseEvent) => {
+        if (moreRef.current && !moreRef.current.contains(event.target as Node)) {
+          setIsMoreOpen(false)
+        }
+      }
+
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [isMoreOpen])
+
+    // Handle Escape key to close dropdown
+    useEffect(() => {
+      if (!isMoreOpen) return
+
+      const handleEscape = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') {
+          setIsMoreOpen(false)
+        }
+      }
+
+      document.addEventListener('keydown', handleEscape)
+      return () => document.removeEventListener('keydown', handleEscape)
+    }, [isMoreOpen])
+
+    const handleMoreClick = () => {
+      if (onMore) {
+        onMore()
+      } else {
+        setIsMoreOpen(!isMoreOpen)
+      }
+    }
+
+    const handleActionClick = (action: TableActionItem) => {
+      if (action.disabled) return
+      action.onClick?.()
+      setIsMoreOpen(false)
+    }
 
     return (
       <td
@@ -578,24 +697,72 @@ export const TableActionCell = React.forwardRef<HTMLTableCellElement, TableActio
         {...props}
       >
         <div className="flex items-center justify-center gap-2">
-          <button
-            type="button"
-            onClick={onAction}
-            className="text-[14px] font-normal text-black leading-[14px] tracking-[-0.1504px] hover:text-primary-600 transition-colors"
-          >
-            {actionText}
-          </button>
-
-          {showMore && (
-            <>
-              <div className="w-px h-[11px] bg-neutral-300" />
+          {/* Visible action buttons */}
+          {visibleActions.map((action, index) => (
+            <React.Fragment key={action.key}>
+              {index > 0 && <div className="w-px h-[11px] bg-neutral-300" />}
               <button
                 type="button"
-                onClick={onMore}
-                className="text-icon-primary hover:text-black transition-colors"
+                onClick={() => handleActionClick(action)}
+                disabled={action.disabled}
+                className={`text-[14px] font-normal leading-[14px] tracking-[-0.1504px] transition-colors flex items-center gap-1
+                  ${action.disabled 
+                    ? 'text-neutral-400 cursor-not-allowed' 
+                    : action.danger 
+                      ? 'text-error-600 hover:text-error-700' 
+                      : 'text-black hover:text-primary-600'
+                  }`}
               >
-                <MoreVertical  />
+                {action.icon && <span className="w-4 h-4">{action.icon}</span>}
+                {action.label}
               </button>
+            </React.Fragment>
+          ))}
+
+          {/* More actions button and dropdown */}
+          {shouldShowMore && (
+            <>
+              {visibleActions.length > 0 && <div className="w-px h-[11px] bg-neutral-300" />}
+              <div className="relative" ref={moreRef}>
+                <button
+                  type="button"
+                  onClick={handleMoreClick}
+                  aria-expanded={isMoreOpen}
+                  aria-haspopup="menu"
+                  className="text-icon-primary hover:text-black transition-colors p-0.5 rounded hover:bg-neutral-100"
+                  title="更多操作"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+
+                {/* Dropdown menu */}
+                {isMoreOpen && hasMoreActions && (
+                  <div
+                    className="absolute right-0 top-full mt-1 min-w-[120px] bg-white border border-border-default rounded-lg shadow-lg z-dropdown py-1"
+                    role="menu"
+                  >
+                    {moreActions.map((action) => (
+                      <button
+                        key={action.key}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => handleActionClick(action)}
+                        disabled={action.disabled}
+                        className={`w-full text-left px-3 py-2 text-[14px] flex items-center gap-2 transition-colors
+                          ${action.disabled 
+                            ? 'text-neutral-400 cursor-not-allowed' 
+                            : action.danger 
+                              ? 'text-error-600 hover:bg-error-50' 
+                              : 'text-black hover:bg-surface-secondary'
+                          }`}
+                      >
+                        {action.icon && <span className="w-4 h-4 flex-shrink-0">{action.icon}</span>}
+                        <span>{action.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>

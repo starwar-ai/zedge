@@ -1,10 +1,16 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createColumnHelper } from '@tanstack/react-table'
-import { SearchInput, TableTextCell, TableEnumCell } from '@/components/ui'
+import { SearchInput, TableTextCell, TableEnumCell, TableActionCell } from '@/components/ui'
+import { Edit, Trash2 } from 'lucide-react'
 import { User, UserStatus, UserStatusLabels, UserRoleType, UserRoleLabels } from '@/types/user'
 import { CreateButton } from '@/components/features/buttons/FigmaButtons'
 import { usePageHeader } from '@/components/layout/MainLayout'
-import { TanStackDataTable } from '@/components/features/table'
+import {
+  TanStackDataTable,
+  FilterCondition,
+  ColumnSetting,
+  ColumnDef as TableColumnDef,
+} from '@/components/features/table'
 import { useUsersQuery } from '@/services/users'
 
 /**
@@ -24,6 +30,32 @@ type UserRecord = User & Record<string, unknown>
 
 const columnHelper = createColumnHelper<UserRecord>()
 
+// ============================================================================
+// Column Definitions for Filter & Settings
+// ============================================================================
+
+const allTableColumns: TableColumnDef[] = [
+  { id: 'id', label: '用户编号' },
+  { id: 'username', label: '用户名' },
+  { id: 'phone', label: '联系手机' },
+  { id: 'status', label: '状态' },
+  { id: 'role', label: '角色' },
+  { id: 'organization', label: '租户' },
+  { id: 'userGroup', label: '用户组' },
+  { id: 'lastLoginTime', label: '最近登录时间' },
+]
+
+const defaultColumnSettings: ColumnSetting[] = [
+  { id: 'id' },
+  { id: 'username' },
+  { id: 'phone' },
+  { id: 'status' },
+  { id: 'role' },
+  { id: 'organization' },
+  { id: 'userGroup' },
+  { id: 'lastLoginTime' },
+]
+
 export function UserManagementPage() {
   const { setHeader } = usePageHeader()
 
@@ -33,6 +65,13 @@ export function UserManagementPage() {
 
   // Selection state
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([])
+
+  // Advanced filter state
+  const [advancedFilters, setAdvancedFilters] = useState<FilterCondition[]>([])
+  const [filterLogic, setFilterLogic] = useState<'and' | 'or'>('and')
+
+  // Column settings state
+  const [columnSettings, setColumnSettings] = useState<ColumnSetting[]>(defaultColumnSettings)
 
   const {
     data: users = [],
@@ -73,6 +112,22 @@ export function UserManagementPage() {
   const handleRefresh = () => {
     refetch()
   }
+
+  // Filter handler
+  const handleFilter = useCallback((conditions: FilterCondition[], logic: 'and' | 'or') => {
+    setAdvancedFilters(conditions)
+    setFilterLogic(logic)
+    // TODO: Apply filters to query
+    console.log('Filter conditions:', conditions, 'Logic:', logic)
+  }, [])
+
+  // Reset handler
+  const handleReset = useCallback(() => {
+    setUserIdSearch('')
+    setUsernameSearch('')
+    setAdvancedFilters([])
+    setFilterLogic('and')
+  }, [])
 
   // Set page header actions
   useEffect(() => {
@@ -148,33 +203,30 @@ export function UserManagementPage() {
         id: 'actions',
         header: () => '操作',
         cell: ({ row }) => (
-          <TableTextCell>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleUserDetail(row.original)}
-                className="text-[14px] text-black hover:text-primary-600 transition-colors"
-              >
-                详情
-              </button>
-              <div className="w-px h-[11px] bg-[#d9d9d9]" />
-              <button
-                type="button"
-                onClick={() => handleUserEdit(row.original)}
-                className="text-[14px] text-black hover:text-primary-600 transition-colors"
-              >
-                编辑
-              </button>
-              <div className="w-px h-[11px] bg-[#d9d9d9]" />
-              <button
-                type="button"
-                onClick={() => handleUserDelete(row.original)}
-                className="text-[14px] text-black hover:text-error-600 transition-colors"
-              >
-                删除
-              </button>
-            </div>
-          </TableTextCell>
+          <TableActionCell
+            actions={[
+              {
+                key: 'view',
+                label: '详情',
+                onClick: () => handleUserDetail(row.original),
+              },
+            ]}
+            moreActions={[
+              {
+                key: 'edit',
+                label: '编辑',
+                icon: <Edit className="w-4 h-4" />,
+                onClick: () => handleUserEdit(row.original),
+              },
+              {
+                key: 'delete',
+                label: '删除',
+                icon: <Trash2 className="w-4 h-4" />,
+                danger: true,
+                onClick: () => handleUserDelete(row.original),
+              },
+            ]}
+          />
         ),
       }),
     ],
@@ -217,6 +269,7 @@ export function UserManagementPage() {
           loading={isLoading || isFetching}
           error={error instanceof Error ? error.message : null}
           onRefresh={handleRefresh}
+          onReset={handleReset}
           batchActions={[
             {
               key: 'delete',
@@ -225,6 +278,28 @@ export function UserManagementPage() {
               variant: 'danger',
             },
           ]}
+          filterProps={{
+            columns: allTableColumns.map((col) => ({
+              ...col,
+              type: col.id === 'status' ? 'enum' : 'text',
+              enumOptions:
+                col.id === 'status'
+                  ? [
+                      { label: '正常', value: 'active' },
+                      { label: '禁用', value: 'inactive' },
+                    ]
+                  : undefined,
+            })),
+            onFilter: handleFilter,
+            initialConditions: advancedFilters,
+            initialLogic: filterLogic,
+          }}
+          settingProps={{
+            allColumns: allTableColumns,
+            value: columnSettings,
+            defaultValue: defaultColumnSettings,
+            onSave: setColumnSettings,
+          }}
           pagination={{
             showPageSize: true,
             showGoto: true,

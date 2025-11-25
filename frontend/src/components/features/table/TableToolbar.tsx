@@ -174,7 +174,7 @@ export function TableToolbar({
         <div className="flex items-center gap-2">
           {children}
 
-          {actions.filter && (
+          {actions.filter && filterProps && (
             <div ref={filterButtonRef}>
               <Button
                 variant="secondary"
@@ -245,7 +245,7 @@ export function TableToolbar({
             />
           )}
 
-          {actions.settings && (
+          {actions.settings && settingProps && (
             <Button
               variant="secondary"
               size="sm"
