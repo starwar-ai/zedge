@@ -3957,72 +3957,79 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 
 ---
 
-### 11.4 账单生成 (Invoice Generation)
+### 11.4 月度账单管理 (Monthly Invoice Management)
 
-#### 11.4.1 账单周期
+#### 11.4.1 月度账单 (Monthly Invoice)
 
-**月度账单**:
-- 每月1日生成上月账单
+**功能**: 按月汇总租户的消费和退费情况，提供月度账单查询和统计功能
+
+**月度账单表结构** (`monthly_invoices`):
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `invoice_id` | UUID | 月度账单ID（唯一标识，主键） |
+| `tenant_id` | UUID | 所属租户ID（外键 → tenants.tenant_id） |
+| `tenant_name` | VARCHAR(255) | 租户名称（冗余字段，便于查询展示） |
+| `billing_period` | VARCHAR(7) | 账单期间（格式：YYYY/MM，如 2025/12） |
+| `billing_start_date` | DATE | 账单开始日期 |
+| `billing_end_date` | DATE | 账单结束日期 |
+| `consumption_amount` | DECIMAL(12,2) | 消费金额（人民币） |
+| `consumption_points` | DECIMAL(12,2) | 消费积分 |
+| `refund_amount` | DECIMAL(12,2) | 退费金额（人民币） |
+| `refund_points` | DECIMAL(12,2) | 退回积分 |
+| `net_amount` | DECIMAL(12,2) | 净金额（消费金额 - 退费金额） |
+| `net_points` | DECIMAL(12,2) | 净积分（消费积分 - 退回积分） |
+| `status` | ENUM | 账单状态 |
+| | | `draft`: 草稿 - 账单生成中 |
+| | | `finalized`: 已完成 - 账单已生成 |
+| | | `paid`: 已支付 - 账单已结清 |
+| | | `overdue`: 逾期 - 账单超期未付 |
+| `generated_at` | TIMESTAMP | 账单生成时间 |
+| `due_date` | TIMESTAMP | 账单到期日期 |
+| `paid_at` | TIMESTAMP | 支付时间（可选） |
+| `created_at` | TIMESTAMP | 创建时间 |
+| `updated_at` | TIMESTAMP | 更新时间 |
+
+**月度账单特性**:
+- **自动生成**: 每月1日自动生成上月账单
+- **汇总统计**: 自动汇总消费金额、积分、退费等
+- **筛选查询**: 支持按账单期间范围、租户名称筛选
+- **状态追踪**: 跟踪账单从生成到支付的完整状态
+
+**月度账单操作**:
+- **生成月度账单**: 系统自动按月生成账单汇总
+- **查询月度账单**: 支持按时间范围、租户筛选查询
+- **导出月度账单**: 支持导出账单报表（PDF、Excel等格式）
+- **账单支付**: 标记账单为已支付状态
+
+#### 11.4.2 月度账单筛选
+
+**筛选条件**:
+- **账单期间**: 支持开始和结束的时间范围筛选
+  - 示例：2025/01 ~ 2025/12
+- **租户名称**: 按租户名称模糊搜索或精确匹配
+- **账单状态**: 按状态筛选（草稿/已完成/已支付/逾期）
+
+#### 11.4.3 月度账单生成规则
+
+**生成时机**:
+- 每月1日凌晨自动生成上月账单
 - 账单生成后7天内支付
-- 支持按日查看费用明细
+- 支持手动触发生成（补生成历史账单）
+
+**生成逻辑**:
+1. 汇总租户在账单期间内的所有交易明细
+2. 计算消费金额和消费积分（交易类型=收费）
+3. 计算退费金额和退回积分（交易类型=退款）
+4. 计算净金额和净积分
+5. 生成月度账单记录
 
 **实时费用预估**:
 - 用户可随时查看当月预估费用
 - 每小时更新一次
 - 包含已确定费用和预估费用
 
-#### 11.4.2 账单明细
-
-**账单结构**:
-```json
-{
-  "invoice_id": "INV-2025-10-12345",
-  "user_id": 12345,
-  "billing_period": "2025-10",
-  "generated_at": "2025-11-01T00:00:00Z",
-  "due_date": "2025-11-08T23:59:59Z",
-  "status": "unpaid",
-
-  "subscription": {
-    "plan_name": "专业版",
-    "subscription_fee": 999.00,
-    "discount": 0,
-    "subtotal": 999.00
-  },
-
-  "usage_charges": {
-    "compute": {
-      "cpu_overage": 720.00,
-      "memory_overage": 432.00,
-      "gpu_usage": 0,
-      "subtotal": 1152.00
-    },
-    "storage": {
-      "instance_storage": 0,
-      "private_data_disk_storage": 100.00,
-      "snapshot_storage": 20.00,
-      "subtotal": 120.00
-    },
-    "network": {
-      "bandwidth_overage": 0,
-      "traffic": 50.00,
-      "ip_addresses": 0,
-      "subtotal": 50.00
-    }
-  },
-
-  "summary": {
-    "subscription_total": 999.00,
-    "usage_total": 1322.00,
-    "subtotal": 2321.00,
-    "tax": 139.26,
-    "total": 2460.26,
-    "currency": "CNY"
-  }
-}
-```
-
-#### 11.4.3 费用明细导出
+#### 11.4.4 费用明细导出
 
 **支持格式**:
 - PDF账单
@@ -4031,10 +4038,11 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 - API接口查询
 
 **明细内容**:
+- 按月汇总统计
 - 按日费用汇总
 - 按资源类型分组
-- 按实例分组
-- 详细使用记录
+- 按产品分组
+- 详细交易记录
 
 ---
 
@@ -4214,82 +4222,162 @@ CPU费用 = 使用核心数 × 使用小时数 × CPU单价
 
 #### 11.8.1 账单明细 (Bill Detail)
 
-**功能**: 记录用户的账单明细，包括按日汇总和详细交易记录
+**功能**: 记录每笔交易的详细信息，支持多维度查询和统计，是月度账单的数据来源
 
 **账单明细表结构** (`bill_details`):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `bill_id` | UUID | 账单ID（唯一标识，主键） |
-| `user_id` | UUID | 用户ID（外键 → users.user_id） |
-| `tenant_id` | UUID | 所属租户ID（外键 → tenants.tenant_id，可选） |
-| `bill_date` | DATE | 账单日期 |
+| `detail_id` | UUID | 明细ID（唯一标识，主键） |
+| `tenant_id` | UUID | 所属租户ID（外键 → tenants.tenant_id） |
+| `tenant_name` | VARCHAR(255) | 租户名称（冗余字段，便于查询展示） |
+| `transaction_number` | VARCHAR(64) | 交易流水号（唯一，格式：TXN-YYYYMMDDHHmmss-UUID） |
 | `transaction_type` | ENUM | 交易类型 |
-| | | `consumption`: 消费 |
-| | | `refund`: 退款 |
-| `daily_summary` | JSONB | 按日汇总（JSON格式） |
-| | | `date`: 日期 |
-| | | `transaction_type`: 交易类型 |
-| | | `transaction_amount`: 交易金额 |
-| | | `discount_amount`: 优惠金额 |
-| | | `points_payment`: 积分支付 |
-| `details` | JSONB | 明细列表（JSON数组） |
-| | | `transaction_id`: 流水号 |
-| | | `transaction_time`: 交易时间 |
-| | | `transaction_type`: 交易类型 |
-| | | `original_price`: 原价 |
-| | | `transaction_amount`: 交易金额 |
-| | | `product_name`: 产品名称 |
-| | | `discount_amount`: 优惠金额 |
-| | | `points_payment`: 积分支付 |
-| | | `order_number`: 订单号 |
-| | | `billing_period`: 计费周期 |
-| | | `billing_duration`: 计费时长 |
-| `total_amount` | DECIMAL(10,2) | 总金额 |
-| `total_discount` | DECIMAL(10,2) | 总优惠金额 |
-| `total_points` | DECIMAL(10,2) | 总积分支付 |
+| | | `charge`: 收费 - 资源使用产生的费用 |
+| | | `refund`: 退款 - 资源退订产生的退款 |
+| `payment_method` | ENUM | 支付方式 |
+| | | `cash`: 现金 - 使用人民币支付 |
+| | | `points`: 积分 - 使用积分支付 |
+| | | `mixed`: 混合支付 - 现金+积分组合支付 |
+| `product_name` | ENUM | 产品名称 |
+| | | `instance`: 实例 - 云电脑实例 |
+| | | `cloud_disk`: 云盘 - 私有数据盘 |
+| | | `snapshot`: 快照 - 数据盘快照 |
+| | | `network`: 网络 - 带宽、流量等 |
+| | | `other`: 其他 - 其他产品或服务 |
+| `reference_order_number` | VARCHAR(64) | 参考订单号（关联的订单编号，可为空） |
+| `original_price` | DECIMAL(12,2) | 原价（折扣前的价格） |
+| `discount_amount` | DECIMAL(12,2) | 优惠金额（折扣金额） |
+| `transaction_amount` | DECIMAL(12,2) | 交易金额（人民币，实际支付的现金金额） |
+| `points_amount` | DECIMAL(12,2) | 积分数量（使用的积分数量） |
+| `billing_period` | VARCHAR(7) | 计费周期（格式：YYYY-MM，如 2025-10） |
+| `billing_duration` | VARCHAR(50) | 计费时长（如：24小时、7天、30天） |
+| `billing_mode` | ENUM | 计费方式 |
+| | | `on_demand`: 按需 - 按实际使用时长计费 |
+| | | `daily`: 按日 - 按天计费 |
+| | | `weekly`: 按周 - 按周计费 |
+| | | `monthly`: 按月 - 按月计费 |
+| `transaction_time` | TIMESTAMP | 交易时间（交易发生的时间） |
+| `remark` | TEXT | 备注（其他说明信息，可为空） |
+| `resource_id` | UUID | 关联资源ID（实例ID、云盘ID等，可选） |
+| `resource_name` | VARCHAR(255) | 资源名称（冗余字段，便于展示） |
 | `created_at` | TIMESTAMP | 创建时间 |
 | `updated_at` | TIMESTAMP | 更新时间 |
 
 **账单明细特性**:
-- **按日汇总**: 每日自动生成账单汇总
-- **详细记录**: 包含每笔交易的详细信息
-- **多维度统计**: 支持按交易类型、产品名称等维度统计
-- **优惠记录**: 记录优惠金额和积分支付
+- **详细记录**: 记录每笔交易的完整信息
+- **多维度查询**: 支持按租户、交易类型、产品、订单号、时间等维度查询
+- **支持退款**: 完整记录退款信息，便于对账
+- **关联资源**: 可追溯到具体的资源实例
+- **审计追踪**: 保留完整的交易历史记录
 
 **账单明细操作**:
-- **生成账单**: 系统自动按日生成账单明细
-- **查询账单**: 用户查看账单明细
-- **导出账单**: 支持导出账单报表（PDF、Excel等格式）
+- **创建明细**: 资源使用或退订时自动创建账单明细
+- **查询明细**: 支持多维度筛选查询
+- **导出明细**: 支持导出明细报表（Excel、CSV等格式）
+- **统计汇总**: 支持按时间、租户、产品等维度统计
 
-**账单明细JSON结构示例**:
+#### 11.8.2 账单明细筛选
+
+**筛选条件**:
+
+| 筛选字段 | 筛选方式 | 说明 |
+|---------|---------|------|
+| 租户名称 | 模糊搜索/精确匹配 | 按租户名称筛选 |
+| 交易流水号 | 精确匹配 | 按流水号查询特定交易 |
+| 交易类型 | 单选/多选 | 收费、退款 |
+| 产品名称 | 单选/多选 | 实例、云盘、快照等 |
+| 参考订单号 | 精确匹配 | 按订单号查询 |
+| 交易时间 | 时间范围 | 开始时间 ~ 结束时间 |
+| 支付方式 | 单选/多选 | 现金、积分、混合支付 |
+| 计费方式 | 单选/多选 | 按需、按日、按周、按月 |
+
+**查询示例**:
+- 查询某租户在2025年10月的所有收费记录
+- 查询所有实例产品的账单明细
+- 查询某个订单号相关的所有交易记录
+- 查询某时间段内的所有退款记录
+
+#### 11.8.3 账单明细JSON结构示例
+
+**单笔交易示例**:
 ```json
 {
-  "bill_id": "bill-uuid",
-  "bill_date": "2025-10-31",
-  "daily_summary": {
-    "date": "2025-10-31",
-    "transaction_type": "consumption",
-    "transaction_amount": 150.50,
-    "discount_amount": 10.00,
-    "points_payment": 50.00
-  },
-  "details": [
-    {
-      "transaction_id": "trans-uuid-1",
-      "transaction_time": "2025-10-31T10:30:00Z",
-      "transaction_type": "consumption",
-      "original_price": 100.00,
-      "transaction_amount": 90.00,
-      "product_name": "云电脑实例",
-      "discount_amount": 10.00,
-      "points_payment": 0.00,
-      "order_number": "ORD-20251031-00001",
-      "billing_period": "2025-10",
-      "billing_duration": "24小时"
-    }
-  ]
+  "detail_id": "detail-uuid-001",
+  "tenant_id": "tenant-uuid-001",
+  "tenant_name": "某某学校",
+  "transaction_number": "TXN-20251031103000-abc123",
+  "transaction_type": "charge",
+  "payment_method": "mixed",
+  "product_name": "instance",
+  "reference_order_number": "ORD-20251031-00001",
+  "original_price": 100.00,
+  "discount_amount": 10.00,
+  "transaction_amount": 60.00,
+  "points_amount": 30.00,
+  "billing_period": "2025-10",
+  "billing_duration": "24小时",
+  "billing_mode": "on_demand",
+  "transaction_time": "2025-10-31T10:30:00Z",
+  "remark": "高性能实例使用费",
+  "resource_id": "instance-uuid-001",
+  "resource_name": "开发测试实例-01",
+  "created_at": "2025-10-31T10:30:01Z",
+  "updated_at": "2025-10-31T10:30:01Z"
 }
+```
+
+**退款交易示例**:
+```json
+{
+  "detail_id": "detail-uuid-002",
+  "tenant_id": "tenant-uuid-001",
+  "tenant_name": "某某学校",
+  "transaction_number": "TXN-20251031150000-def456",
+  "transaction_type": "refund",
+  "payment_method": "mixed",
+  "product_name": "instance",
+  "reference_order_number": "ORD-20251031-00001",
+  "original_price": 100.00,
+  "discount_amount": 0.00,
+  "transaction_amount": -60.00,
+  "points_amount": -30.00,
+  "billing_period": "2025-10",
+  "billing_duration": "12小时",
+  "billing_mode": "weekly",
+  "transaction_time": "2025-10-31T15:00:00Z",
+  "remark": "实例提前退订，按使用时长退款",
+  "resource_id": "instance-uuid-001",
+  "resource_name": "开发测试实例-01",
+  "created_at": "2025-10-31T15:00:01Z",
+  "updated_at": "2025-10-31T15:00:01Z"
+}
+```
+
+#### 11.8.4 账单明细与月度账单关系
+
+**关系说明**:
+- **月度账单**是对**账单明细**的月度汇总
+- 月度账单的消费/退费数据来源于账单明细的统计
+- 每月1日根据上月的所有账单明细生成月度账单
+
+**汇总逻辑**:
+```sql
+-- 月度账单汇总示例（伪代码）
+SELECT 
+  tenant_id,
+  billing_period,
+  SUM(CASE WHEN transaction_type = 'charge' AND payment_method IN ('cash', 'mixed') 
+      THEN transaction_amount ELSE 0 END) AS consumption_amount,
+  SUM(CASE WHEN transaction_type = 'charge' AND payment_method IN ('points', 'mixed') 
+      THEN points_amount ELSE 0 END) AS consumption_points,
+  SUM(CASE WHEN transaction_type = 'refund' AND payment_method IN ('cash', 'mixed') 
+      THEN ABS(transaction_amount) ELSE 0 END) AS refund_amount,
+  SUM(CASE WHEN transaction_type = 'refund' AND payment_method IN ('points', 'mixed') 
+      THEN ABS(points_amount) ELSE 0 END) AS refund_points
+FROM bill_details
+WHERE billing_period = '2025-10'
+GROUP BY tenant_id, billing_period;
 ```
 
 ---
@@ -6041,10 +6129,17 @@ WHERE vlan_id IN (100, 101, 102);  -- 预留示例
 │   │   ├── 包年包月 (Subscription-based)
 │   │   ├── 按需付费 (Pay-as-you-go)
 │   │   └── 预付费资源包 (Prepaid Resource Package)
-│   ├── 账单管理 (Invoice Management)
-│   │   ├── 月度账单生成
-│   │   ├── 费用明细导出
-│   │   └── 实时费用预估
+│   ├── 月度账单管理 (Monthly Invoice Management)
+│   │   ├── 月度账单生成（按月汇总）
+│   │   ├── 账单筛选（按期间、租户）
+│   │   ├── 账单状态追踪
+│   │   └── 费用明细导出
+│   ├── 账单明细管理 (Bill Detail Management)
+│   │   ├── 交易明细记录
+│   │   ├── 多维度筛选查询
+│   │   ├── 支付方式支持（现金/积分/混合）
+│   │   ├── 产品分类统计
+│   │   └── 明细导出与对账
 │   ├── 支付与结算 (Payment & Settlement)
 │   │   ├── 支付方式
 │   │   │   ├── 在线支付
@@ -6151,6 +6246,22 @@ WHERE vlan_id IN (100, 101, 102);  -- 预留示例
 - ✅ 扩展5.3.4章节：添加功能模块可见性配置的实现逻辑和代码示例
 - ✅ 完善租户类型切换限制：添加场景特定功能模块数据的清理说明
 - ✅ 提供功能模块过滤代码示例：包含TypeScript伪代码，说明如何实现功能模块过滤和访问控制
+
+**v1.12 (2025-11-25)** - 账单管理功能完善:
+
+**重要更新**:
+- ✅ 重构11.4章节：从"账单生成"改为"月度账单管理"，完善月度账单实体定义
+- ✅ 新增月度账单表结构：包含账单期间、租户信息、消费/退费金额、消费/退回积分等字段
+- ✅ 新增月度账单筛选功能：支持按账单期间范围、租户名称筛选
+- ✅ 新增月度账单状态管理：草稿、已完成、已支付、逾期四种状态
+- ✅ 重构11.8章节：完善账单明细表结构，补充交易流水号、支付方式、计费方式等字段
+- ✅ 新增账单明细筛选功能：支持按租户、交易类型、产品、订单号、时间等多维度筛选
+- ✅ 新增支付方式支持：现金、积分、混合支付三种方式
+- ✅ 新增产品分类：实例、云盘、快照、网络、其他五种产品类型
+- ✅ 新增计费方式：按需、按日、按周、按月四种计费方式
+- ✅ 明确月度账单与账单明细的关系：月度账单是账单明细的月度汇总
+- ✅ 提供完整的JSON示例：包含收费和退款交易的完整示例
+- ✅ 更新系统体系树：优化账单管理分支结构，分离月度账单和账单明细
 
 **v1.11 (2025-11-14)** - 角色可见性与租户类型关联规则:
 
