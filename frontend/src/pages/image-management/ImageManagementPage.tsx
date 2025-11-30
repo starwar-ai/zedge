@@ -285,26 +285,26 @@ export function ImageManagementPage() {
                 <TableHeaderCell showDivider={false}>操作</TableHeaderCell>
               </TableRow>
             </TableHead>
-              <TableBody>
-                {currentImages.map((image) => (
-                  <TableRow key={image.id}>
-                    <TableSelectCell
-                      checked={selectedRows.includes(image.id)}
-                      onCheckedChange={(checked) => handleSelectRow(image.id, checked)}
-                    />
-                    <TableTextCell>{image.number}</TableTextCell>
-                    <TableTextCell>{image.name}</TableTextCell>
-                    <TableTextCell>{image.usage}</TableTextCell>
-                    <TableTextCell>{image.os}</TableTextCell>
-                    <TableTextCell>{image.preInstalledSoftware}</TableTextCell>
-                    <TableTextCell>{image.size}</TableTextCell>
-                    <TableTextCell>{image.version}</TableTextCell>
-                    <TableActionCell
-                      actionText="详情"
-                      onAction={() => handleViewDetails(image)}
-                    />
-                  </TableRow>
-                ))}
+            <TableBody>
+              {currentImages.map((image) => (
+                <TableRow key={image.id}>
+                  <TableSelectCell
+                    checked={selectedRows.includes(image.id)}
+                    onCheckedChange={(checked) => handleSelectRow(image.id, checked)}
+                  />
+                  <TableTextCell>{image.number}</TableTextCell>
+                  <TableTextCell>{image.name}</TableTextCell>
+                  <TableTextCell>{image.usage}</TableTextCell>
+                  <TableTextCell>{image.os}</TableTextCell>
+                  <TableTextCell>{image.preInstalledSoftware}</TableTextCell>
+                  <TableTextCell>{image.size}</TableTextCell>
+                  <TableTextCell>{image.version}</TableTextCell>
+                  <TableActionCell
+                    actionText="详情"
+                    onAction={() => handleViewDetails(image)}
+                  />
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
 
@@ -328,3 +328,5 @@ export function ImageManagementPage() {
     </>
   )
 }
+
+export default ImageManagementPage

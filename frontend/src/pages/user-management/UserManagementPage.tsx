@@ -285,9 +285,9 @@ export function UserManagementPage() {
               enumOptions:
                 col.id === 'status'
                   ? [
-                      { label: '正常', value: 'active' },
-                      { label: '禁用', value: 'inactive' },
-                    ]
+                    { label: '正常', value: 'active' },
+                    { label: '禁用', value: 'inactive' },
+                  ]
                   : undefined,
             })),
             onFilter: handleFilter,
@@ -313,3 +313,5 @@ export function UserManagementPage() {
     </div>
   )
 }
+
+export default UserManagementPage

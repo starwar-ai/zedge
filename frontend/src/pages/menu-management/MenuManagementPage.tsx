@@ -376,9 +376,8 @@ export function MenuManagementPage() {
                     className="mr-1 p-0.5 hover:bg-neutral-100 rounded flex items-center justify-center transition-colors"
                   >
                     <ChevronRight
-                      className={`w-4 h-4 text-icon-primary transition-transform duration-200 ${
-                        expandedMenus.has(menu.id) ? 'rotate-90' : 'rotate-0'
-                      }`}
+                      className={`w-4 h-4 text-icon-primary transition-transform duration-200 ${expandedMenus.has(menu.id) ? 'rotate-90' : 'rotate-0'
+                        }`}
                     />
                   </button>
                 )}
@@ -530,9 +529,9 @@ export function MenuManagementPage() {
               enumOptions:
                 col.id === 'status'
                   ? [
-                      { label: '开启', value: '开启' },
-                      { label: '关闭', value: '关闭' },
-                    ]
+                    { label: '开启', value: '开启' },
+                    { label: '关闭', value: '关闭' },
+                  ]
                   : undefined,
             })),
             onFilter: handleFilter,
@@ -578,3 +577,5 @@ export function MenuManagementPage() {
     </div>
   )
 }
+
+export default MenuManagementPage

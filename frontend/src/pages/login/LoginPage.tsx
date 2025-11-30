@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import { useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -11,11 +11,11 @@ import logoContainer from '@/assets/images/logo-container.png'
 
 const loginSchema = z.object({
   email: z
-    .string({ required_error: '请输入邮箱' })
+    .string()
     .min(1, '请输入邮箱')
     .email('请输入合法邮箱'),
   password: z
-    .string({ required_error: '请输入密码' })
+    .string()
     .min(6, '密码至少 6 位'),
 })
 
@@ -44,7 +44,7 @@ export default function LoginPage() {
     console.log('Login payload', values)
   }, [])
 
-  const { submitting, onSubmit } = useFormSubmit(methods, loginHandler)
+  const { submitting, submitHandler } = useFormSubmit(methods, loginHandler)
 
   const handleSocialLogin = (_provider: string) => {
     // TODO: Implement social login
@@ -93,7 +93,7 @@ export default function LoginPage() {
             </div>
 
             {/* Login Form */}
-            <ControlledForm methods={methods} onSubmit={onSubmit} className="px-6 py-0">
+            <ControlledForm methods={methods} onSubmit={submitHandler} className="px-6 py-0">
               <div className="space-y-2">
                 {/* Email Input */}
                 <FormInputField

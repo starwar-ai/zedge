@@ -32,6 +32,7 @@ export function useFormSubmit<TFieldValues extends FieldValues>(
   return {
     submitting,
     onSubmit,
+    submitHandler: wrappedHandler,
     resetForm,
   }
 }
